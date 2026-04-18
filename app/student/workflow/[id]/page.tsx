@@ -116,13 +116,31 @@ export default function WorkflowPage({ params }: { params: Promise<{ id: string 
           <WorkflowCanvas stages={data.stages} edges={data.edges} />
         </section>
         <aside className="card p-5">
-          {activeStage ? (
+          {activeStage && activeStage.assignee_role === "student" ? (
             <StepPanel
               stage={activeStage}
               steps={stageSteps}
               responses={data.responses}
               onSubmitted={refresh}
             />
+          ) : activeStage && activeStage.assignee_role && activeStage.assignee_role !== "student" ? (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Awaiting</p>
+              <h2 className="mt-1 text-lg font-semibold">{activeStage.label}</h2>
+              <p className="mt-3 text-sm text-slate-600">
+                Your application is now with the <strong>{activeStage.assignee_role.replace(/_/g, " ")}</strong>.
+                You'll be notified here when they respond. (For the demo, sign in as
+                Demo Coordinator in another tab to see the briefing in their queue.)
+              </p>
+            </div>
+          ) : data.workflow.status === "approved" || data.workflow.status === "rejected" ? (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Outcome</p>
+              <h2 className="mt-1 text-lg font-semibold capitalize">{data.workflow.status}</h2>
+              <p className="mt-3 text-sm text-slate-600">
+                Your workflow has reached its final stage.
+              </p>
+            </div>
           ) : (
             <div className="text-slate-500">
               No active stage — your workflow may be complete or awaiting another party.

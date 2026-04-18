@@ -22,6 +22,7 @@ import type {
   StepResponseRecord,
 } from "./types";
 import { routeDecision, ROUTE_DECISION_CONFIDENCE_THRESHOLD } from "@/lib/glm/routeDecision";
+import { generateBriefing } from "@/lib/glm/generateBriefing";
 
 export interface AdvanceResult {
   advanced: boolean;
@@ -164,11 +165,113 @@ export async function tryAdvanceWorkflow(workflowId: string): Promise<AdvanceRes
     .update({ status: "active" })
     .eq("id", chosenEdge.target_stage_id);
 
+  const newActiveStage = stages.find((s: StageRecord) => s.id === chosenEdge!.target_stage_id);
+
+  // If the new active stage is a decision node OR an end node, recurse —
+  // the user has nothing to click for either, so advance them automatically.
+  if (
+    newActiveStage &&
+    (newActiveStage.node_type === "decision" || newActiveStage.node_type === "end")
+  ) {
+    return tryAdvanceWorkflow(workflowId);
+  }
+
+  // If the new active stage is assigned to a non-student role (coordinator,
+  // dean, etc.), the student's part is done for now — generate a briefing
+  // for the assignee so it appears in their queue.
+  if (
+    newActiveStage &&
+    newActiveStage.assignee_role &&
+    newActiveStage.assignee_role !== "student" &&
+    newActiveStage.assignee_role !== "system"
+  ) {
+    await ensureBriefing(workflowId, sb);
+    await sb.from("workflows").update({ status: "submitted" }).eq("id", workflowId);
+  }
+
   return {
     advanced: true,
     nextStageId: chosenEdge.target_stage_id,
     workflowCompleted: false,
   };
+}
+
+/**
+ * Generate (or skip if exists) a coordinator briefing for the workflow.
+ * Idempotent — if a pending briefing already exists, do nothing.
+ */
+async function ensureBriefing(
+  workflowId: string,
+  sb: ReturnType<typeof getServiceSupabase>
+): Promise<void> {
+  const { data: existing } = await sb
+    .from("admin_briefings")
+    .select("id, status")
+    .eq("workflow_id", workflowId)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (existing) return;
+
+  // Gather workflow context.
+  const { data: wf } = await sb
+    .from("workflows")
+    .select("id, procedure_id, user_id")
+    .eq("id", workflowId)
+    .single();
+  if (!wf) return;
+
+  const { data: stages } = await sb
+    .from("workflow_stages")
+    .select("id, label")
+    .eq("workflow_id", workflowId);
+  const stageIds = (stages ?? []).map((s) => s.id);
+
+  const { data: steps } = await sb
+    .from("workflow_steps")
+    .select("id, stage_id, label")
+    .in("stage_id", stageIds);
+  const stepLabelById = new Map((steps ?? []).map((s) => [s.id, s.label]));
+  const stepIds = (steps ?? []).map((s) => s.id);
+
+  const { data: responses } = await sb
+    .from("step_responses")
+    .select("step_id, response_data")
+    .in("step_id", stepIds);
+
+  const responseList = (responses ?? []).map((r) => ({
+    step_label: stepLabelById.get(r.step_id) ?? "(unknown step)",
+    response_data: r.response_data,
+  }));
+
+  const { data: procedure } = await sb
+    .from("procedures")
+    .select("name")
+    .eq("id", wf.procedure_id)
+    .single();
+
+  let briefing;
+  try {
+    briefing = await generateBriefing(
+      {
+        workflowSummary: `${procedure?.name ?? wf.procedure_id} for user ${wf.user_id}`,
+        responses: responseList,
+        procedureName: procedure?.name ?? wf.procedure_id,
+      },
+      { workflowId }
+    );
+  } catch (err) {
+    console.error("[ensureBriefing] generateBriefing failed", err);
+    return;
+  }
+
+  await sb.from("admin_briefings").insert({
+    workflow_id: workflowId,
+    extracted_facts: briefing.extracted_facts,
+    flags: briefing.flags,
+    recommendation: briefing.recommendation,
+    reasoning: briefing.reasoning,
+    status: "pending",
+  });
 }
 
 /**
