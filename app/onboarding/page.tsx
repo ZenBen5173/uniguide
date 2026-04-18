@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const FACULTIES = [
@@ -15,6 +15,14 @@ const FACULTIES = [
 ];
 
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-12 text-slate-500">Loading…</div>}>
+      <OnboardingInner />
+    </Suspense>
+  );
+}
+
+function OnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/student/intake";

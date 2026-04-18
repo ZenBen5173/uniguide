@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -8,6 +8,14 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 type Stage = "email" | "code";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-16 text-slate-500">Loading…</div>}>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/student/intake";
