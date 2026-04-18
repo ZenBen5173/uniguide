@@ -20,14 +20,7 @@ import { apiError, apiSuccess } from "@/lib/utils/responses";
 
 const BodySchema = z.object({ text: z.string().min(1).max(4000) });
 
-const ALL_PROCEDURE_IDS: ReturnType<typeof ProcedureIdSchema.options> = [
-  "industrial_training",
-  "final_year_project",
-  "deferment_of_studies",
-  "exam_result_appeal",
-  "postgrad_admission",
-  "emgs_visa_renewal",
-];
+const ALL_PROCEDURE_IDS = ProcedureIdSchema.options;
 
 export async function POST(req: NextRequest) {
   let body: unknown;
