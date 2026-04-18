@@ -3,11 +3,11 @@
 
 insert into public.procedures (id, name, description, source_url, faculty_scope) values
   (
-    'industrial_training',
-    'Industrial Training Application',
-    'WIA3001 — undergraduate industrial training placement application, approval, and confirmation flow.',
-    'https://fsktm.um.edu.my/fsktm/doc/undergraduate/UGKit/UGKitS22425.pdf',
-    'FSKTM'
+    'scholarship_application',
+    'Scholarship & Financial Aid Application',
+    'UM-internal (Yayasan UM, IPS Bright Sparks), government (JPA, MARA, MyBrainSc), and corporate (Khazanah, BNM, Petronas) scholarship applications, with eligibility filtering by CGPA, citizenship, and family income tier.',
+    'https://hep.um.edu.my/scholarship',
+    null
   ),
   (
     'final_year_project',

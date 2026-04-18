@@ -132,7 +132,7 @@ function LoginInner() {
             disabled={!!demoBusy}
           >
             <span>🎓 Sign in as Demo Student</span>
-            <span className="text-xs opacity-80">CGPA 3.10, FSKTM Y3</span>
+            <span className="text-xs opacity-80">B40, CGPA 3.10, FSKTM Y3</span>
           </button>
           <button
             className="btn-primary w-full justify-between text-sm"
@@ -140,7 +140,7 @@ function LoginInner() {
             disabled={!!demoBusy}
           >
             <span>🧑‍💼 Sign in as Demo Coordinator</span>
-            <span className="text-xs opacity-80">FSKTM Industrial Training</span>
+            <span className="text-xs opacity-80">Yayasan UM Scholarship Officer</span>
           </button>
           <button
             className="btn w-full justify-between border border-slate-300 bg-white text-slate-700 text-sm hover:bg-slate-50"

@@ -1,3 +1,3 @@
 {
-  "text": "{\"procedure_id\": null, \"confidence\": 0.25, \"clarifying_questions\": [\"Could you describe what you're trying to do? For example: applying for industrial training, deferring a semester, appealing an exam grade.\"], \"reasoning\": \"Input did not match any known procedure with high confidence.\"}"
+  "text": "{\"procedure_id\": null, \"confidence\": 0.25, \"clarifying_questions\": [\"Could you describe what you're trying to do? For example: applying for a scholarship / financial aid, deferring a semester, appealing an exam grade, or a postgraduate admission.\"], \"reasoning\": \"Input did not match any known procedure with high confidence.\"}"
 }

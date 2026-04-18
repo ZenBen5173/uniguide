@@ -16,7 +16,7 @@ import { z } from "zod";
 // Common
 // ============================================================================
 export const ProcedureIdSchema = z.enum([
-  "industrial_training",
+  "scholarship_application",
   "final_year_project",
   "deferment_of_studies",
   "exam_result_appeal",

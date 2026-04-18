@@ -29,7 +29,7 @@ export async function generateBriefing(
     jsonMode: true,
     maxTokens: 1500,
     temperature: 0.2,
-    mockFixture: "brief_industrial_training",
+    mockFixture: "brief_scholarship_application",
   });
 
   const parsed = GenerateBriefingOutputSchema.parse(JSON.parse(result.text));

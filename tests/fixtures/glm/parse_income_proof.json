@@ -1,0 +1,3 @@
+{
+  "text": "{\"fields\": {\"document_type\": {\"value\": \"EPF Statement\", \"confidence\": 0.97}, \"account_holder\": {\"value\": \"Ali bin Hassan\", \"confidence\": 0.95}, \"monthly_contribution\": {\"value\": \"RM 420.00\", \"confidence\": 0.92}, \"estimated_monthly_income_rm\": {\"value\": 3800, \"confidence\": 0.88}, \"statement_period\": {\"value\": \"2025-10 to 2026-03\", \"confidence\": 0.96}, \"income_tier_inferred\": {\"value\": \"B40\", \"confidence\": 0.89}}, \"source_excerpt\": \"Caruman Bulanan (Monthly Contribution): RM 420.00 — equivalent to approx. RM 3,800 monthly gross income based on statutory EPF rate of 11%.\"}"
+}

@@ -29,7 +29,7 @@ export async function parseDocument(
     jsonMode: true,
     maxTokens: 2000,
     temperature: 0.1,
-    mockFixture: "parse_offer_letter",
+    mockFixture: "parse_income_proof",
   });
 
   const parsed = ParseDocumentOutputSchema.parse(JSON.parse(result.text));

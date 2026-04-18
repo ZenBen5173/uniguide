@@ -46,45 +46,48 @@ Critical rules:
 3. NO graph cycles.
 4. Decision nodes must have at least 2 outgoing edges with distinct condition_keys.
 5. Personalise based on the student's profile:
-   - If their CGPA is below a threshold the SOP mentions, INSERT an appeal stage BEFORE the standard flow.
-   - If they're an international student and EMGS is involved, INSERT EMGS sub-flow stages.
-   - If a stage doesn't apply to them, SKIP it entirely (don't include it).
+   - Filter scholarships by citizenship, programme level, CGPA tier, and family income tier.
+   - For B40/M40 Malaysian students: prioritise need-based (Yayasan UM, MARA if Bumiputera, JPA).
+   - For T20 students with CGPA ≥ 3.70: prioritise competitive merit (Khazanah, BNM, Petronas).
+   - For postgraduate: emphasise MyBrainSc + IPS Bright Sparks + supervisor RA.
+   - For international: very limited; pivot to GRA scheme.
 6. Cite the SOP excerpt(s) you relied on in the reasoning field.
-7. If the SOP excerpts contain a deadline (e.g., "2-week confirmation form"), include it in the deadlines array.
-8. Do NOT fabricate stages, deadlines, or form numbers that aren't supported by the SOP excerpts.
+7. If the SOP excerpts contain a deadline, include it in the deadlines array.
+8. Do NOT fabricate scholarship names, deadlines, or eligibility rules not supported by the SOP excerpts.
 
-Stage labels should be short, action-oriented (e.g., "Faculty Eligibility Check", "Coordinator Approval", "Submit Confirmation Form").
+Stage labels should be short, action-oriented (e.g., "Eligibility Filter", "Document Collection", "Yayasan UM Application", "Faculty Endorsement").
 
-Few-shot example (for an Industrial Training application by an FSKTM student with CGPA 3.5):
+Few-shot example (for a Malaysian B40 undergraduate Bumiputera student with CGPA 3.50):
 
 ```json
 {
-  "procedure_id": "industrial_training",
+  "procedure_id": "scholarship_application",
   "stages": [
-    {"ordinal": 0, "label": "Eligibility Check", "node_type": "stage", "assignee_role": "system", "steps": [{"ordinal": 0, "type": "form", "label": "Confirm CGPA and prerequisites", "required": true, "config": {"fields": ["cgpa", "prerequisites_complete"]}}], "metadata": {}},
-    {"ordinal": 1, "label": "Workshop Attendance", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "approval", "label": "Confirm pre-IT workshop attended", "required": true, "config": {}}], "metadata": {}},
-    {"ordinal": 2, "label": "Company Selection", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "form", "label": "Enter company details", "required": true, "config": {"fields": ["company_name", "company_address", "supervisor_name"]}}, {"ordinal": 1, "type": "upload", "label": "Upload offer letter", "required": true, "config": {"accept": ["application/pdf"]}}], "metadata": {}},
-    {"ordinal": 3, "label": "Family-Owned Check", "node_type": "decision", "assignee_role": "system", "steps": [], "metadata": {"branches": [{"condition_key": "blocked", "criteria": "Company is owned/registered under student's family member"}, {"condition_key": "proceed", "criteria": "Company is not family-owned"}]}},
-    {"ordinal": 4, "label": "Coordinator Approval", "node_type": "stage", "assignee_role": "coordinator", "steps": [{"ordinal": 0, "type": "approval", "label": "Approve placement (48hr SLA)", "required": true, "config": {"sla_hours": 48}}], "metadata": {}},
-    {"ordinal": 5, "label": "Submit Confirmation Form", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "form", "label": "Fill UM-PT01-PK01-BR074-S00", "required": true, "config": {"form_template": "UM-PT01-PK01-BR074-S00"}}], "metadata": {}},
-    {"ordinal": 6, "label": "Approved", "node_type": "end", "assignee_role": null, "steps": [], "metadata": {"outcome": "completed"}},
-    {"ordinal": 7, "label": "Blocked - Family Owned", "node_type": "end", "assignee_role": null, "steps": [], "metadata": {"outcome": "rejected", "reason": "Family-owned company conflict of interest"}}
+    {"ordinal": 0, "label": "Eligibility & Profile Confirmation", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "form", "label": "Confirm CGPA, citizenship, family income tier", "required": true, "config": {"fields": ["cgpa", "citizenship", "income_tier", "bumiputera_status"]}}], "metadata": {}},
+    {"ordinal": 1, "label": "Income Tier Branch", "node_type": "decision", "assignee_role": "system", "steps": [], "metadata": {"branches": [{"condition_key": "b40_or_m40", "criteria": "Family income < RM 10,960/month — eligible for need-based scholarships"}, {"condition_key": "t20", "criteria": "Family income > RM 10,960/month — merit-only path"}]}},
+    {"ordinal": 2, "label": "Recommended Scholarships (Need-based + Merit)", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "form", "label": "Choose which scholarships to apply for", "required": true, "config": {"options": ["Yayasan UM", "MARA", "JPA", "Khazanah", "BNM"]}}], "metadata": {}},
+    {"ordinal": 3, "label": "Document Collection", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "upload", "label": "Upload latest transcript", "required": true, "config": {"accept": ["application/pdf"]}}, {"ordinal": 1, "type": "upload", "label": "Upload parents' income proof (EPF / payslip / Surat Pengesahan)", "required": true, "config": {"accept": ["application/pdf", "image/*"]}}, {"ordinal": 2, "type": "form", "label": "Write motivation letter (500-1000 words)", "required": true, "config": {}}], "metadata": {}},
+    {"ordinal": 4, "label": "Submit Yayasan UM Application", "node_type": "stage", "assignee_role": "student", "steps": [{"ordinal": 0, "type": "approval", "label": "Confirm submission via UM HEPA portal", "required": true, "config": {}}], "metadata": {}},
+    {"ordinal": 5, "label": "Faculty Endorsement", "node_type": "stage", "assignee_role": "coordinator", "steps": [{"ordinal": 0, "type": "approval", "label": "Faculty officer endorses application", "required": true, "config": {}}], "metadata": {}},
+    {"ordinal": 6, "label": "Yayasan UM Committee Review (4-6 weeks)", "node_type": "stage", "assignee_role": "coordinator", "steps": [{"ordinal": 0, "type": "approval", "label": "Yayasan UM committee decision", "required": true, "config": {"sla_weeks": 6}}], "metadata": {}},
+    {"ordinal": 7, "label": "Awarded", "node_type": "end", "assignee_role": null, "steps": [], "metadata": {"outcome": "completed"}},
+    {"ordinal": 8, "label": "Merit-only Path (Corporate Scholarships)", "node_type": "end", "assignee_role": null, "steps": [], "metadata": {"outcome": "completed", "note": "T20 students typically apply directly to corporate scholarships"}}
   ],
   "edges": [
     {"source_ordinal": 0, "target_ordinal": 1, "condition_key": null, "label": null},
-    {"source_ordinal": 1, "target_ordinal": 2, "condition_key": null, "label": null},
+    {"source_ordinal": 1, "target_ordinal": 2, "condition_key": "b40_or_m40", "label": "Need-based eligible"},
+    {"source_ordinal": 1, "target_ordinal": 8, "condition_key": "t20", "label": "Merit-only"},
     {"source_ordinal": 2, "target_ordinal": 3, "condition_key": null, "label": null},
-    {"source_ordinal": 3, "target_ordinal": 4, "condition_key": "proceed", "label": "Not family-owned"},
-    {"source_ordinal": 3, "target_ordinal": 7, "condition_key": "blocked", "label": "Family-owned"},
-    {"source_ordinal": 4, "target_ordinal": 5, "condition_key": "approved", "label": "Approved"},
-    {"source_ordinal": 5, "target_ordinal": 6, "condition_key": null, "label": null}
+    {"source_ordinal": 3, "target_ordinal": 4, "condition_key": null, "label": null},
+    {"source_ordinal": 4, "target_ordinal": 5, "condition_key": null, "label": null},
+    {"source_ordinal": 5, "target_ordinal": 6, "condition_key": "approved", "label": "Endorsed"},
+    {"source_ordinal": 6, "target_ordinal": 7, "condition_key": "approved", "label": "Awarded"}
   ],
   "deadlines": [
-    {"stage_ordinal": 4, "label": "Coordinator approval window", "iso_date": null, "relative_days": 2},
-    {"stage_ordinal": 5, "label": "Submit confirmation form within 2 weeks of reporting", "iso_date": null, "relative_days": 14}
+    {"stage_ordinal": 6, "label": "Yayasan UM committee outcome window (4-6 weeks)", "iso_date": null, "relative_days": 42}
   ],
-  "reasoning": "Standard FSKTM industrial training flow per UG Kit S22425. Family-owned check inserted as a decision node per FBE Industrial Training Guidelines section on conflict of interest. Coordinator 48-hour SLA per the same guidelines."
+  "reasoning": "Student is Malaysian Bumiputera, CGPA 3.50, B40 income tier — eligible for need-based scholarships. Plan prioritises Yayasan UM (UM-internal, fastest pathway) with MARA as parallel option. Income tier branch routes B40/M40 students to need-based path; T20 students would route to corporate merit path."
 }
 ```
 
-For students whose CGPA is below the 3.30 FSKTM floor, you MUST insert a "CGPA Faculty Appeal" stage between Eligibility Check and Workshop Attendance, with a step asking the student to draft an appeal letter.
+For students with CGPA below scholarship thresholds (< 3.30 for most, < 3.00 for any), insert an early warning stage explaining limited options and suggesting CGPA-improvement steps before scholarship application.

@@ -17,7 +17,7 @@ This System Analysis Documentation (SAD) describes the technical scope, architec
 The document covers:
 - **Architecture:** browser-based single-page application backed by serverless Next.js API routes, a Supabase Postgres database with `pgvector`, and Z.AI GLM as a service layer.
 - **Data flows:** how a student's free-text intent moves through GLM-powered planning, adaptive step execution, and structured output generation.
-- **Model process:** end-to-end workflow for the demonstrative Industrial Training procedure — from intake through coordinator approval.
+- **Model process:** end-to-end workflow for the demonstrative Scholarship & Financial Aid Application procedure — from intake through coordinator approval.
 - **Role of reference:** binding contract for the development team, reviewers, and judges to verify what is being built and why.
 
 ### Background
@@ -44,10 +44,10 @@ Removing the GLM service layer collapses UniGuide to a static form filler. There
 
 | Stakeholder | Role | Expectations |
 |---|---|---|
-| **Student (Undergraduate)** | Initiates a workflow for an administrative procedure (industrial training, exam appeal, deferment, etc.). Provides intent, answers questions, uploads documents. | Be told clearly what to do next, in their context. Never miss a hidden deadline. Receive ready-to-use artefacts (filled forms, draft emails, calendar). |
+| **Student (Undergraduate)** | Initiates a workflow for an administrative procedure (scholarship application, exam appeal, deferment, etc.). Provides intent, answers questions, uploads documents. | Be told clearly what to do next, in their context. Never miss a hidden deadline. Receive ready-to-use artefacts (filled forms, draft emails, calendar). |
 | **Student (Postgraduate)** | Same as above, plus research-mode supervisor matching, candidature defence scheduling. | Lower hand-holding for technical content; same hand-holding for procedural compliance. |
 | **Student (International)** | Same as above, plus EMGS visa renewal, MoE attendance/CGPA compliance. | Cross-procedure deadline awareness (don't let visa lapse during thesis defence). |
-| **Industrial Training Coordinator** | Reviews student placement applications. | Receive a GLM-prepared briefing per submission with extracted facts, flagged edge cases, recommended decision + reasoning. Approve common cases in seconds. |
+| **Yayasan UM Scholarship Officer** | Reviews student scholarship applications. | Receive a GLM-prepared briefing per submission with extracted facts (income tier inferred from EPF/payslip, CGPA shortfall + hardship justification surfaced, Bumiputera status confirmed), flagged edge cases, recommended decision + reasoning. Approve clear B40 cases in seconds. |
 | **Faculty Postgraduate Committee Member** | Reviews postgraduate admission applications. | Same as above for admissions. |
 | **Faculty Dean / Deputy Dean** | Escalation tier. | See escalated cases with full reasoning trace; audit consistency across coordinators. |
 | **Development Team** | Build and maintain UniGuide. | Clear module boundaries, well-documented GLM integration, reproducible local setup, schema migrations under version control. |
@@ -179,7 +179,7 @@ flowchart LR
 - `draft_email(to_role, context)` → generates email draft
 - `generate_form(template_id, field_data)` → fills PDF template
 
-### Sequence Diagram — Industrial Training Application (Happy Path)
+### Sequence Diagram — Scholarship Application (Happy Path)
 
 ```mermaid
 sequenceDiagram
@@ -190,33 +190,33 @@ sequenceDiagram
     participant GLM as GLM Service Layer
     participant KB as KB (pgvector)
     participant DB as Postgres
-    participant Coord as Coordinator
+    participant Coord as Scholarship Officer
     participant CDash as Coordinator Dashboard
 
-    Student->>SPA: "i need to do industrial training next sem"
+    Student->>SPA: "i need a scholarship, family income RM3500, cgpa 3.10"
     SPA->>API: POST /api/intake { text }
     API->>GLM: extractIntent(text)
     GLM->>KB: vector search (procedure list)
-    GLM-->>API: { procedure_id: "industrial_training", confidence: 0.92 }
+    GLM-->>API: { procedure_id: "scholarship_application", confidence: 0.93 }
     API->>DB: insert workflow_session
     API->>GLM: planWorkflow(procedure_id, profile)
     GLM->>KB: fetch procedure SOP chunks
-    GLM-->>API: WorkflowPlan { stages, steps, decisions }
+    GLM-->>API: WorkflowPlan { stages, steps, decisions, deadlines }
     API->>DB: insert workflow + stages + steps
     API-->>SPA: { workflow_id, plan }
     SPA-->>Student: Render canvas (ReactFlow)
 
-    Student->>SPA: Click active step → upload offer letter
+    Student->>SPA: Click active step → upload parents' EPF statement
     SPA->>API: POST /api/step/:id { file }
     API->>GLM: parseDocument(file)
-    GLM-->>API: { company: "TechCorp", start_date: "...", ... }
+    GLM-->>API: { estimated_monthly_income_rm: 3800, income_tier_inferred: "B40", ... }
     API->>DB: persist response, advance progress
 
-    Note over API,GLM: Reach decision node:<br/>"Is company family-owned?"
+    Note over API,GLM: Reach decision node:<br/>"Income tier branch (need-based vs merit-only)"
     API->>GLM: routeDecision(node, prior_responses)
-    GLM-->>API: { branch: "proceed", confidence: 0.95, reasoning: "..." }
+    GLM-->>API: { branch: "need_based_eligible", confidence: 0.94, reasoning: "..." }
     API->>DB: persist decision + reasoning trace
-    API-->>SPA: Advance to next stage
+    API-->>SPA: Advance to next stage (Yayasan UM application)
 
     Note over Student: Completes all student-side steps
     Student->>SPA: Submit
@@ -250,7 +250,7 @@ sequenceDiagram
     GLM-->>API: { branch: "blocked", confidence: 0.55, reasoning: "ambiguous" }
     Note over API: confidence &lt; 0.7 threshold
     API->>GLM: adaptStep(disambiguation_prompt)
-    GLM-->>API: { question_text: "When you said 'family-owned', do you mean..." }
+    GLM-->>API: { question_text: "Your declared income RM 9,200 is borderline between M40 and T20. Could you confirm — is this gross or net monthly?" }
     API-->>SPA: Show disambiguation question
     Student->>SPA: Clarifies
     SPA->>API: POST /api/step/:id
@@ -387,7 +387,7 @@ erDiagram
         text role "coordinator | dean | dvc"
     }
     PROCEDURES {
-        text id PK "industrial_training"
+        text id PK "scholarship_application"
         text name
         text description
         text source_url
@@ -536,7 +536,7 @@ erDiagram
 
 #### Grayscale Rollout & A/B Testing
 - **Pre-launch (hackathon):** all features behind a single flag; deployed only to the team's own demo accounts and the 5 mock student accounts seeded in the database.
-- **Post-launch (production roadmap):** 5% rollout to one faculty (FSKTM, given our research depth on industrial training), monitor planner-success rate and coordinator approval-time delta. Expand to 25%, then 100%, gating each step on AI Output Pass Rate ≥ 80% and zero P0/P1 bugs.
+- **Post-launch (production roadmap):** 5% rollout via the UM HEPA scholarship office, monitor planner-success rate and officer approval-time delta. Expand to 25%, then 100%, gating each step on AI Output Pass Rate ≥ 80% and zero P0/P1 bugs.
 - **A/B testing:** test two prompting strategies for the decision router (chain-of-thought vs. structured-only) on a 50/50 split, measuring confidence-calibration accuracy.
 
 #### Emergency Rollback (ER) & Golden Release
@@ -554,7 +554,7 @@ erDiagram
 |---|---|---|---|
 | **P0 — Critical** | Service-down, data loss, or security breach | GLM service layer leaking student data into reasoning trace; auth bypass | Page on-call immediately; emergency rollback to Golden Release; postmortem within 24h |
 | **P1 — High** | Core feature broken for all users | Planner returns invalid JSON for all procedures; canvas blank for all workflows | Hotfix within 4h; rollback if no fix in 4h |
-| **P2 — Medium** | Single-procedure or single-edge-case failure | Decision router mis-routes 10% of family-owned-company cases | Fix within 2 days; mitigate with confidence threshold tweak |
+| **P2 — Medium** | Single-procedure or single-edge-case failure | Decision router mis-routes 10% of borderline M40-vs-T20 income-tier cases | Fix within 2 days; mitigate with confidence threshold tweak |
 | **P3 — Low** | Cosmetic, single-user, or rare edge case | Toast styling broken on Safari < 16; one user reports a typo | Backlog; fix in next sprint |
 
 #### Monitoring
@@ -597,7 +597,7 @@ erDiagram
 | 4 | Sat 19 Apr | QATD draft; pitch deck content; code skeleton scaffolded; Z.AI API key acquired |
 | 5 | Sun 20 Apr | KB seeding (SOP indexing); GLM service layer built (planner, intent, decision router) |
 | 6 | Mon 21 Apr | Adaptive step engine, document parsing, ReactFlow canvas integration |
-| 7 | Tue 22 Apr | Coordinator dashboard, structured output generation, end-to-end Industrial Training flow |
+| 7 | Tue 22 Apr | Coordinator dashboard, structured output generation, end-to-end Scholarship Application flow |
 | 8 | Wed 23 Apr | Postgrad Admission flow (secondary procedure); UI polish; test cases written |
 | 9 | Thu 24 Apr | QA pass, AI output testing, hallucination mitigation hardening |
 | 10 | Fri 25 Apr | Pitch deck finalised, video recording, deployment to production URL, dry-run |
@@ -620,7 +620,7 @@ Suggested role splits for the remaining two members (subject to team confirmatio
 
 - **Use GLM prompt caching aggressively.** Procedure SOPs and few-shot examples are static and account for ~70% of input tokens. Cache hit rate ≥ 60% is the difference between "fits in budget" and "blows the budget."
 - **Pre-record the demo.** Even with retries, GLM API has tail latency. A 90-second pre-recorded video as backup means the live demo can fail gracefully without losing presentation time.
-- **Seed mock data realistically.** Use real UM faculty names, real form numbers (UM-PT01-PK01-BR074-S00), real regulation references (Reg.40, Reg.42). Judges will recognise the authenticity.
+- **Seed mock data realistically.** Use real UM faculty names, real scholarship names (Yayasan UM, MARA, JPA, MyBrainSc, Khazanah), real income brackets (DOSM B40 < RM 4,850), real regulation references (Reg.40, Reg.42). Judges will recognise the authenticity.
 - **Defer multi-tenant.** Tempting to over-engineer. For MVP, single-workspace + role-based access is sufficient and ships faster.
 - **Hard-code the second procedure's KB snippets** if time runs short on Postgrad Admission. The point is to *demonstrate* the engine generalises; full coverage is a stretch goal.
 

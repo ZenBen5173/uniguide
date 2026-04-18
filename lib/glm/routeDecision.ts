@@ -32,7 +32,7 @@ export async function routeDecision(
     jsonMode: true,
     maxTokens: 800,
     temperature: 0.1,
-    mockFixture: "route_family_owned",
+    mockFixture: "route_eligibility_check",
   });
 
   let parsed = RouteDecisionOutputSchema.parse(JSON.parse(result.text));

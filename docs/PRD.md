@@ -26,7 +26,7 @@
 ## 1. Project Overview
 
 ### Problem Statement
-Every Malaysian university student is, sooner or later, blocked by the same kind of wall: an opaque multi-stage administrative procedure that no one has fully explained. Industrial training applications, postgraduate admissions, examination appeals, deferment of studies, FYP supervisor matching, EMGS visa renewals — each procedure spans 6 to 12 stages, involves 3 to 5 different offices, references regulations buried in PDFs, and has silent failure modes (a missed two-week appeal window, a private-clinic medical certificate that needed to be from a Government Hospital, a CGPA that's 0.20 short of an unwritten faculty floor). Today, students piece these procedures together from outdated forum threads, faculty WhatsApp groups, and trial-and-error emails. Administrators on the receiving end then spend hours triaging incomplete, mis-routed submissions.
+Every Malaysian university student is, sooner or later, blocked by the same kind of wall: an opaque multi-stage administrative procedure that no one has fully explained. Scholarship and financial aid applications, postgraduate admissions, examination appeals, deferment of studies, FYP supervisor matching, EMGS visa renewals — each procedure spans 6 to 12 stages, involves 3 to 5 different offices, references regulations buried in PDFs, and has silent failure modes (a missed two-week appeal window, a private-clinic medical certificate that needed to be from a Government Hospital, a CGPA that's 0.20 short of an unwritten threshold, applying to MARA without realising it's Bumiputera-only). Today, students piece these procedures together from outdated forum threads, faculty WhatsApp groups, and trial-and-error emails. Administrators on the receiving end then spend hours triaging incomplete, mis-routed submissions.
 
 ### Target Domain
 University administrative procedures at Universiti Malaya — guiding students through complex multi-step processes with adaptive decision-making, while pre-digesting their submissions for the staff who must approve them.
@@ -44,9 +44,9 @@ If the GLM component is removed, UniGuide collapses to a static form filler. The
 University procedures at UM are documented in three principal corpora — the Bachelor's Degree Regulations (a 100+ page legal document), faculty-specific handbooks (a different one for every faculty and every cohort), and ad-hoc PDF forms scattered across `um.edu.my` subdomains (`hep.um.edu.my`, `fsktm.um.edu.my`, `ips.um.edu.my`, `study.um.edu.my`, `aasd.um.edu.my`). Three principal authorities own the decisions — the Faculty Dean (operational), the Deputy Vice-Chancellor Academic & International (escalation), and the Senate (final academic). Three principal student-facing portals expose the workflows — MAYA (academic portal), SiswaMail (notifications), SPeCTRUM (LMS). None of these systems share a single source of truth for "what is the status of my application?" Students spend hours assembling a mental model that the institution has never bothered to write down in one place.
 
 ### Importance of Solving This Issue
-- **Student welfare:** an estimated thousands of UM students per year miss critical deadlines (exam appeal: 2 weeks; EMGS visa renewal: 3 months in advance; industrial training confirmation form: 2 weeks from reporting) because the deadline was buried in a regulation paragraph nobody reads.
-- **Administrative cost:** every incomplete or mis-routed submission consumes minutes of faculty staff time. At scale (FSKTM alone processes ~600 industrial training placements per year), this is hundreds of staff-hours that could be returned to actual academic work.
-- **Compliance & audit:** the absence of a structured paper trail makes it difficult for the university to audit consistency across faculties (do all faculties enforce CGPA 3.30 for industrial training, or only some?).
+- **Student welfare:** an estimated thousands of UM students per year miss critical deadlines (exam appeal: 2 weeks; EMGS visa renewal: 3 months in advance; corporate scholarships: narrow Feb–April window) or apply to scholarships they don't qualify for, simply because the eligibility rules were never explained to them in one place.
+- **Administrative cost:** every incomplete or mis-routed submission consumes minutes of staff time. At scale (Yayasan UM alone receives thousands of applications per year, many auto-rejected for ineligibility), this is hundreds of staff-hours that could be returned to actual review of viable candidates.
+- **Compliance & audit:** the absence of a structured paper trail makes it difficult for the university to audit consistency across faculties (do all faculties endorse Yayasan UM applications consistently? does the CGPA-hardship trade-off get applied uniformly?).
 
 ### Strategic Fit / Impact
 - Aligns with UM's digitalisation roadmap and the Ministry of Education's push toward standardised student services.
@@ -63,12 +63,12 @@ To provide every UM student with a personalised, adaptive AI guide for any admin
 ### 3.2 Intended Users (Target Audience)
 
 **Primary user group — Students:**
-- Undergraduate students (industrial training, FYP, exam appeals, deferment)
+- Undergraduate students (scholarships, FYP, exam appeals, deferment)
 - Postgraduate candidates (admission, supervisor matching, thesis submission)
 - International students (EMGS visa renewal, additional MoE compliance)
 
 **Secondary user group — Staff:**
-- Industrial Training Coordinators
+- Yayasan UM / Scholarship Office officers
 - Faculty Postgraduate Committee members
 - Faculty Deans and Deputy Deans (Academic)
 - Examination & Graduation Section officers
@@ -149,13 +149,13 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 
 ### User Stories
 
-**As an undergraduate student**, I want to type "I need to do industrial training next semester but my CGPA is 3.1" and have the system tell me whether I'm eligible, what the alternatives are, and walk me through the application — so that I don't waste two weeks on the wrong path before discovering a hidden requirement.
+**As an undergraduate student**, I want to type "I need a scholarship, my family income is RM3500, my CGPA is 3.10" and have the system tell me which scholarships I'm eligible for, walk me through the right application, and warn me when my CGPA is below threshold so I can prepare a hardship justification — instead of bulk-applying to everything and getting auto-rejected.
 
 **As an international postgraduate student**, I want one place to manage my visa renewal alongside my faculty paperwork — so that I don't miss the EMGS 3-month buffer because I was focused on my thesis defence.
 
 **As a final-year student appealing an exam result**, I want the system to tell me which of the three appeal routes (Reg.40 grade review, Reg.41 extend duration, Reg.42 continue after termination) actually applies to my case — so that I don't burn the 2-week deadline filing the wrong form.
 
-**As an Industrial Training Coordinator**, I want each placement application to arrive with the CGPA already verified, the company already cross-checked against the CoR list, and the family-ownership conflict-of-interest already flagged — so that I can approve standard cases in seconds and focus my time on the genuinely complex ones.
+**As a Yayasan UM scholarship officer**, I want each application to arrive with the CGPA verified, the income tier inferred from the parsed EPF/payslip, the Bumiputera status confirmed, and any CGPA shortfall flagged with the student's hardship justification surfaced — so that I can approve standard B40 cases in seconds and focus my time on the borderline ones that need judgement.
 
 **As a Faculty Dean**, I want to audit the consistency of decisions across coordinators in my faculty — so that I can catch unwritten variation in how regulations are applied.
 
@@ -178,9 +178,9 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 6. The system advances stage progress; canvas updates.
 
 **UC-3 — Decision Node Resolution (Student / GLM)**
-1. Workflow reaches a decision node (e.g., "Is the company family-owned?").
-2. GLM reads the relevant prior responses (form fields, uploaded offer letter, free-text Q&A).
-3. GLM emits a structured decision: `{ branch: "blocked", confidence: 0.92, reasoning: "Student stated 'company is registered under my dad's name'; UM Industrial Training Guideline 4.3 prohibits family-owned placements.", citations: ["FBE Industrial Training Guidelines 2024 §4.3"] }`.
+1. Workflow reaches a decision node (e.g., "Income tier branch — need-based eligible vs merit-only").
+2. GLM reads the relevant prior responses (form fields, uploaded EPF / payslip, free-text Q&A).
+3. GLM emits a structured decision: `{ branch: "need_based_eligible", confidence: 0.94, reasoning: "Student declared family income of RM 3,500/month, within the B40 band per DOSM 2026 brackets. Eligible for Yayasan UM and JPA need-based scholarships.", citations: ["UM HEPA Scholarship Guidelines", "DOSM Income Classification 2026"] }`.
 4. The system follows the decision branch; if confidence < 0.7, the system asks the student to confirm.
 
 **UC-4 — Submission to Administrator Briefing (Cross-actor)**
@@ -221,7 +221,7 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 
 ## 6. Features Included (Scope Definition — MVP)
 
-**Core demo flow — Industrial Training (FSKTM WIA3001)** — implemented end-to-end with all branches:
+**Core demo flow — Scholarship & Financial Aid Application (Yayasan UM pathway)** — implemented end-to-end with all branches:
 - F1 Conversational intent intake
 - F2 GLM workflow planner with ReactFlow canvas rendering
 - F3 Adaptive step engine (rewording, document parsing, pre-fill)
@@ -235,7 +235,7 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 **Secondary procedure — Postgraduate Admission (research mode, IPS)** — implemented partially:
 - Workflow planner + adaptive steps + at least one international/EMGS sub-flow demonstrating the engine's generalisation across procedures.
 
-**Knowledge base seed:** indexed SOPs for the six researched UM procedures (Industrial Training, FYP, Deferment, Exam Appeal, Postgraduate Admission, EMGS Visa). UI surfaces all six but only #1 and #5 are interactive in the prototype.
+**Knowledge base seed:** indexed SOPs for the primary procedure (Scholarship Application) and Postgraduate Admission. The catalogue also lists FYP, Deferment, Exam Appeal, and EMGS Visa as procedures the engine generalises to (UI surfaces all six, but only Scholarship + Postgrad are interactive in the prototype).
 
 **UI scope:** student-side single-page app with chat intake + canvas view + step pane; admin-side single dashboard with submission queue + briefing detail.
 
@@ -261,12 +261,12 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 ## 8. Assumptions & Constraints
 
 ### LLM Cost Constraint
-**Token budget per average user session:** target ≤ 60,000 tokens (input+output) for a complete Industrial Training workflow. Estimated cost at GLM list pricing: under RM 0.50 per completed workflow. Design decisions to hold the budget:
+**Token budget per average user session:** target ≤ 60,000 tokens (input+output) for a complete Scholarship Application workflow. Estimated cost at GLM list pricing: under RM 0.50 per completed workflow. Design decisions to hold the budget:
 - **Prompt caching** for procedure SOPs and few-shot examples (~70% of input tokens cached, target hit rate ≥60%).
 - **Model tiering** — `glm-4.5-flash` for high-volume low-stakes calls (intent extraction, step adapter), `glm-4.6` only for planner and decision router.
 - **Response-length caps** — JSON schemas constrain output length; free-text responses capped at 500 tokens.
 - **Conversation summarisation** — turns older than 20 are summarised into a running 500-token rolling summary instead of replayed verbatim.
-- **Tool-call short-circuit** — repeated identical tool calls (e.g., `lookup_procedure("industrial_training")`) are memoised within a session.
+- **Tool-call short-circuit** — repeated identical tool calls (e.g., `lookup_procedure("scholarship_application")`) are memoised within a session.
 
 ### Technical Constraints
 - **GLM API only.** Per Judging Criteria, no fallback to other LLMs even if GLM is unavailable. Failure mode is graceful degradation, not silent substitution.
@@ -299,7 +299,7 @@ We employ **multi-step agentic prompting with role-specialised system prompts**.
 | R5 | **Procedure SOPs change between research date (Apr 2026) and submission.** | Workflow advice could be slightly out of date. | Knowledge base is versioned and easily re-indexed; we cite the SOP source URL with the retrieval date in every reasoning trace. |
 | R6 | **Student profile data is fabricated for the demo.** | Judges might ask "what about real student data?" | We document the integration surface for MAYA (read-only profile API) as a clear boundary; mock data is realistic and clearly labelled. |
 | R7 | **Token cost overrun during demo / preliminary judging period.** | Burn through GLM credit before final round. | Per-user rate limit (10 calls/min), per-day quota (500 calls/team), prompt caching, model tiering. |
-| R8 | **Cross-faculty variation in unwritten rules** (e.g., CGPA threshold for industrial training varies). | Single global SOP can't capture every faculty-specific carve-out. | KB is structured per-faculty where variation is known; planner explicitly states "Based on FSKTM rules — confirm with your faculty if different." |
+| R8 | **Cross-scholarship variation in unwritten rules** (e.g., income proof formats accepted by Yayasan UM vs MARA). | Single global SOP can't capture every scheme-specific carve-out. | KB is structured per-scholarship where variation is known; planner explicitly states "Based on Yayasan UM rules — confirm with the specific scholarship office if different." |
 | R9 | **Admin reviewer over-trusts GLM recommendation.** | Approval becomes rubber-stamp; GLM mistakes propagate. | Briefing UI shows reasoning trace alongside recommendation; "Approve" requires reading the briefing; high-stakes decisions (rejection, escalation) require typed confirmation. |
 | R10 | **Document parsing fails silently** (image OCR returns garbage). | Extracted fields are wrong; downstream decisions corrupted. | OCR confidence scores are surfaced; below threshold the user is asked to re-upload or transcribe manually. |
 

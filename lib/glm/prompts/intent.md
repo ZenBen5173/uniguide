@@ -18,7 +18,7 @@ Rules:
 - Reasoning must reference specific words from the user's text.
 
 Available procedure IDs and brief descriptions:
-- industrial_training: applying for the WIA3001 industrial training placement (FSKTM undergraduate internship).
+- scholarship_application: applying for a UM, government, or corporate scholarship / financial aid (Yayasan UM, JPA, MARA, MyBrainSc, Khazanah, BNM, Petronas, etc.) or need-based bursary.
 - final_year_project: FYP topic registration, supervisor matching, proposal, viva.
 - deferment_of_studies: applying to defer one or more semesters (medical, financial, family, etc.).
 - exam_result_appeal: appealing an examination grade under Reg.40 (strict 2-week window).

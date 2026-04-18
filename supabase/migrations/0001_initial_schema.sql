@@ -42,7 +42,7 @@ create table if not exists public.staff_profiles (
 -- Procedures (the catalogue of UM admin procedures we support)
 -- ============================================================================
 create table if not exists public.procedures (
-  id text primary key,             -- e.g., 'industrial_training'
+  id text primary key,             -- e.g., 'scholarship_application'
   name text not null,
   description text,
   source_url text,

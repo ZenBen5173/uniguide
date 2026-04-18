@@ -22,7 +22,7 @@ For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/Q
 - [x] Workflow engine (persist plan, stage advancement, decision routing)
 - [x] API routes (intake, plan, step, submit, admin queue, admin decision)
 - [x] UI: landing, intake chat, workflow canvas, step panel, coordinator dashboard
-- [x] Knowledge base seed: Industrial Training, Postgrad Admission
+- [x] Knowledge base seed: Scholarship Application (primary demo), Postgrad Admission
 - [x] Mock GLM fixtures for offline demo
 - [x] README with setup instructions
 - [x] GitHub repo created — https://github.com/ZenBen5173/uniguide
@@ -42,7 +42,7 @@ For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/Q
 ### Critical (blocks submission)
 - [x] Push code to GitHub `main` branch — https://github.com/ZenBen5173/uniguide
 - [x] Deploy to Vercel — https://uniguide-blush.vercel.app
-- [ ] Wire real GLM API key + Supabase + verify end-to-end Industrial Training demo
+- [ ] Wire real GLM API key + verify end-to-end scholarship application demo
 - [ ] Record pitch video (10 minutes max, see [docs/PITCH_DECK.md](docs/PITCH_DECK.md) for script + timings) *(Owner: TBD)*
 - [ ] Convert `docs/PITCH_DECK.md` content into actual slides (Canva/Slides/Pitch.app) *(Owner: TBD)*
 - [ ] Submit via official UMHackathon website by 2026-04-26 07:59 *(Owner: Jeanette)*
@@ -51,7 +51,7 @@ For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/Q
 - [ ] Implement the submit → briefing UI flow on the workflow page (button + redirect)
 - [ ] Document text extraction (`lib/documents/extractText.ts`) using `pdf-parse` + `tesseract.js`
 - [ ] Wire `parseDocument` into the upload step in `StepPanel.tsx`
-- [ ] PDF form fill for UM-PT01-PK01-BR074-S00 (use `pdf-lib` or similar)
+- [ ] PDF form fill for Yayasan UM application form (use `pdf-lib` or similar)
 - [ ] Embedding generation in `scripts/seed-kb.ts` (currently writes `embedding=null`)
 - [ ] Vitest unit tests for `validateGraph`, `verifyCitations`, schema validators
 - [ ] Playwright golden-path test (TC-01 from QATD)

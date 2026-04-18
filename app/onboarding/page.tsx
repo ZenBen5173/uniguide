@@ -219,7 +219,7 @@ function OnboardingInner() {
               value={staffRole}
               onChange={(e) => setStaffRole(e.target.value as typeof staffRole)}
             >
-              <option value="coordinator">Industrial Training Coordinator</option>
+              <option value="coordinator">Scholarship Officer (Yayasan UM)</option>
               <option value="dean">Dean</option>
               <option value="dvc">Deputy Vice-Chancellor (Academic)</option>
               <option value="ips_officer">IPS Officer</option>

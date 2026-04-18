@@ -3,7 +3,7 @@ import { getServerSupabase, getServiceSupabase } from "@/lib/supabase/server";
 import SignOutButton from "@/components/auth/SignOutButton";
 
 const procedures = [
-  { id: "industrial_training", name: "Industrial Training", emoji: "🏢", scope: "FSKTM • UG" },
+  { id: "scholarship_application", name: "Scholarship & Financial Aid", emoji: "💰", scope: "Yayasan UM • JPA • MARA • MyBrainSc" },
   { id: "final_year_project", name: "Final Year Project", emoji: "🎓", scope: "FSKTM • UG" },
   { id: "deferment_of_studies", name: "Deferment of Studies", emoji: "⏸️", scope: "All faculties" },
   { id: "exam_result_appeal", name: "Exam Result Appeal", emoji: "📝", scope: "Reg.40 • 2-week window" },
@@ -72,9 +72,9 @@ export default async function LandingPage() {
             Your AI co-pilot for university paperwork.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg text-slate-600">
-            UniGuide reads your situation in plain English, builds your personalised workflow from
-            the official UM SOP, and walks you through it adaptively — catching the silent-fail
-            traps before they cost you a semester.
+            Tell UniGuide what you need — like <em>"i need a scholarship, my family is B40"</em> —
+            and Z.AI's GLM filters the right scholarships, walks you through the application, and
+            pre-digests your submission for the staff who'll approve it.
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Link href={user ? "/student/intake" : "/login?next=/student/intake"} className="btn-primary">
@@ -106,7 +106,7 @@ export default async function LandingPage() {
           {[
             {
               t: "Plain English in",
-              b: 'Type "i need internship next sem, cgpa 3.1, uncle\'s company" and let GLM understand the rest.',
+              b: 'Type "i need a scholarship, my family income is RM3500, cgpa 3.1" and let GLM understand the rest.',
             },
             {
               t: "Personalised plan out",

@@ -76,7 +76,7 @@ export default function IntakePage() {
       <div className="mt-8 card p-4">
         <textarea
           className="w-full resize-none rounded-md border-0 bg-transparent text-base outline-none placeholder:text-slate-400"
-          placeholder="e.g. i need to do industrial training next sem, my cgpa is 3.1, uncle's company"
+          placeholder="e.g. i need a scholarship for next sem, my family income is RM3500, my cgpa is 3.10"
           rows={5}
           value={text}
           onChange={(e) => setText(e.target.value)}

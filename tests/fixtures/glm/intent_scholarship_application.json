@@ -1,0 +1,3 @@
+{
+  "text": "{\"procedure_id\": \"scholarship_application\", \"confidence\": 0.93, \"clarifying_questions\": [], \"reasoning\": \"User mentions needing financial help / scholarship / biasiswa. High confidence match for scholarship_application procedure. Will personalise the workflow by family income tier and CGPA.\"}"
+}

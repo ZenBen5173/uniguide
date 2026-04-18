@@ -80,8 +80,21 @@ export async function extractIntent(
  */
 function pickIntentFixture(text: string): string {
   const t = text.toLowerCase();
-  if (t.includes("industrial") || t.includes("internship") || t.includes("intern"))
-    return "intent_industrial_training";
+  if (
+    t.includes("scholarship") ||
+    t.includes("biasiswa") ||
+    t.includes("financial aid") ||
+    t.includes("financial help") ||
+    t.includes("yayasan") ||
+    t.includes("jpa") ||
+    t.includes("mara") ||
+    t.includes("mybrain") ||
+    t.includes("bursary") ||
+    t.includes("ptptn") ||
+    t.includes("b40") ||
+    t.includes("khazanah")
+  )
+    return "intent_scholarship_application";
   if (t.includes("defer") || t.includes("postpone")) return "intent_deferment";
   if (t.includes("appeal") && (t.includes("exam") || t.includes("grade")))
     return "intent_exam_appeal";

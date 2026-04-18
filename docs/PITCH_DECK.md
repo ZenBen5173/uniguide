@@ -22,28 +22,30 @@
 
 ## Slide 2 — The Pain (a real student story)
 
-**Meet Ahmad. Year 3, FSKTM. CGPA 3.10.**
+**Meet Aishah. Year 3, FSKTM. CGPA 3.10. Family income RM 3,500/month.**
 
-He needs to apply for industrial training next semester. He thinks he just fills a form.
+She needs financial help to continue her degree. She's heard of "scholarships" but doesn't know where to start.
 
-What he doesn't know:
-- His CGPA is below the FSKTM 3.30 floor → he needs a faculty appeal *first*
-- His placement is at his uncle's company → blocked under conflict-of-interest rules
-- He has 48 hours after coordinator approval to react, then 2 weeks to submit form **UM-PT01-PK01-BR074-S00**
-- If he misses the registration window, he loses the semester
+What she doesn't know:
+- Her family is **B40** — she qualifies for **need-based** scholarships (Yayasan UM, MARA if Bumiputera, JPA), not just merit ones
+- Her CGPA 3.10 is **below** the standard 3.30 Yayasan UM threshold — but she can apply with a hardship justification
+- She's **non-Bumiputera** — MARA is off the table; **PTPTN is a loan, not a scholarship** (a common confusion)
+- Each scholarship is on a **different portal** with different deadlines, different income-proof formats
+- If she misses the window, she's another semester without aid
 
-**He learns each of these the hard way.**
+**She learns each of these the hard way — usually after a friend mentions it in passing.**
 
-> *Visual:* Ahmad's "happy path" assumption vs. the actual procedure tree (12 stages, 4 decision points). One leads to internship; the other to wasted months.
+> *Visual:* Aishah's "I just need to fill one form" assumption vs. the actual scholarship landscape (10+ options, 5 portals, 4 eligibility filters).
 
 ---
 
-## Slide 3 — Ahmad is everyone
+## Slide 3 — Aishah is everyone
 
-This is not just industrial training. It's:
+This is not just scholarships. It's the same shape across every UM procedure:
 
 | Procedure | Hidden trap |
 |---|---|
+| **Scholarship & financial aid** | Eligibility branched by income / CGPA / Bumiputera / level — students apply to the wrong ones and miss the right deadlines |
 | **Exam grade appeal** | 2-week window from result release; per-course non-refundable fee |
 | **Deferment of studies** | Medical cert MUST be from Govt Hospital, not private GP |
 | **Postgrad admission (research)** | You need to find a supervisor *before* applying |
@@ -52,7 +54,7 @@ This is not just industrial training. It's:
 
 **Today: students piece this together from forum threads. Staff triage incomplete forms. Both sides lose.**
 
-> *Visual:* 5 small "iceberg" diagrams — what students see vs. what's underneath.
+> *Visual:* 6 small "iceberg" diagrams — what students see vs. what's underneath.
 
 ---
 
@@ -77,13 +79,13 @@ And on the other side:
 
 **Pre-recorded backup video plays here if live fails.** Live walkthrough:
 
-1. *(0:00)* Type intent → GLM understands → confirms procedure
-2. *(0:15)* Canvas renders with Ahmad's personalised flow — CGPA-appeal branch already inserted
-3. *(0:30)* Click first stage → adaptive question references Ahmad's CGPA
-4. *(0:45)* Upload offer letter PDF → GLM extracts company, dates, role
-5. *(1:00)* Reach family-owned-company decision → GLM reasons over Ahmad's free-text answer → flags conflict, suggests alternative
-6. *(1:15)* Submit → switch to coordinator view → briefing arrives with extracted facts + recommendation
-7. *(1:30)* Coordinator clicks Approve → student gets PDF, emails, calendar instantly
+1. *(0:00)* Type intent: *"i need a scholarship, family income RM 3,500, cgpa 3.10"* → GLM extracts intent + B40 income tier
+2. *(0:15)* Canvas renders with Aishah's personalised flow — Yayasan UM path with the 0.20-CGPA-shortfall flagged for hardship justification
+3. *(0:30)* Click first stage → adaptive question references Aishah's CGPA + income tier
+4. *(0:45)* Upload parents' EPF statement → GLM parses → extracts ~RM 3,800 monthly income → confirms B40 tier
+5. *(1:00)* Reach income-tier decision → GLM reasons over the parsed income → routes to need-based path (B40 < RM 4,850 cutoff)
+6. *(1:15)* Submit → switch to coordinator view → briefing arrives with extracted facts + recommendation + the CGPA-vs-hardship trade-off explained
+7. *(1:30)* Coordinator clicks Approve → student gets confirmation, scholarship office contact, calendar with renewal deadline
 
 > *Visual:* embedded video. Transcript in speaker notes for the live presenter.
 
@@ -115,7 +117,7 @@ The hackathon brief: *"If the GLM component is removed, the system should lose i
 
 | Function | Without GLM | With GLM |
 |---|---|---|
-| Intent extraction | "Please pick a procedure from the dropdown" | "I see you need industrial training" |
+| Intent extraction | "Please pick a procedure from the dropdown" | "I see you need a scholarship — looks like B40, let me filter the right ones" |
 | Workflow planning | No workflow exists for this user | Personalised plan from SOP + profile |
 | Question phrasing | Static form labels | Context-aware, conversational |
 | Decision routing | Regex over form fields | Reasons over response content with confidence |
@@ -148,7 +150,7 @@ Staff today: triage 200 sloppy submissions a week. Re-read the same incomplete f
 
 **Staff with UniGuide:** open the dashboard → each pending review is a one-page GLM briefing:
 
-> *"Ahmad bin Ali — Industrial Training. CGPA 3.10 (below 3.30 floor; appeal letter attached). Company: TechCorp Sdn Bhd (verified in CoR). Family-owned: No (clarified after disambiguation). Confirmation form deadline: 15 May. Recommendation: Approve with conditional appeal acceptance. Reasoning: ..."*
+> *"Demo Student — Yayasan UM Scholarship. B40 (RM 3,800/month, EPF-verified). CGPA 3.10 (0.20 below standard threshold; hardship justification in motivation letter). Non-Bumiputera so MARA not eligible — Yayasan UM is the primary viable need-based path. Recommendation: Approve with 6-month CGPA review clause. Reasoning: ..."*
 
 **One click: Approve / Reject / Request More Info.**
 
@@ -174,7 +176,7 @@ Staff today: triage 200 sloppy submissions a week. Re-read the same incomplete f
 
 ## Slide 11 — What's Beyond the Hackathon
 
-**Hackathon MVP:** Industrial Training (deep) + Postgrad Admission (shallow). Single-tenant. Mocked integrations.
+**Hackathon MVP:** Scholarship & Financial Aid Application (deep) + Postgrad Admission (shallow). Single-tenant. Mocked integrations.
 
 **Production roadmap:**
 - Real MAYA / SiswaMail / SPeCTRUM / EMGS API integrations

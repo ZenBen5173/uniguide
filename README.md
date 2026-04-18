@@ -58,17 +58,17 @@ Open http://localhost:3000.
 ## 🎬 Demo flow
 
 1. **Open the landing page** — http://localhost:3000
-2. **Click "Start a workflow"** → http://localhost:3000/student/intake
-3. **Type:** *"i need to do industrial training next sem at TechCorp Sdn Bhd"*
-4. **Click Continue.** GLM extracts the intent, creates a workflow row, and generates the workflow plan. You're redirected to the canvas view.
-5. **Watch the canvas render** — stages, decision nodes, end nodes. The active stage is highlighted.
-6. **Click through the steps** — fill in fields, upload a (mock) offer letter, etc.
-7. **At the family-owned-company decision node**, GLM evaluates your responses and routes you to the right branch.
-8. **Submit the workflow** when all steps are done.
+2. **Click "Start a workflow"** or **Sign in** → use the Demo Student button on `/login` for instant access
+3. **Type:** *"i need a scholarship for next sem, my family income is around RM3500, my cgpa is 3.10"*
+4. **Click Continue.** GLM extracts the intent (`scholarship_application`), creates a workflow row, and generates a personalised workflow plan. You're redirected to the canvas view.
+5. **Watch the canvas render** — stages, the income-tier decision node, two end nodes (Awarded vs Merit-only Corporate Path).
+6. **Click through the steps** — confirm CGPA + income, choose scholarships, upload (mock) income proof + transcript, write motivation letter.
+7. **At the income-tier decision node**, GLM auto-routes B40/M40 students to the need-based path; T20 students to the merit path.
+8. **Workflow auto-submits** when it reaches the Faculty Endorsement stage. A briefing appears in the coordinator queue.
 9. **Open the coordinator dashboard** — http://localhost:3000/coordinator/dashboard — to see the GLM-prepared briefing with extracted facts, flags, and recommendation.
-10. **Click Approve.** The student's workflow advances; they get a notification.
+10. **Click Approve.** The student's workflow advances to Yayasan UM Committee Review; another approval there marks it Awarded.
 
-> 💡 **Mock mode demo:** the canned fixtures support the Industrial Training golden path end-to-end without any real GLM calls. Set `GLM_MOCK_MODE=true` in `.env`.
+> 💡 **Mock mode demo:** the canned fixtures support the Yayasan UM scholarship golden path end-to-end without any real GLM calls. Set `GLM_MOCK_MODE=true` in `.env`.
 
 ---
 
@@ -180,7 +180,7 @@ UniGuide/
 - Workflow engine (persistPlan + stageEngine + tryAdvanceWorkflow)
 - API routes for intake, planning, step submission, admin queue, admin decision
 - UI: landing page, intake chat, workflow canvas, step panel, coordinator dashboard
-- KB seed for Industrial Training and Postgrad Admission
+- KB seed for Scholarship Application (primary demo) and Postgrad Admission
 - Mock fixtures for the demo flow
 
 ### TODO (for final-round polish)

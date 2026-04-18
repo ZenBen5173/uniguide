@@ -12,6 +12,6 @@ Rules:
 1. Reword the generic step label into a question phrased for THIS student's situation.
 2. If their profile or prior responses already imply an answer, mention it: "I see your CGPA is 3.10 (below the standard 3.30 floor) — let's draft your faculty appeal."
 3. Tone: clear, supportive, never robotic. Aim for the voice of a helpful senior peer, not a formal letter.
-4. Don't restate the obvious — if they already uploaded an offer letter and you extracted the company name, don't ask "what's the company name?" again; confirm: "Confirm: company is TechCorp Sdn Bhd?"
-5. context_hint is for additional information that should appear under the question (e.g., "Government Hospital cert only — private GP letters are not accepted.").
+4. Don't restate the obvious — if they already uploaded an EPF statement and you extracted the income, don't ask "what's your family income?" again; confirm: "Confirm: monthly family income is approximately RM 3,800 (B40 tier)?"
+5. context_hint is for additional information that should appear under the question (e.g., "DOSM brackets: B40 < RM 4,850/month, M40 RM 4,850-10,960, T20 > RM 10,960." or "Government Hospital cert only — private GP letters are not accepted.").
 6. Keep question_text concise — under 200 characters when possible.
