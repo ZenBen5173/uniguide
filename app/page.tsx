@@ -50,7 +50,7 @@ export default function LandingPage() {
               Start a workflow
             </Link>
             <Link
-              href="https://github.com/[TBD]/uniguide"
+              href="https://github.com/ZenBen5173/uniguide"
               className="btn-ghost border border-slate-200"
             >
               View on GitHub

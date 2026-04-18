@@ -14,7 +14,7 @@
 | Field | Detail |
 |---|---|
 | System Under Test (SUT) | UniGuide — UMHackathon 2026 Team Breaking Bank |
-| Team Repo URL | `[TBD — insert GitHub URL]` |
+| Team Repo URL | https://github.com/ZenBen5173/uniguide |
 | Project Board URL | Tracked internally via `TASKS.md` at the repo root (lightweight markdown task list — no external board for the preliminary round) |
 | Live Deployment URL | `[TBD — Vercel preview URL]` |
 
