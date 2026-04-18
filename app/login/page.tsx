@@ -15,6 +15,15 @@ export default function LoginPage() {
   );
 }
 
+const DEMO_STUDENT = {
+  email: "demo-student@uniguide.local",
+  password: "demo-student-2026",
+};
+const DEMO_COORD = {
+  email: "demo-coordinator@uniguide.local",
+  password: "demo-coord-2026",
+};
+
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,10 +33,34 @@ function LoginInner() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoBusy, setDemoBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   const supabase = getBrowserSupabase();
+
+  const demoSignIn = async (
+    creds: { email: string; password: string },
+    redirectTo: string,
+    opts: { reset?: boolean } = {}
+  ) => {
+    setDemoBusy(creds.email);
+    setError(null);
+    setInfo(null);
+
+    if (opts.reset) {
+      await fetch("/api/demo/reset", { method: "POST" });
+    }
+
+    const { error: err } = await supabase.auth.signInWithPassword(creds);
+    if (err) {
+      setDemoBusy(null);
+      setError(err.message);
+      return;
+    }
+    router.push(redirectTo);
+    router.refresh();
+  };
 
   const sendCode = async () => {
     setLoading(true);
@@ -85,10 +118,48 @@ function LoginInner() {
 
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-2 text-slate-600">
-        Use your email — we'll send a 6-digit code. No password needed.
+        Use your email below — or jump straight in with a demo account.
       </p>
 
-      <div className="mt-8 card p-6 space-y-4">
+      <div className="mt-6 card border-brand-200 bg-brand-50 p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+          Demo accounts (instant sign-in)
+        </p>
+        <div className="mt-3 space-y-2">
+          <button
+            className="btn-primary w-full justify-between text-sm"
+            onClick={() => demoSignIn(DEMO_STUDENT, "/student/intake")}
+            disabled={!!demoBusy}
+          >
+            <span>🎓 Sign in as Demo Student</span>
+            <span className="text-xs opacity-80">CGPA 3.10, FSKTM Y3</span>
+          </button>
+          <button
+            className="btn-primary w-full justify-between text-sm"
+            onClick={() => demoSignIn(DEMO_COORD, "/coordinator/dashboard")}
+            disabled={!!demoBusy}
+          >
+            <span>🧑‍💼 Sign in as Demo Coordinator</span>
+            <span className="text-xs opacity-80">FSKTM Industrial Training</span>
+          </button>
+          <button
+            className="btn w-full justify-between border border-slate-300 bg-white text-slate-700 text-sm hover:bg-slate-50"
+            onClick={() => demoSignIn(DEMO_STUDENT, "/student/intake", { reset: true })}
+            disabled={!!demoBusy}
+          >
+            <span>🔄 Reset Demo Student & sign in</span>
+            <span className="text-xs text-slate-500">wipes all prior workflows</span>
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-brand-700">
+          {demoBusy ? "Signing in…" : "Pick one — judges typically use Demo Student → Coordinator."}
+        </p>
+      </div>
+
+      <div className="mt-6 card p-6 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Or use your own email (6-digit code)
+        </p>
         {stage === "email" && (
           <>
             <label className="block">
