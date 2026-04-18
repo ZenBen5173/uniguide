@@ -54,6 +54,10 @@ export default function WorkflowPage({ params }: { params: Promise<{ id: string 
   const refresh = async () => {
     try {
       const res = await fetch(`/api/workflow/${id}`);
+      if (res.status === 401) {
+        window.location.href = `/login?next=/student/workflow/${id}`;
+        return;
+      }
       const json = await res.json();
       if (!json.ok) {
         setError(json.error);

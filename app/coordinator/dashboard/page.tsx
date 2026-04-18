@@ -23,12 +23,16 @@ export default function CoordinatorDashboardPage() {
   const refresh = async () => {
     try {
       const res = await fetch("/api/admin/queue");
+      if (res.status === 401) {
+        window.location.href = "/login?next=/coordinator/dashboard";
+        return;
+      }
       const json = await res.json();
       if (!json.ok) {
         setError(json.error);
         return;
       }
-      setBriefings(json.data.briefings);
+      setBriefings(json.data.briefings ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {

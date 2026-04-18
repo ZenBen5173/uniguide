@@ -22,6 +22,10 @@ export default function IntakePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
+      if (res.status === 401) {
+        router.push("/login?next=/student/intake");
+        return;
+      }
       const json = await res.json();
       if (!json.ok) {
         setError(json.error ?? "Something went wrong");

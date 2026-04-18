@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getServerSupabase, getServiceSupabase } from "@/lib/supabase/server";
+import SignOutButton from "@/components/auth/SignOutButton";
 
 const procedures = [
   { id: "industrial_training", name: "Industrial Training", emoji: "🏢", scope: "FSKTM • UG" },
@@ -9,7 +11,23 @@ const procedures = [
   { id: "emgs_visa_renewal", name: "EMGS Visa Renewal", emoji: "🛂", scope: "International students" },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const sb = await getServerSupabase();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+
+  let role: string | null = null;
+  if (user) {
+    const service = getServiceSupabase();
+    const { data: profile } = await service
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    role = profile?.role ?? null;
+  }
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
@@ -21,13 +39,26 @@ export default function LandingPage() {
               UMHackathon 2026
             </span>
           </div>
-          <nav className="flex gap-3">
-            <Link href="/student/intake" className="btn-ghost text-sm">
-              Student
-            </Link>
-            <Link href="/coordinator/dashboard" className="btn-ghost text-sm">
-              Coordinator
-            </Link>
+          <nav className="flex items-center gap-3">
+            {user ? (
+              <>
+                {role === "staff" ? (
+                  <Link href="/coordinator/dashboard" className="btn-ghost text-sm">
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link href="/student/intake" className="btn-ghost text-sm">
+                    My workflows
+                  </Link>
+                )}
+                <span className="text-sm text-slate-500">{user.email}</span>
+                <SignOutButton />
+              </>
+            ) : (
+              <Link href="/login" className="btn-ghost text-sm">
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -46,7 +77,7 @@ export default function LandingPage() {
             traps before they cost you a semester.
           </p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link href="/student/intake" className="btn-primary">
+            <Link href={user ? "/student/intake" : "/login?next=/student/intake"} className="btn-primary">
               Start a workflow
             </Link>
             <Link
