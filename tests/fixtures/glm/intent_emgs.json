@@ -1,0 +1,3 @@
+{
+  "text": "{\"procedure_id\": \"emgs_visa_renewal\", \"confidence\": 0.93, \"clarifying_questions\": [\"When does your current student pass expire? You should ideally start at least 3 months before expiry.\"], \"reasoning\": \"User explicitly references visa/EMGS/student pass. Standard renewal flow with 3-month buffer requirement.\"}"
+}

@@ -1,0 +1,3 @@
+{
+  "text": "{\"selected_condition_key\": \"blocked\", \"confidence\": 0.88, \"reasoning\": \"Student stated the company is registered under their father's name. UM Industrial Training Guidelines treat family ownership (parent, sibling, spouse) as a conflict of interest regardless of the student's prior involvement with the company. Therefore the placement must be blocked and routed to faculty review for an alternative.\", \"citations\": [\"FBE Industrial Training Guidelines §4.3\"], \"needs_clarification\": false, \"clarification_question\": null}"
+}

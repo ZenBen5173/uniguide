@@ -1,0 +1,3 @@
+{
+  "text": "{\"procedure_id\": \"postgrad_admission\", \"confidence\": 0.86, \"clarifying_questions\": [\"Are you applying for coursework, research, or mixed-mode programme?\"], \"reasoning\": \"User mentions postgraduate study. Mode of programme determines whether supervisor matching is required upfront.\"}"
+}

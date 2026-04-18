@@ -1,0 +1,3 @@
+{
+  "text": "{\"procedure_id\": \"deferment_of_studies\", \"confidence\": 0.88, \"clarifying_questions\": [\"Is your reason medical, financial, family, or something else?\"], \"reasoning\": \"User mentions 'defer' and a family situation. High confidence for deferment_of_studies; clarification needed on reason category since documentation requirements differ.\"}"
+}

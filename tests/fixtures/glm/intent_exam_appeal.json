@@ -1,0 +1,3 @@
+{
+  "text": "{\"procedure_id\": \"exam_result_appeal\", \"confidence\": 0.91, \"clarifying_questions\": [\"What date were the results officially released? The 2-week appeal window starts from that date.\"], \"reasoning\": \"User mentions 'appeal' and 'exam'/'grade'. Time-sensitive procedure under Reg.40.\"}"
+}

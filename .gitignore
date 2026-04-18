@@ -1,0 +1,33 @@
+node_modules/
+.next/
+.vercel/
+dist/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# Hackathon source documents (kept locally for reference; not part of the deployable app)
+*.docx
+*.pdf
+!docs/*.pdf
+!docs/*.docx
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testing
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
