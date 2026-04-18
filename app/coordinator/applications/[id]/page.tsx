@@ -1,26 +1,26 @@
-/**
- * Placeholder for Coordinator's Application Detail page.
- */
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/guards";
+import { getServiceSupabase } from "@/lib/supabase/server";
+import CoordinatorAppDetail from "@/components/coordinator/CoordinatorAppDetail";
 
-export default async function CoordinatorAppDetailPlaceholder({
+export default async function CoordinatorAppDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
-      <Link href="/coordinator/inbox" className="text-sm text-slate-500 hover:text-slate-700">
-        ← Back to inbox
-      </Link>
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Application Detail</h1>
-      <p className="mt-2 text-slate-600">
-        Application <code className="rounded bg-slate-100 px-1.5">{id}</code>
-      </p>
-      <p className="mt-4 text-sm text-slate-500">
-        UI is being rebuilt. Use <code className="rounded bg-slate-100 px-1.5">/api/coordinator/applications/{id}</code>
-      </p>
-    </div>
-  );
+  const user = await requireRole(["staff", "admin"]);
+  if (!user) redirect(`/login?next=/coordinator/applications/${id}`);
+
+  const sb = getServiceSupabase();
+  const { data: profile } = await sb
+    .from("staff_profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const name = profile?.full_name ?? user.email.split("@")[0];
+  const initials = name.split(/\s+/).map((p: string) => p[0]?.toUpperCase() ?? "").slice(0, 2).join("") || "C";
+
+  return <CoordinatorAppDetail id={id} user={{ name, initials, email: user.email }} />;
 }

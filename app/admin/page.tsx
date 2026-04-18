@@ -1,38 +1,21 @@
-/**
- * Placeholder for Admin Procedures Library.
- */
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/guards";
+import { getServiceSupabase } from "@/lib/supabase/server";
+import AdminProcedures from "@/components/admin/AdminProcedures";
 
-export default function AdminPlaceholder() {
-  return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
-      <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">← Home</Link>
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Admin · Procedures</h1>
-      <p className="mt-2 text-slate-600">
-        UI is being rebuilt from Claude Design mockups.
-      </p>
+export default async function AdminPage() {
+  const user = await requireRole("admin");
+  if (!user) redirect("/login?next=/admin");
 
-      <div className="mt-8 card p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Console probe
-        </p>
-        <pre className="mt-3 overflow-x-auto rounded bg-slate-900 p-4 text-xs text-slate-100">{`// List procedures + meta
-fetch('/api/admin/procedures').then(r => r.json()).then(console.log)
+  const sb = getServiceSupabase();
+  const { data: profile } = await sb
+    .from("staff_profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-// Replace SOP for a procedure
-fetch('/api/admin/procedures/scholarship_application/sop', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    source_text: '# Yayasan UM Scholarship\\n\\n## Eligibility\\n\\nMust be ...',
-    source_url: 'https://hep.um.edu.my/scholarship'
-  })
-}).then(r => r.json()).then(console.log)
+  const name = profile?.full_name ?? user.email.split("@")[0];
+  const initials = name.split(/\s+/).map((p: string) => p[0]?.toUpperCase() ?? "").slice(0, 2).join("") || "A";
 
-// List letter templates
-fetch('/api/admin/procedures/scholarship_application/letter-templates')
-  .then(r => r.json()).then(console.log)`}</pre>
-      </div>
-    </div>
-  );
+  return <AdminProcedures user={{ name, initials, email: user.email }} />;
 }

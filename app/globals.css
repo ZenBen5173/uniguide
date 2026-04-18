@@ -2,33 +2,437 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --canvas-bg: #f8fafc;
-    --node-stage-bg: #ffffff;
-    --node-decision-bg: #fffbeb;
-    --node-end-bg: #ecfdf5;
-  }
+/* =========================================================================
+   UniGuide design system — modernised UM palette
+   navy + muted crimson + warm paper + moss-green for done + lavender for AI
+   Adapted from Claude Design mockups (chat 2026-04-18).
+   ========================================================================= */
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif&display=swap');
+
+:root {
+  /* Primary navy ladder */
+  --ink:        #0B2545;
+  --ink-2:      #1B3566;
+  --ink-3:      #3B4E74;
+  --ink-4:      #6A7A99;
+  --ink-5:      #9AA6BE;
+
+  /* Lines / surfaces */
+  --line:       #E4E2DC;
+  --line-2:     #EFEDE7;
+  --paper:      #F6F4EE;
+  --paper-2:    #FBFAF5;
+  --card:       #FFFFFF;
+
+  /* UM crimson (accents, role chips, brand stripes) */
+  --crimson:        #A1253A;
+  --crimson-soft:   #F5E6E8;
+
+  /* Gold / amber */
+  --gold:           #B8935A;
+  --gold-soft:      #F1EADC;
+  --amber:          #8A6B1E;
+  --amber-soft:     #F4ECD4;
+
+  /* Moss — completion / verified */
+  --moss:           #3F6B4E;
+  --moss-soft:      #E6EEE6;
+
+  /* AI lavender — RESERVED for AI-originated UI elements only */
+  --ai-tint:        #F3F1FB;
+  --ai-line:        #DCD6F0;
+  --ai-ink:         #4B3D8F;
+
+  /* Shadows */
+  --shadow-card:    0 1px 0 rgba(11,37,69,.04), 0 12px 40px -12px rgba(11,37,69,.12);
+  --shadow-lift:    0 1px 0 rgba(11,37,69,.04), 0 24px 60px -20px rgba(11,37,69,.18);
+
+  --radius:         14px;
+  --radius-lg:      18px;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
   body {
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01","cv11";
+    letter-spacing: -0.005em;
+  }
+  button {
+    font: inherit;
   }
 }
 
+@layer utilities {
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-feature-settings: normal; letter-spacing: 0; }
+  .serif { font-family: 'Instrument Serif', ui-serif, Georgia, serif; letter-spacing: -0.01em; }
+}
+
+/* =========================================================================
+   Reusable component classes (shared across all pages)
+   ========================================================================= */
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-colors;
+
+  /* ─── Top bar ─── */
+  .ug-topbar {
+    @apply sticky top-0 z-30 flex items-center justify-between px-8 py-3.5;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .ug-brand { @apply flex items-center gap-2.5; }
+  .ug-brand-mark {
+    @apply grid h-7 w-7 place-items-center rounded-lg text-white font-bold text-[13px];
+    background: var(--ink);
+  }
+  .ug-brand-name { @apply font-bold text-base tracking-tight; }
+  .ug-brand-tag { color: var(--ink-4); @apply ml-1.5 text-[13px] font-medium; }
+  .ug-role-chip {
+    @apply inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold ml-3.5;
+    background: var(--crimson-soft);
+    color: var(--crimson);
+  }
+  .ug-role-chip::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--crimson);
+  }
+  .ug-topnav { @apply flex items-center gap-7; }
+  .ug-topnav a {
+    @apply text-sm font-medium no-underline;
+    color: var(--ink-3);
+  }
+  .ug-topnav a.active { color: var(--ink); }
+  .ug-topnav a.active::after {
+    content: ""; display: block; height: 2px; margin-top: 8px; border-radius: 2px;
+    background: var(--crimson);
+  }
+  .ug-avatar {
+    @apply grid h-[30px] w-[30px] place-items-center rounded-full text-white font-semibold text-xs;
+    background: linear-gradient(135deg, #D7CDB6, #A1253A 140%);
   }
 
-  .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50;
+  /* ─── Buttons ─── */
+  .ug-btn {
+    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-[10px] text-sm font-medium transition-colors;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-2);
+  }
+  .ug-btn:hover { border-color: var(--ink-5); }
+  .ug-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
+  .ug-btn.primary:hover { background: var(--ink-2); }
+  .ug-btn.ghost { background: transparent; border-color: transparent; color: var(--ink-3); }
+  .ug-btn.ghost:hover { background: rgba(11,37,69,.05); }
+  .ug-btn.sm { @apply px-2.5 py-1.5 text-xs; }
+  .ug-btn.danger-ghost { color: var(--crimson); border-color: transparent; background: transparent; }
+  .ug-btn.danger-ghost:hover { background: var(--crimson-soft); }
+  .ug-btn.moss { background: var(--moss); color: white; border-color: var(--moss); }
+  .ug-btn.moss:hover { background: #345A42; }
+  .ug-btn.crimson { background: var(--crimson); color: white; border-color: var(--crimson); }
+  .ug-btn.crimson:hover { background: #862135; }
+
+  /* ─── Pills / chips ─── */
+  .ug-pill {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12.5px] font-medium;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-2);
+  }
+  .ug-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+  .ug-pill.ai { background: var(--ai-tint); border-color: var(--ai-line); color: var(--ai-ink); }
+  .ug-pill.ai .dot { background: var(--ai-ink); }
+  .ug-pill.ok { background: var(--moss-soft); border-color: #CFDDCF; color: var(--moss); }
+  .ug-pill.ok .dot { background: var(--moss); }
+  .ug-pill.warn { background: var(--amber-soft); border-color: #E8DBB5; color: var(--amber); }
+  .ug-pill.warn .dot { background: var(--amber); }
+
+  /* ─── Card surfaces ─── */
+  .ug-card {
+    @apply rounded-[14px];
+    border: 1px solid var(--line);
+    background: var(--card);
+  }
+  .ug-card-lg { box-shadow: var(--shadow-card-lg, var(--shadow-card)); }
+
+  /* ─── Form inputs ─── */
+  .ug-input, .ug-select, .ug-textarea {
+    font: inherit;
+    @apply w-full px-3.5 py-2.5 rounded-[10px] text-[14.5px];
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .ug-input:focus, .ug-select:focus, .ug-textarea:focus {
+    outline: none;
+    border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(11,37,69,.08);
+  }
+  .ug-input.prefilled {
+    background: var(--ai-tint);
+    border-color: var(--ai-line);
+  }
+  .ug-textarea { resize: none; min-height: 180px; line-height: 1.55; @apply text-[15px]; }
+
+  .ug-input-group {
+    @apply grid items-stretch overflow-hidden rounded-[10px];
+    grid-template-columns: auto 1fr;
+    border: 1px solid var(--line);
+    background: var(--card);
+  }
+  .ug-input-group:focus-within { border-color: var(--ink-2); box-shadow: 0 0 0 3px rgba(11,37,69,.08); }
+  .ug-input-group .prefix {
+    @apply grid place-items-center px-3.5 text-[13.5px] font-medium;
+    background: var(--paper-2);
+    color: var(--ink-3);
+    border-right: 1px solid var(--line);
+  }
+  .ug-input-group .ug-input { border: 0; border-radius: 0; padding-left: 12px; background: transparent; }
+  .ug-input-group .ug-input:focus { box-shadow: none; }
+
+  /* Radio pills */
+  .ug-radio-pill {
+    @apply inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[10px] text-sm font-medium cursor-pointer transition;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-2);
+  }
+  .ug-radio-pill:hover { border-color: var(--ink-5); }
+  .ug-radio-pill.selected {
+    border-color: var(--ink);
+    background: #F1F2F6;
+    color: var(--ink);
+  }
+  .ug-radio-pill .rdot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid var(--ink-5);
+    position: relative;
+  }
+  .ug-radio-pill.selected .rdot { border-color: var(--ink); }
+  .ug-radio-pill.selected .rdot::after {
+    content: ""; position: absolute; inset: 3px;
+    background: var(--ink); border-radius: 50%;
   }
 
-  .btn-ghost {
-    @apply btn bg-transparent text-slate-700 hover:bg-slate-100;
+  /* ─── AI prompt block (lavender — reserved for AI-originated UI) ─── */
+  .ug-ai-prompt {
+    @apply flex gap-3.5 p-4 rounded-[12px] mb-5;
+    background: var(--paper-2);
+    border: 1px solid var(--line-2);
+  }
+  .ug-ai-prompt-mark {
+    @apply inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold uppercase tracking-wider;
+    color: var(--ai-ink);
+    background: white;
+    border: 1px solid var(--ai-line);
+    flex: 0 0 auto;
+  }
+  .ug-ai-prompt-mark .spark {
+    width: 8px; height: 8px; border-radius: 2px;
+    background: conic-gradient(from 45deg, var(--ai-ink), var(--crimson), var(--ai-ink));
+    transform: rotate(45deg);
+  }
+  .ug-ai-prompt-text {
+    @apply text-[15.5px] leading-snug flex-1;
+    color: var(--ink-2);
+  }
+  .ug-ai-prompt-text .hl { color: var(--ink); font-weight: 600; }
+  .ug-ai-prompt-text .ref {
+    @apply inline-flex items-center gap-1 text-xs px-1.5 rounded font-medium ml-1;
+    color: var(--ink-4);
+    background: white;
+    border: 1px solid var(--line);
   }
 
-  .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  .ug-ai-assist-line {
+    @apply flex items-center gap-2 mt-1.5 text-[12.5px];
+    color: var(--ai-ink);
   }
+  .ug-ai-assist-line .ico { width: 14px; height: 14px; flex: 0 0 auto; }
+
+  /* AI-suggested chips */
+  .ug-chip {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-full text-[13px] font-medium cursor-pointer transition;
+    background: white;
+    border: 1px solid var(--ai-line);
+    color: var(--ai-ink);
+  }
+  .ug-chip:hover { background: var(--ai-tint); border-color: #BFB4E3; }
+  .ug-chip .plus { color: var(--ai-ink); opacity: .6; font-weight: 400; }
+
+  /* ─── Step cards (Smart Application) ─── */
+  .ug-step {
+    @apply rounded-[14px];
+    border: 1px solid var(--line);
+    background: var(--card);
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  .ug-step.done { background: var(--paper-2); cursor: pointer; }
+  .ug-step.done:hover { border-color: #D4D1C6; }
+  .ug-step.current {
+    background: var(--card);
+    border-color: var(--ink-5);
+    box-shadow: var(--shadow-lift);
+  }
+  .ug-step.future {
+    background: transparent;
+    border-style: dashed;
+    border-color: #D9D6CD;
+  }
+  .ug-step-header {
+    @apply grid items-center gap-3.5 px-5 py-4;
+    grid-template-columns: 44px 1fr auto;
+  }
+  .ug-step-index {
+    @apply grid h-8 w-8 place-items-center rounded-full text-[13px] font-semibold;
+    background: var(--line-2);
+    color: var(--ink-3);
+  }
+  .ug-step.done .ug-step-index { background: var(--moss-soft); color: var(--moss); }
+  .ug-step.current .ug-step-index { background: var(--ink); color: white; }
+  .ug-step.future .ug-step-index { background: transparent; border: 1px dashed #C7C3B7; color: var(--ink-5); }
+  .ug-step-title { @apply text-[15px] font-semibold flex items-center gap-2.5; color: var(--ink); }
+  .ug-step-sub { @apply text-[13px] mt-0.5; color: var(--ink-4); }
+  .ug-step.future .ug-step-title { color: var(--ink-4); font-weight: 500; }
+  .ug-step.future .ug-step-sub { color: var(--ink-5); }
+  .ug-step-summary { @apply text-[13px] mt-1; color: var(--ink-3); }
+  .ug-step-summary b { color: var(--ink-2); font-weight: 600; }
+  .ug-step-meta { @apply text-xs; color: var(--ink-5); }
+  .ug-step-body { @apply pt-1.5 pb-6 px-[72px]; }
+  .ug-step-footer {
+    @apply flex items-center justify-between mt-6 pt-4;
+    border-top: 1px solid var(--line-2);
+  }
+  .ug-step-footer-left { @apply flex items-center gap-3 text-[12.5px]; color: var(--ink-4); }
+  .ug-step-footer-right { @apply flex gap-2; }
+
+  /* ─── Progress strip (Smart Application) ─── */
+  .ug-progress-strip {
+    @apply mb-7 px-5 py-4 rounded-[14px];
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .ug-progress-step { height: 6px; border-radius: 3px; background: var(--line-2); }
+  .ug-progress-step.done { background: var(--moss); }
+  .ug-progress-step.current {
+    background: var(--ink);
+    box-shadow: 0 0 0 3px rgba(11,37,69,.08);
+  }
+
+  /* ─── File / dropzone ─── */
+  .ug-dropzone {
+    @apply flex items-center gap-6 p-7 rounded-[14px] mb-4;
+    border: 1.5px dashed #C9C3B2;
+    background: var(--paper-2);
+  }
+  .ug-dropzone-icon {
+    @apply grid h-14 w-14 place-items-center rounded-[12px];
+    background: white;
+    border: 1px solid var(--line);
+    color: var(--ink-3);
+    flex: 0 0 auto;
+  }
+  .ug-file-card {
+    @apply flex items-center gap-3.5 p-3.5 rounded-[12px] mb-3.5;
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .ug-file-icon {
+    @apply grid h-12 w-10 place-items-center rounded text-[9px] font-semibold tracking-wider;
+    background: linear-gradient(180deg, #FBFAF5 0%, #F3F1E8 100%);
+    border: 1px solid var(--line);
+    color: var(--crimson);
+    font-family: 'IBM Plex Mono', monospace;
+    flex: 0 0 auto;
+  }
+
+  /* ─── Extraction panel (moss when verified) ─── */
+  .ug-extraction {
+    @apply p-4 rounded-[12px] mb-5;
+    background: var(--moss-soft);
+    border: 1px solid #CFDDCF;
+  }
+  .ug-extraction-title {
+    @apply flex items-center gap-2.5 text-sm font-semibold;
+    color: var(--moss);
+  }
+  .ug-check-icon {
+    @apply grid h-5 w-5 place-items-center rounded-full text-white;
+    background: var(--moss);
+    flex: 0 0 auto;
+  }
+
+  /* ─── Right rail (Smart Application) ─── */
+  .ug-rail-card {
+    @apply rounded-[14px] overflow-hidden;
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .ug-rail-head {
+    @apply flex items-center justify-between p-4;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .ug-rail-title { @apply text-[13px] font-semibold; color: var(--ink); }
+  .ug-summary-item {
+    @apply px-4 py-2.5 grid items-start gap-x-2.5;
+    grid-template-columns: 14px 1fr;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .ug-summary-item:last-child { border-bottom: 0; }
+  .ug-summary-dot { @apply mt-1.5 justify-self-center; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-5); }
+  .ug-summary-item.ai .ug-summary-dot { background: var(--ai-ink); width: 7px; height: 7px; }
+  .ug-summary-item.flag .ug-summary-dot { background: var(--amber); }
+  .ug-summary-k { @apply text-[11.5px] uppercase tracking-wider font-semibold; color: var(--ink-4); }
+  .ug-summary-v { @apply text-sm font-medium; color: var(--ink); }
+  .ug-summary-v .note { @apply block text-xs mt-0.5 font-normal; color: var(--ink-4); }
+
+  /* Flag card (rail) */
+  .ug-flag-card {
+    @apply p-4 rounded-[14px];
+    background: var(--amber-soft);
+    border: 1px solid #E8DBB5;
+  }
+  .ug-flag-head {
+    @apply flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider;
+    color: var(--amber);
+  }
+  .ug-flag-body { @apply text-[13.5px] leading-relaxed; color: var(--ink-2); }
+
+  /* ─── Coordinator inbox specific ─── */
+  .ug-tier {
+    @apply inline-block px-2 py-0.5 rounded-md text-[11.5px] font-semibold;
+    border: 1px solid;
+  }
+  .ug-tier.b40 { background: var(--moss-soft); color: var(--moss); border-color: #CFDDCF; }
+  .ug-tier.m40 { background: var(--gold-soft); color: var(--gold); border-color: #E4D6B5; }
+  .ug-tier.t20 { background: var(--line-2); color: var(--ink-3); border-color: var(--line); }
+
+  .ug-rec {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    border: 1px solid;
+  }
+  .ug-rec::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .ug-rec.approve { background: var(--moss-soft); color: var(--moss); border-color: #CFDDCF; }
+  .ug-rec.approve::before { background: var(--moss); }
+  .ug-rec.review { background: var(--amber-soft); color: var(--amber); border-color: #E8DBB5; }
+  .ug-rec.review::before { background: var(--amber); }
+  .ug-rec.reject { background: var(--crimson-soft); color: var(--crimson); border-color: #E8C5CB; }
+  .ug-rec.reject::before { background: var(--crimson); }
+
+  /* ─── Compatibility shims for pre-existing pages (login, onboarding, landing) ─── */
+  /* Map the old generic classes onto new design tokens so legacy pages still look */
+  /* coherent until we redesign them. */
+  .btn { @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[10px] text-sm font-medium transition-colors;
+         border: 1px solid var(--line); background: var(--card); color: var(--ink-2); }
+  .btn:hover { border-color: var(--ink-5); }
+  .btn-primary { @apply btn; background: var(--ink); color: white; border-color: var(--ink); }
+  .btn-primary:hover { background: var(--ink-2); }
+  .btn-ghost { @apply btn; background: transparent; border-color: transparent; color: var(--ink-3); }
+  .btn-ghost:hover { background: rgba(11,37,69,.05); }
+  .card { @apply rounded-[14px]; border: 1px solid var(--line); background: var(--card); }
 }

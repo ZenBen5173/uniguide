@@ -1,27 +1,37 @@
 /**
- * Placeholder for the Smart Application page.
- * Final UI will be built from Claude Design mockups.
+ * Smart Application page — student-facing application flow.
+ * Backend already wired: GET /api/applications/[id], POST /respond + /submit.
  */
-import Link from "next/link";
 
-export default async function ApplicationPlaceholder({
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth/guards";
+import { getServiceSupabase } from "@/lib/supabase/server";
+import SmartApplication from "@/components/student/SmartApplication";
+
+export default async function StudentApplicationPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
-      <Link href="/student/portal" className="text-sm text-slate-500 hover:text-slate-700">
-        ← Back to portal
-      </Link>
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Application</h1>
-      <p className="mt-2 text-slate-600">
-        Application <code className="rounded bg-slate-100 px-1.5">{id}</code>
-      </p>
-      <p className="mt-4 text-sm text-slate-500">
-        UI is being rebuilt. Use <code className="rounded bg-slate-100 px-1.5">/api/applications/{id}</code> to fetch details.
-      </p>
-    </div>
-  );
+
+  const user = await requireUser();
+  if (!user) redirect(`/login?next=/student/applications/${id}`);
+
+  // Fetch student profile name for top bar.
+  const sb = getServiceSupabase();
+  const { data: profile } = await sb
+    .from("student_profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const name = profile?.full_name ?? user.email.split("@")[0];
+  const initials = name
+    .split(/\s+/)
+    .map((p: string) => p[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("") || "U";
+
+  return <SmartApplication id={id} user={{ name, initials, email: user.email }} />;
 }
