@@ -1,3 +1,0 @@
-{
-  "text": "{\"selected_condition_key\": \"need_based_eligible\", \"confidence\": 0.94, \"reasoning\": \"Student's declared family income is within the B40 band (< RM 4,850/month) per DOSM 2026 brackets. Need-based scholarships — Yayasan UM, MARA (if Bumiputera), and JPA — all accept B40 applicants. Routing to Need-based Eligible path.\", \"citations\": [\"UM HEPA Scholarship Guidelines\", \"DOSM Income Classification 2026\"], \"needs_clarification\": false, \"clarification_question\": null}"
-}

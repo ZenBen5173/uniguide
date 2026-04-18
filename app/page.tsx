@@ -42,14 +42,12 @@ export default async function LandingPage() {
           <nav className="flex items-center gap-3">
             {user ? (
               <>
-                {role === "staff" ? (
-                  <Link href="/coordinator/dashboard" className="btn-ghost text-sm">
-                    Dashboard
-                  </Link>
+                {role === "admin" ? (
+                  <Link href="/admin" className="btn-ghost text-sm">Admin</Link>
+                ) : role === "staff" ? (
+                  <Link href="/coordinator/inbox" className="btn-ghost text-sm">Inbox</Link>
                 ) : (
-                  <Link href="/student/intake" className="btn-ghost text-sm">
-                    My workflows
-                  </Link>
+                  <Link href="/student/portal" className="btn-ghost text-sm">My applications</Link>
                 )}
                 <span className="text-sm text-slate-500">{user.email}</span>
                 <SignOutButton />
@@ -77,8 +75,8 @@ export default async function LandingPage() {
             pre-digests your submission for the staff who'll approve it.
           </p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link href={user ? "/student/intake" : "/login?next=/student/intake"} className="btn-primary">
-              Start a workflow
+            <Link href={user ? "/student/portal" : "/login?next=/student/portal"} className="btn-primary">
+              Start an application
             </Link>
             <Link
               href="https://github.com/ZenBen5173/uniguide"

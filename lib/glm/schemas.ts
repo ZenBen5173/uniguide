@@ -1,13 +1,16 @@
 /**
- * Zod schemas for every GLM endpoint's input and output.
+ * Zod schemas for every GLM endpoint's input and output (UniGuide v2).
  *
- * These schemas serve three roles:
- *   1. Runtime validation of GLM responses (catch malformed JSON, bad enum values).
- *   2. TypeScript types via z.infer<typeof Schema>.
- *   3. Documentation of the contract between GLM and the rest of the system.
+ * v2 architecture: AI emits the next step in an application turn-by-turn,
+ * based on the SOP and prior responses. No upfront workflow planning.
  *
- * If GLM's output fails schema validation, the call is retried once with a
- * corrective system-prompt addendum. See lib/glm/client.ts.
+ * Endpoints:
+ *   - extractIntent (kept; optional — students mostly pick from portal)
+ *   - parseDocument (kept; runs inline on student uploads)
+ *   - nextStep (NEW; emits next step in an application)
+ *   - estimateProgress (NEW; rough X-of-Y indicator)
+ *   - generateBriefing (kept; coordinator's view of submitted application)
+ *   - fillLetter (NEW; fills .docx letter template after a decision)
  */
 
 import { z } from "zod";
@@ -25,8 +28,30 @@ export const ProcedureIdSchema = z.enum([
 ]);
 export type ProcedureId = z.infer<typeof ProcedureIdSchema>;
 
+export const StepTypeSchema = z.enum([
+  "form",
+  "file_upload",
+  "text",
+  "select",
+  "multiselect",
+  "info",
+  "final_submit",
+  "coordinator_message",
+]);
+export type StepType = z.infer<typeof StepTypeSchema>;
+
+export const StudentProfileSchema = z.object({
+  full_name: z.string().nullable(),
+  faculty: z.string().nullable(),
+  programme: z.string().nullable(),
+  year: z.number().int().nullable(),
+  cgpa: z.number().nullable(),
+  citizenship: z.string().default("MY"),
+});
+export type StudentProfile = z.infer<typeof StudentProfileSchema>;
+
 // ============================================================================
-// extractIntent
+// extractIntent (kept for the optional "search bar" UX on the portal)
 // ============================================================================
 export const ExtractIntentInputSchema = z.object({
   text: z.string().min(1).max(4000),
@@ -43,129 +68,11 @@ export const ExtractIntentOutputSchema = z.object({
 export type ExtractIntentOutput = z.infer<typeof ExtractIntentOutputSchema>;
 
 // ============================================================================
-// planWorkflow
-// ============================================================================
-export const StudentProfileSchema = z.object({
-  faculty: z.string().nullable(),
-  programme: z.string().nullable(),
-  year: z.number().int().nullable(),
-  cgpa: z.number().nullable(),
-  citizenship: z.string().default("MY"),
-});
-export type StudentProfile = z.infer<typeof StudentProfileSchema>;
-
-export const PlanStageSchema = z.object({
-  ordinal: z.number().int().nonnegative(),
-  label: z.string().min(1),
-  node_type: z.enum(["stage", "decision", "end"]),
-  assignee_role: z
-    .enum(["student", "coordinator", "dean", "dvc", "ips_officer", "system"])
-    .nullable(),
-  steps: z.array(
-    z.object({
-      ordinal: z.number().int().nonnegative(),
-      type: z.enum(["form", "upload", "approval", "notification", "conditional"]),
-      label: z.string().min(1),
-      required: z.boolean().default(true),
-      config: z.record(z.string(), z.unknown()).default({}),
-    })
-  ),
-  metadata: z.record(z.string(), z.unknown()).default({}),
-});
-export type PlanStage = z.infer<typeof PlanStageSchema>;
-
-export const PlanEdgeSchema = z.object({
-  source_ordinal: z.number().int().nonnegative(),
-  target_ordinal: z.number().int().nonnegative(),
-  condition_key: z.string().nullable(),
-  label: z.string().nullable(),
-});
-export type PlanEdge = z.infer<typeof PlanEdgeSchema>;
-
-export const PlanWorkflowInputSchema = z.object({
-  procedureId: ProcedureIdSchema,
-  profile: StudentProfileSchema,
-  intentText: z.string().nullable(),
-  sopChunks: z.array(z.string()).default([]),
-});
-export type PlanWorkflowInput = z.infer<typeof PlanWorkflowInputSchema>;
-
-export const PlanWorkflowOutputSchema = z.object({
-  procedure_id: ProcedureIdSchema,
-  stages: z.array(PlanStageSchema).min(2),
-  edges: z.array(PlanEdgeSchema),
-  deadlines: z.array(
-    z.object({
-      stage_ordinal: z.number().int(),
-      label: z.string(),
-      iso_date: z.string().nullable(),
-      relative_days: z.number().int().nullable(),
-    })
-  ).default([]),
-  reasoning: z.string().max(1500),
-});
-export type PlanWorkflowOutput = z.infer<typeof PlanWorkflowOutputSchema>;
-
-// ============================================================================
-// adaptStep
-// ============================================================================
-export const AdaptStepInputSchema = z.object({
-  step: z.object({
-    type: z.string(),
-    label: z.string(),
-    config: z.record(z.string(), z.unknown()),
-  }),
-  profile: StudentProfileSchema,
-  priorResponses: z.record(z.string(), z.unknown()).default({}),
-});
-
-export const AdaptStepOutputSchema = z.object({
-  question_text: z.string().min(1).max(800),
-  expected_response_type: z.enum(["text", "select", "file", "yesno", "number"]),
-  context_hint: z.string().nullable(),
-  options: z.array(z.string()).optional(),
-});
-export type AdaptStepOutput = z.infer<typeof AdaptStepOutputSchema>;
-
-// ============================================================================
-// routeDecision
-// ============================================================================
-export const RouteDecisionInputSchema = z.object({
-  decisionNode: z.object({
-    label: z.string(),
-    branches: z.array(
-      z.object({
-        condition_key: z.string(),
-        target_label: z.string(),
-        criteria: z.string(),
-      })
-    ),
-  }),
-  priorResponses: z.array(
-    z.object({
-      step_label: z.string(),
-      response: z.unknown(),
-    })
-  ),
-});
-
-export const RouteDecisionOutputSchema = z.object({
-  selected_condition_key: z.string(),
-  confidence: z.number().min(0).max(1),
-  reasoning: z.string().min(1).max(800),
-  citations: z.array(z.string()).default([]),
-  needs_clarification: z.boolean().default(false),
-  clarification_question: z.string().nullable(),
-});
-export type RouteDecisionOutput = z.infer<typeof RouteDecisionOutputSchema>;
-
-// ============================================================================
-// parseDocument
+// parseDocument (kept; inline on student upload)
 // ============================================================================
 export const ParseDocumentInputSchema = z.object({
   documentText: z.string().min(1),
   extractionSchema: z.record(z.string(), z.string()),
-  // ^ field name -> description, e.g. { company_name: "Name of the company offering placement" }
 });
 
 export const ParseDocumentOutputSchema = z.object({
@@ -181,17 +88,109 @@ export const ParseDocumentOutputSchema = z.object({
 export type ParseDocumentOutput = z.infer<typeof ParseDocumentOutputSchema>;
 
 // ============================================================================
-// generateBriefing
+// nextStep — the heart of the v2 architecture
+// ============================================================================
+
+/** A single completed step in the running application history. */
+export const HistoryStepSchema = z.object({
+  ordinal: z.number().int(),
+  type: StepTypeSchema,
+  prompt_text: z.string(),
+  emitted_by: z.enum(["ai", "coordinator"]).default("ai"),
+  response_data: z.unknown().nullable(),
+  parsed_attachments: z.array(
+    z.object({
+      filename: z.string(),
+      extracted_fields: z.record(z.string(), z.unknown()).optional(),
+    })
+  ).optional(),
+});
+export type HistoryStep = z.infer<typeof HistoryStepSchema>;
+
+export const NextStepInputSchema = z.object({
+  procedureId: ProcedureIdSchema,
+  procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  sopChunks: z.array(z.string()).default([]),
+  history: z.array(HistoryStepSchema).default([]),
+  /** When non-null, this is a coordinator-typed request to inject as a step. */
+  coordinatorRequest: z.string().nullable().default(null),
+});
+export type NextStepInput = z.infer<typeof NextStepInputSchema>;
+
+/** Config schemas per step type — what the renderer needs. */
+export const FormFieldSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  field_type: z.enum(["text", "number", "email", "date", "textarea"]),
+  required: z.boolean().default(true),
+  placeholder: z.string().optional(),
+});
+
+export const StepConfigSchema = z.object({
+  // form
+  fields: z.array(FormFieldSchema).optional(),
+  // file_upload
+  accepts: z.array(z.string()).optional(),                  // MIME patterns
+  max_files: z.number().int().min(1).max(10).optional(),
+  extraction_schema: z.record(z.string(), z.string()).optional(),  // for parseDocument
+  // select / multiselect
+  options: z.array(z.object({
+    value: z.string(),
+    label: z.string(),
+    description: z.string().optional(),
+  })).optional(),
+  // text
+  multiline: z.boolean().optional(),
+  max_length: z.number().int().optional(),
+  ai_suggested_prompts: z.array(z.string()).optional(),
+  // info
+  body_markdown: z.string().optional(),
+  // final_submit
+  summary_intro: z.string().optional(),
+});
+export type StepConfig = z.infer<typeof StepConfigSchema>;
+
+export const NextStepOutputSchema = z.object({
+  /** True when GLM determines no more steps are needed (application is complete). */
+  is_complete: z.boolean(),
+  /** The next step to emit. NULL only when is_complete=true. */
+  next_step: z.object({
+    type: StepTypeSchema,
+    prompt_text: z.string().min(1).max(1000),
+    config: StepConfigSchema,
+  }).nullable(),
+  /** Brief reasoning for the coordinator-side audit trail. */
+  reasoning: z.string().max(800),
+  /** GLM's short summary of what it understands so far (used in inbox row). */
+  running_summary: z.string().max(300).optional(),
+  /** Citations to SOP chunks that informed this step. */
+  citations: z.array(z.string()).default([]),
+});
+export type NextStepOutput = z.infer<typeof NextStepOutputSchema>;
+
+// ============================================================================
+// estimateProgress
+// ============================================================================
+export const EstimateProgressInputSchema = z.object({
+  procedureId: ProcedureIdSchema,
+  sopChunks: z.array(z.string()).default([]),
+  stepsCompletedSoFar: z.number().int().nonnegative(),
+});
+
+export const EstimateProgressOutputSchema = z.object({
+  estimated_total_steps: z.number().int().min(1).max(30),
+  reasoning: z.string().max(300),
+});
+export type EstimateProgressOutput = z.infer<typeof EstimateProgressOutputSchema>;
+
+// ============================================================================
+// generateBriefing (kept)
 // ============================================================================
 export const GenerateBriefingInputSchema = z.object({
-  workflowSummary: z.string(),
-  responses: z.array(
-    z.object({
-      step_label: z.string(),
-      response_data: z.unknown(),
-    })
-  ),
   procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  history: z.array(HistoryStepSchema),
 });
 
 export const BriefingFlagSchema = z.object({
@@ -203,6 +202,27 @@ export const GenerateBriefingOutputSchema = z.object({
   extracted_facts: z.record(z.string(), z.unknown()),
   flags: z.array(BriefingFlagSchema).default([]),
   recommendation: z.enum(["approve", "reject", "request_info"]),
+  ai_confidence: z.number().min(0).max(1),
   reasoning: z.string().min(1).max(1500),
 });
 export type GenerateBriefingOutput = z.infer<typeof GenerateBriefingOutputSchema>;
+
+// ============================================================================
+// fillLetter — fill a .docx-style template with application data
+// ============================================================================
+export const FillLetterInputSchema = z.object({
+  templateText: z.string().min(1),
+  templateType: z.enum(["acceptance", "rejection", "request_info", "custom"]),
+  procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  applicationSummary: z.string(),                            // GLM briefing reasoning
+  coordinatorComment: z.string().nullable().default(null),  // for rejections / requests
+  detectedPlaceholders: z.array(z.string()).default([]),    // {{name}}, {{cgpa}}, etc.
+});
+
+export const FillLetterOutputSchema = z.object({
+  filled_text: z.string().min(1),
+  placeholder_values: z.record(z.string(), z.string()),
+  unfilled_placeholders: z.array(z.string()).default([]),
+});
+export type FillLetterOutput = z.infer<typeof FillLetterOutputSchema>;

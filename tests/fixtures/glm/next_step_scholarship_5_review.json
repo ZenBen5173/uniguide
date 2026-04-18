@@ -1,0 +1,3 @@
+{
+  "text": "{\"is_complete\": false, \"next_step\": {\"type\": \"final_submit\", \"prompt_text\": \"You're done. Review your application below — if anything looks off, click a section to edit. Otherwise hit Submit and your application goes to the Yayasan UM Office.\", \"config\": {\"summary_intro\": \"Application summary — please review before submitting:\"}}, \"reasoning\": \"All required SOP items collected: income tier verified, CGPA noted with hardship justification, scholarships picked, motivation letter submitted. Ready for coordinator review.\", \"running_summary\": \"Complete profile + docs + motivation letter. Ready to submit.\", \"citations\": [\"Yayasan UM Pathway\"]}"
+}

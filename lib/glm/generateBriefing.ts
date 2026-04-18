@@ -1,8 +1,9 @@
 /**
- * generateBriefing — produce the admin-side briefing for a submitted workflow.
+ * generateBriefing — produce the coordinator-side briefing for a submitted
+ * application.
  *
- * Reads all the student's responses, surfaces facts and flags, and emits a
- * recommendation with reasoning. Coordinator sees this BEFORE the raw form.
+ * v2 signature: input is the application's running history (all step prompts +
+ * student responses). GLM digests it into facts + flags + recommendation.
  */
 
 import { callGlm, hashPrompt } from "./client";
@@ -16,7 +17,7 @@ import { writeTrace } from "./trace";
 
 export async function generateBriefing(
   input: unknown,
-  opts: { workflowId?: string | null } = {}
+  opts: { applicationId?: string | null } = {}
 ): Promise<GenerateBriefingOutput> {
   const validated = GenerateBriefingInputSchema.parse(input);
   const systemPrompt = loadPrompt("brief");
@@ -35,12 +36,12 @@ export async function generateBriefing(
   const parsed = GenerateBriefingOutputSchema.parse(JSON.parse(result.text));
 
   await writeTrace({
-    workflowId: opts.workflowId ?? null,
+    workflowId: opts.applicationId ?? null,
     endpoint: "brief",
     promptHash: hashPrompt(systemPrompt),
     inputSummary: {
       procedure: validated.procedureName,
-      response_count: validated.responses.length,
+      history_length: validated.history.length,
     },
     output: { recommendation: parsed.recommendation, flag_count: parsed.flags.length },
     result,

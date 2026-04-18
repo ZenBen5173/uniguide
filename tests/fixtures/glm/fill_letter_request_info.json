@@ -1,0 +1,3 @@
+{
+  "text": "{\"filled_text\": \"19 April 2026\\n\\nDear Demo Student,\\n\\nThank you for your Yayasan UM Scholarship application.\\n\\nThe reviewer has requested additional information before completing your application review:\\n\\n[Coordinator notes inserted here]\\n\\nPlease respond via your UniGuide application page within 7 days. Once received, your application will return to the review queue.\\n\\nIf you need help, contact scholarship@um.edu.my.\\n\\nRegards,\\nYayasan UM Scholarship Office\\nUniversiti Malaya\", \"placeholder_values\": {\"{{date}}\": \"19 April 2026\", \"{{student_name}}\": \"Demo Student\"}, \"unfilled_placeholders\": [\"{{coordinator_notes}}\"]}"
+}

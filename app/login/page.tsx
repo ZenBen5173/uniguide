@@ -23,11 +23,15 @@ const DEMO_COORD = {
   email: "demo-coordinator@uniguide.local",
   password: "demo-coord-2026",
 };
+const DEMO_ADMIN = {
+  email: "demo-admin@uniguide.local",
+  password: "demo-admin-2026",
+};
 
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/student/intake";
+  const next = searchParams.get("next") ?? "/student/portal";
 
   const [stage, setStage] = useState<Stage>("email");
   const [email, setEmail] = useState("");
@@ -128,7 +132,7 @@ function LoginInner() {
         <div className="mt-3 space-y-2">
           <button
             className="btn-primary w-full justify-between text-sm"
-            onClick={() => demoSignIn(DEMO_STUDENT, "/student/intake")}
+            onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal")}
             disabled={!!demoBusy}
           >
             <span>🎓 Sign in as Demo Student</span>
@@ -136,19 +140,27 @@ function LoginInner() {
           </button>
           <button
             className="btn-primary w-full justify-between text-sm"
-            onClick={() => demoSignIn(DEMO_COORD, "/coordinator/dashboard")}
+            onClick={() => demoSignIn(DEMO_COORD, "/coordinator/inbox")}
             disabled={!!demoBusy}
           >
             <span>🧑‍💼 Sign in as Demo Coordinator</span>
             <span className="text-xs opacity-80">Yayasan UM Scholarship Officer</span>
           </button>
           <button
+            className="btn-primary w-full justify-between text-sm bg-slate-700 hover:bg-slate-800"
+            onClick={() => demoSignIn(DEMO_ADMIN, "/admin")}
+            disabled={!!demoBusy}
+          >
+            <span>🛠️ Sign in as Demo Admin</span>
+            <span className="text-xs opacity-80">Platform admin (manages procedures + SOPs)</span>
+          </button>
+          <button
             className="btn w-full justify-between border border-slate-300 bg-white text-slate-700 text-sm hover:bg-slate-50"
-            onClick={() => demoSignIn(DEMO_STUDENT, "/student/intake", { reset: true })}
+            onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal", { reset: true })}
             disabled={!!demoBusy}
           >
             <span>🔄 Reset Demo Student & sign in</span>
-            <span className="text-xs text-slate-500">wipes all prior workflows</span>
+            <span className="text-xs text-slate-500">wipes all prior applications</span>
           </button>
         </div>
         <p className="mt-3 text-xs text-brand-700">

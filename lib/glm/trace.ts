@@ -10,7 +10,16 @@
 import { getServiceSupabase } from "@/lib/supabase/server";
 import type { GlmCallResult } from "./client";
 
-export type TraceEndpoint = "intent" | "plan" | "adapt" | "route" | "parse" | "brief";
+export type TraceEndpoint =
+  | "intent"
+  | "plan"            // legacy (v1) — kept for trace history compatibility
+  | "adapt"           // legacy
+  | "route"           // legacy
+  | "parse"
+  | "brief"
+  | "next_step"       // v2
+  | "fill_letter"     // v2
+  | "estimate_progress"; // v2
 
 export interface TraceRecord {
   workflowId: string | null;

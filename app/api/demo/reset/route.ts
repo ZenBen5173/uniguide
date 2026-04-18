@@ -27,13 +27,11 @@ export async function POST() {
   const studentId = users?.find((u) => u.email === DEMO_STUDENT_EMAIL)?.id;
   if (!studentId) return apiError("Demo student not found", 404);
 
-  // Wipe the student's workflows. Cascades clean stages/steps/edges/responses/attachments.
-  // Briefings cascade-delete from workflows too.
-  const { error: wfErr } = await sb.from("workflows").delete().eq("user_id", studentId);
-  if (wfErr) return apiError(`Wipe failed: ${wfErr.message}`, 500);
+  // Wipe the student's applications. Cascades clean steps/briefings/decisions/letters.
+  const { error: appErr } = await sb.from("applications").delete().eq("user_id", studentId);
+  if (appErr) return apiError(`Wipe failed: ${appErr.message}`, 500);
 
-  // Wipe any orphan reasoning trace rows from this student's prior workflows.
-  // (workflow_id is null after cascade; these are demo-only audit rows.)
+  // Wipe any orphan reasoning trace rows from this student's prior applications.
   await sb.from("glm_reasoning_trace").delete().is("workflow_id", null);
 
   return apiSuccess({ reset: true });
