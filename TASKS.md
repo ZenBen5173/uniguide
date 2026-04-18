@@ -25,7 +25,10 @@ For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/Q
 - [x] Knowledge base seed: Industrial Training, Postgrad Admission
 - [x] Mock GLM fixtures for offline demo
 - [x] README with setup instructions
-- [x] GitHub repo created
+- [x] GitHub repo created — https://github.com/ZenBen5173/uniguide
+- [x] Supabase project provisioned, 4 migrations applied, 6 procedures + 24 KB chunks seeded
+- [x] Live deployment on Vercel — https://uniguide-blush.vercel.app (mock mode active)
+- [x] End-to-end smoke test passed (landing, intake, dashboard, auth-gated API routes all 200/401 as expected)
 
 ## 🟡 In progress / blocked on inputs
 
@@ -37,8 +40,8 @@ For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/Q
 ## 🔴 Outstanding work for submission
 
 ### Critical (blocks submission)
-- [ ] Push code to GitHub `main` branch
-- [ ] Deploy to Vercel (auto-deploys from `main`)
+- [x] Push code to GitHub `main` branch — https://github.com/ZenBen5173/uniguide
+- [x] Deploy to Vercel — https://uniguide-blush.vercel.app
 - [ ] Wire real GLM API key + Supabase + verify end-to-end Industrial Training demo
 - [ ] Record pitch video (10 minutes max, see [docs/PITCH_DECK.md](docs/PITCH_DECK.md) for script + timings) *(Owner: TBD)*
 - [ ] Convert `docs/PITCH_DECK.md` content into actual slides (Canva/Slides/Pitch.app) *(Owner: TBD)*

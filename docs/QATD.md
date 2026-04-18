@@ -16,7 +16,7 @@
 | System Under Test (SUT) | UniGuide — UMHackathon 2026 Team Breaking Bank |
 | Team Repo URL | https://github.com/ZenBen5173/uniguide |
 | Project Board URL | Tracked internally via `TASKS.md` at the repo root (lightweight markdown task list — no external board for the preliminary round) |
-| Live Deployment URL | `[TBD — Vercel preview URL]` |
+| Live Deployment URL | https://uniguide-blush.vercel.app |
 
 **Objective:** Ensure that UniGuide reliably converts a student's free-text intent into a personalised workflow, advances that workflow adaptively across stages and decision points using Z.AI's GLM as the central reasoning engine, parses uploaded documents into structured fields, generates accurate administrator briefings, and produces correct structured outputs (filled forms, draft emails, calendar files) — all while gracefully handling GLM service failures, ambiguous user input, and oversized inputs, with CI/CD checkpoints enforcing quality gates before any code reaches production.
 
