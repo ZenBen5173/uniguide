@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { Library } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import TopBar from "@/components/shared/TopBar";
@@ -66,7 +67,8 @@ export default async function AdminProcedureDetailPage({
           <section className="ug-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
               <div className="text-sm font-semibold flex items-center gap-2">
-                📚 Indexed SOP sections
+                <Library className="h-4 w-4 text-ink-3" strokeWidth={1.75} />
+                Indexed SOP sections
               </div>
               <span className="text-[12px] text-ink-4 mono">{chunks?.length ?? 0} chunks · GLM uses these at every step</span>
             </div>

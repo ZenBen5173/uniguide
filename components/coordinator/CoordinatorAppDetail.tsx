@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check, MessageSquare, X, Paperclip } from "lucide-react";
 import TopBar from "@/components/shared/TopBar";
 
 interface DetailData {
@@ -294,26 +295,26 @@ export default function CoordinatorAppDetail({
               </label>
 
               <button
-                className="ug-btn moss w-full justify-center"
+                className="ug-btn moss w-full justify-center gap-2"
                 onClick={() => decide("approve")}
                 disabled={busy !== null || decided}
               >
-                {busy === "approve" ? "Approving…" : "✓ Approve · generate acceptance letter"}
+                {busy === "approve" ? "Approving…" : (<><Check className="h-4 w-4" strokeWidth={2.25} />Approve · generate acceptance letter</>)}
               </button>
               <button
-                className="ug-btn w-full justify-center"
+                className="ug-btn w-full justify-center gap-2"
                 onClick={() => decide("request_info")}
                 disabled={busy !== null}
                 style={{ background: "var(--amber-soft)", color: "var(--amber)", borderColor: "#E8DBB5" }}
               >
-                {busy === "request_info" ? "Requesting…" : "💬 Request more info"}
+                {busy === "request_info" ? "Requesting…" : (<><MessageSquare className="h-4 w-4" strokeWidth={1.85} />Request more info</>)}
               </button>
               <button
-                className="ug-btn crimson w-full justify-center"
+                className="ug-btn crimson w-full justify-center gap-2"
                 onClick={() => decide("reject")}
                 disabled={busy !== null || decided}
               >
-                {busy === "reject" ? "Rejecting…" : "✗ Reject · generate rejection letter"}
+                {busy === "reject" ? "Rejecting…" : (<><X className="h-4 w-4" strokeWidth={2.25} />Reject · generate rejection letter</>)}
               </button>
 
               {decided && (
@@ -336,7 +337,12 @@ function renderResponse(s: { type: string; response_data: Record<string, unknown
   const r = s.response_data;
   if (!r) return <span className="italic text-ink-4">no response</span>;
   if (typeof r.text === "string") return <span className="whitespace-pre-wrap">{r.text}</span>;
-  if (typeof r.filename === "string") return <span>📎 {r.filename}</span>;
+  if (typeof r.filename === "string") return (
+    <span className="inline-flex items-center gap-1.5">
+      <Paperclip className="h-3.5 w-3.5 text-ink-3" strokeWidth={1.75} />
+      {r.filename}
+    </span>
+  );
   if (Array.isArray(r.values)) return <span>{(r.values as string[]).join(", ")}</span>;
   if (typeof r.value === "string") return <span>{r.value}</span>;
   if (r.confirmed) return <span className="text-moss font-medium">Confirmed</span>;

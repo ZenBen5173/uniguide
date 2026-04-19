@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { GraduationCap, Briefcase, MapPin, Globe } from "lucide-react";
 
 const FACULTIES = [
   "FSKTM (Computer Science & IT)",
@@ -94,25 +95,27 @@ function OnboardingInner() {
         <div className="flex gap-2">
           <button
             type="button"
-            className={`flex-1 rounded border-2 px-4 py-3 text-sm font-medium ${
+            className={`flex-1 inline-flex items-center justify-center gap-2 rounded border-2 px-4 py-3 text-sm font-medium ${
               role === "student"
                 ? "border-brand-500 bg-brand-50 text-brand-900"
                 : "border-slate-200 bg-white text-slate-700"
             }`}
             onClick={() => setRole("student")}
           >
-            🎓 Student
+            <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
+            Student
           </button>
           <button
             type="button"
-            className={`flex-1 rounded border-2 px-4 py-3 text-sm font-medium ${
+            className={`flex-1 inline-flex items-center justify-center gap-2 rounded border-2 px-4 py-3 text-sm font-medium ${
               role === "staff"
                 ? "border-brand-500 bg-brand-50 text-brand-900"
                 : "border-slate-200 bg-white text-slate-700"
             }`}
             onClick={() => setRole("staff")}
           >
-            🧑‍💼 Staff
+            <Briefcase className="h-4 w-4" strokeWidth={1.75} />
+            Staff
           </button>
         </div>
 
@@ -187,25 +190,27 @@ function OnboardingInner() {
             <div className="flex gap-2">
               <button
                 type="button"
-                className={`flex-1 rounded border px-3 py-2 text-sm ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm ${
                   citizenship === "MY"
                     ? "border-brand-500 bg-brand-50 text-brand-900"
                     : "border-slate-200 bg-white"
                 }`}
                 onClick={() => setCitizenship("MY")}
               >
-                🇲🇾 Malaysian
+                <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Malaysian
               </button>
               <button
                 type="button"
-                className={`flex-1 rounded border px-3 py-2 text-sm ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm ${
                   citizenship === "INTL"
                     ? "border-brand-500 bg-brand-50 text-brand-900"
                     : "border-slate-200 bg-white"
                 }`}
                 onClick={() => setCitizenship("INTL")}
               >
-                🌏 International
+                <Globe className="h-3.5 w-3.5" strokeWidth={1.75} />
+                International
               </button>
             </div>
           </>

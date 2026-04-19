@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { GraduationCap, Briefcase, Wrench, RotateCcw } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Stage = "email" | "code";
@@ -124,7 +125,7 @@ function LoginInner() {
 
             <div className="grid grid-cols-3 gap-2">
               <DemoTile
-                emoji="🎓"
+                Icon={GraduationCap}
                 label="Student"
                 tag="B40 · CGPA 3.10"
                 accent="moss"
@@ -133,7 +134,7 @@ function LoginInner() {
                 onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal")}
               />
               <DemoTile
-                emoji="🧑‍💼"
+                Icon={Briefcase}
                 label="Coordinator"
                 tag="Yayasan UM"
                 accent="amber"
@@ -142,7 +143,7 @@ function LoginInner() {
                 onClick={() => demoSignIn(DEMO_COORD, "/coordinator/inbox")}
               />
               <DemoTile
-                emoji="🛠️"
+                Icon={Wrench}
                 label="Admin"
                 tag="Manage SOPs"
                 accent="navy"
@@ -157,10 +158,7 @@ function LoginInner() {
               onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal", { reset: true })}
               disabled={!!demoBusy}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
+              <RotateCcw className="h-3.5 w-3.5" strokeWidth={2} />
               Reset Demo Student & sign in
               <span className="text-[11px] text-ink-4 font-normal">— wipes prior applications</span>
             </button>
@@ -245,7 +243,7 @@ function LoginInner() {
 }
 
 interface TileProps {
-  emoji: string;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   tag: string;
   accent: "moss" | "amber" | "navy";
@@ -254,7 +252,7 @@ interface TileProps {
   onClick: () => void;
 }
 
-function DemoTile({ emoji, label, tag, accent, busy, disabled, onClick }: TileProps) {
+function DemoTile({ Icon, label, tag, accent, busy, disabled, onClick }: TileProps) {
   const cls = {
     moss:  "border-[#CFDDCF] hover:border-moss bg-card hover:bg-moss-soft",
     amber: "border-[#E8DBB5] hover:border-amber bg-card hover:bg-amber-soft",
@@ -265,6 +263,11 @@ function DemoTile({ emoji, label, tag, accent, busy, disabled, onClick }: TilePr
     amber: "text-amber",
     navy: "text-ink",
   }[accent];
+  const iconBgTone = {
+    moss: "bg-moss-soft text-moss",
+    amber: "bg-amber-soft text-amber",
+    navy: "bg-paper-2 text-ink-2 border border-line",
+  }[accent];
 
   return (
     <button
@@ -272,7 +275,9 @@ function DemoTile({ emoji, label, tag, accent, busy, disabled, onClick }: TilePr
       disabled={disabled}
       className={`group relative flex flex-col items-start gap-1 p-3.5 rounded-[12px] border transition disabled:opacity-50 ${cls}`}
     >
-      <span className="text-[22px] leading-none">{emoji}</span>
+      <span className={`grid place-items-center w-9 h-9 rounded-[10px] mb-1 ${iconBgTone}`}>
+        <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+      </span>
       <span className={`text-[14px] font-semibold ${labelTone}`}>
         {busy ? "Signing in…" : label}
       </span>

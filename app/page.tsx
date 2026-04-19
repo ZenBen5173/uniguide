@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { getServerSupabase, getServiceSupabase } from "@/lib/supabase/server";
 import SignOutButton from "@/components/auth/SignOutButton";
+import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 
 const procedures = [
-  { id: "scholarship_application", name: "Scholarship & Financial Aid", emoji: "💰", scope: "Yayasan UM • JPA • MARA • MyBrainSc" },
-  { id: "final_year_project", name: "Final Year Project", emoji: "🎓", scope: "FSKTM • UG" },
-  { id: "deferment_of_studies", name: "Deferment of Studies", emoji: "⏸️", scope: "All faculties" },
-  { id: "exam_result_appeal", name: "Exam Result Appeal", emoji: "📝", scope: "Reg.40 • 2-week window" },
-  { id: "postgrad_admission", name: "Postgrad Admission", emoji: "🎒", scope: "IPS • Master's / PhD" },
-  { id: "emgs_visa_renewal", name: "EMGS Visa Renewal", emoji: "🛂", scope: "International students" },
+  { id: "scholarship_application", name: "Scholarship & Financial Aid", scope: "Yayasan UM • JPA • MARA • MyBrainSc" },
+  { id: "final_year_project", name: "Final Year Project", scope: "FSKTM • UG" },
+  { id: "deferment_of_studies", name: "Deferment of Studies", scope: "All faculties" },
+  { id: "exam_result_appeal", name: "Exam Result Appeal", scope: "Reg.40 • 2-week window" },
+  { id: "postgrad_admission", name: "Postgrad Admission", scope: "IPS • Master's / PhD" },
+  { id: "emgs_visa_renewal", name: "EMGS Visa Renewal", scope: "International students" },
 ];
 
 export default async function LandingPage() {
@@ -92,7 +93,9 @@ export default async function LandingPage() {
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {procedures.map((p) => (
               <div key={p.id} className="card p-5">
-                <div className="text-3xl">{p.emoji}</div>
+                <div className="grid place-items-center w-11 h-11 rounded-[12px] bg-paper-2 border border-line-2 text-ink-2 mb-1">
+                  <ProcedureIcon procedureId={p.id} className="h-[22px] w-[22px]" />
+                </div>
                 <h3 className="mt-2 font-semibold">{p.name}</h3>
                 <p className="text-sm text-slate-500">{p.scope}</p>
               </div>

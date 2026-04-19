@@ -8,6 +8,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Check } from "lucide-react";
 
 export interface StepShape {
   id: string;
@@ -277,10 +278,10 @@ export function InfoStep({ step, value, onChange }: RendererProps) {
       ) : null}
       <button
         type="button"
-        className={`ug-btn ${value.acknowledged ? "moss" : "primary"}`}
+        className={`ug-btn gap-2 ${value.acknowledged ? "moss" : "primary"}`}
         onClick={() => onChange({ acknowledged: true })}
       >
-        {value.acknowledged ? "Acknowledged ✓" : "Got it"}
+        {value.acknowledged ? (<><Check className="h-4 w-4" strokeWidth={2.25} />Acknowledged</>) : "Got it"}
       </button>
     </>
   );

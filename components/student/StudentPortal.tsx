@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
+import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 
 interface MyApplication {
   id: string;
@@ -24,15 +25,6 @@ interface Procedure {
   sop_chunks?: number;
   letter_templates?: number;
 }
-
-const PROCEDURE_ICONS: Record<string, string> = {
-  scholarship_application: "💰",
-  final_year_project: "🎓",
-  deferment_of_studies: "⏸️",
-  exam_result_appeal: "📝",
-  postgrad_admission: "🎒",
-  emgs_visa_renewal: "🛂",
-};
 
 export default function StudentPortal({ user }: { user: { name: string; initials: string; email?: string } }) {
   const router = useRouter();
@@ -136,8 +128,10 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                   href={`/student/applications/${a.id}`}
                   className="ug-card ug-tile-link p-4 no-underline"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="text-[22px] leading-none">{PROCEDURE_ICONS[a.procedure_id] ?? "📄"}</div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="grid place-items-center w-9 h-9 rounded-[10px] bg-paper-2 border border-line-2 text-ink-3">
+                      <ProcedureIcon procedureId={a.procedure_id} className="h-[18px] w-[18px]" />
+                    </div>
                     <StatusBadge status={a.status} />
                   </div>
                   <div className="text-[14.5px] font-semibold text-ink leading-tight mb-1">{a.procedures?.name ?? a.procedure_id}</div>
@@ -179,8 +173,10 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                   tabIndex={ready ? 0 : undefined}
                   onKeyDown={ready ? (e) => { if (e.key === "Enter" || e.key === " ") startApplication(p.id); } : undefined}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="text-[22px] leading-none">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`grid place-items-center w-9 h-9 rounded-[10px] border ${ready ? "bg-paper-2 border-line-2 text-ink-2" : "bg-line-2/50 border-line text-ink-5"}`}>
+                      <ProcedureIcon procedureId={p.id} className="h-[18px] w-[18px]" />
+                    </div>
                     {ready ? (
                       <span className="ug-pill ok" style={{ padding: "2px 8px", fontSize: "10.5px" }}><span className="dot" />Live</span>
                     ) : (

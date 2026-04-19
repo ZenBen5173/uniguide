@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TopBar from "@/components/shared/TopBar";
+import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
+import { FileText, Link2, Paperclip, Check } from "lucide-react";
 
 interface Procedure {
   id: string;
@@ -15,15 +17,6 @@ interface Procedure {
   active_applications: number;
   letter_templates: number;
 }
-
-const PROCEDURE_ICONS: Record<string, string> = {
-  scholarship_application: "💰",
-  final_year_project: "🎓",
-  deferment_of_studies: "⏸️",
-  exam_result_appeal: "📝",
-  postgrad_admission: "🎒",
-  emgs_visa_renewal: "🛂",
-};
 
 export default function AdminProcedures({ user }: { user: { name: string; initials: string; email?: string } }) {
   const [procedures, setProcedures] = useState<Procedure[]>([]);
@@ -149,8 +142,10 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                 href={`/admin/procedures/${p.id}`}
                 className="ug-card ug-tile-link p-5 no-underline flex flex-col"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="text-3xl">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="grid place-items-center w-11 h-11 rounded-[12px] bg-paper-2 border border-line-2 text-ink-2">
+                    <ProcedureIcon procedureId={p.id} className="h-[22px] w-[22px]" />
+                  </div>
                   {p.sop_chunks > 0 ? (
                     <span className="ug-pill ok"><span className="dot" />Live</span>
                   ) : (
@@ -182,7 +177,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                 <div className="text-[18px] font-semibold mt-0.5">
                   {step === "choose" && "Choose how to upload the SOP"}
                   {step === "compose" && "Tell UniGuide about this procedure"}
-                  {step === "confirm" && "Procedure is live ✓"}
+                  {step === "confirm" && "Procedure is live"}
                 </div>
               </div>
               <button className="ug-btn ghost" onClick={resetModal}>Close</button>
@@ -193,19 +188,19 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               {step === "choose" && (
                 <div className="grid grid-cols-3 gap-3">
                   <ChoiceTile
-                    icon="📄"
+                    Icon={FileText}
                     label="Paste text"
                     desc="Copy the SOP text directly"
                     onClick={() => { setInputMode("text"); setStep("compose"); }}
                   />
                   <ChoiceTile
-                    icon="🔗"
+                    Icon={Link2}
                     label="Paste URL"
                     desc="From um.edu.my or a faculty page"
                     onClick={() => { setInputMode("url"); setStep("compose"); }}
                   />
                   <ChoiceTile
-                    icon="📎"
+                    Icon={Paperclip}
                     label="Upload PDF"
                     desc="Coming soon — paste text for now"
                     disabled
@@ -274,9 +269,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               {step === "confirm" && (
                 <div className="text-center py-6">
                   <div className="grid place-items-center w-16 h-16 mx-auto mb-4 rounded-full bg-moss text-white">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <Check className="h-7 w-7" strokeWidth={2.5} />
                   </div>
                   <h3 className="text-[20px] font-semibold mb-2">Procedure '{procName || procId}' is live</h3>
                   <p className="text-[14px] text-ink-3 max-w-md mx-auto leading-snug">
@@ -331,7 +324,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
   );
 }
 
-function ChoiceTile({ icon, label, desc, onClick, disabled = false }: { icon: string; label: string; desc: string; onClick?: () => void; disabled?: boolean }) {
+function ChoiceTile({ Icon, label, desc, onClick, disabled = false }: { Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string; desc: string; onClick?: () => void; disabled?: boolean }) {
   return (
     <button
       className={`p-5 rounded-[12px] border text-left transition ${
@@ -342,7 +335,9 @@ function ChoiceTile({ icon, label, desc, onClick, disabled = false }: { icon: st
       onClick={onClick}
       disabled={disabled}
     >
-      <div className="text-2xl mb-2">{icon}</div>
+      <div className="grid place-items-center w-10 h-10 rounded-[10px] bg-paper-2 border border-line-2 text-ink-2 mb-3">
+        <Icon className="h-5 w-5" strokeWidth={1.75} />
+      </div>
       <div className="text-[14px] font-semibold text-ink">{label}</div>
       <div className="text-[12px] text-ink-4 mt-1 leading-snug">{desc}</div>
     </button>
