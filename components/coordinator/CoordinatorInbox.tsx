@@ -40,6 +40,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const router = useRouter();
   const [filter, setFilter] = useState("pending");
   const [search, setSearch] = useState("");
+  const [procedureFilter, setProcedureFilter] = useState<string>("all");
   const [apps, setApps] = useState<InboxApp[]>([]);
   const [counts, setCounts] = useState<Counts>({ pending: 0, approved: 0, rejected: 0, more_info: 0 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -63,28 +64,39 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
 
   useEffect(() => { void refresh(); }, [filter]);
 
+  const procedureOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    apps.forEach((a) => {
+      if (!map.has(a.procedure_id)) {
+        map.set(a.procedure_id, a.procedures?.name ?? a.procedure_id);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [apps]);
+
   // Sort: AI urgency first (low confidence + flags), then submitted_at desc.
   // Search: filter by student name, matric, or procedure name (case-insensitive).
   const sorted = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = q
-      ? apps.filter((a) => {
-          const hay = [
-            a.student_profiles?.full_name,
-            a.procedures?.name,
-            a.procedure_id,
-            a.student_summary,
-          ].filter(Boolean).join(" ").toLowerCase();
-          return hay.includes(q);
-        })
-      : apps;
+    let filtered = procedureFilter === "all" ? apps : apps.filter((a) => a.procedure_id === procedureFilter);
+    if (q) {
+      filtered = filtered.filter((a) => {
+        const hay = [
+          a.student_profiles?.full_name,
+          a.procedures?.name,
+          a.procedure_id,
+          a.student_summary,
+        ].filter(Boolean).join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+    }
     return [...filtered].sort((a, b) => {
       const urgentA = (a.flags?.some(f => f.severity === "block") ? 2 : 0) + (a.ai_confidence !== null && a.ai_confidence < 0.7 ? 1 : 0);
       const urgentB = (b.flags?.some(f => f.severity === "block") ? 2 : 0) + (b.ai_confidence !== null && b.ai_confidence < 0.7 ? 1 : 0);
       if (urgentA !== urgentB) return urgentB - urgentA;
       return (b.submitted_at ?? "").localeCompare(a.submitted_at ?? "");
     });
-  }, [apps, search]);
+  }, [apps, search, procedureFilter]);
 
   const toggleAll = () => {
     if (selected.size === sorted.length) setSelected(new Set());
@@ -189,6 +201,19 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
               </button>
             ))}
           </div>
+          {procedureOptions.length > 1 && (
+            <select
+              value={procedureFilter}
+              onChange={(e) => setProcedureFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-line bg-card text-[13px] font-medium text-ink-2 cursor-pointer hover:border-ink-5"
+              title="Filter by procedure"
+            >
+              <option value="all">All procedures</option>
+              {procedureOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
           <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ai-line bg-ai-tint text-[13px] font-medium text-ai-ink" title="Applications with low AI confidence or block-flags surface first">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2l2.35 5.6L20 8l-4 4 1.1 5.9L12 15.5 6.9 17.9 8 12 4 8l5.65-.4z" />
@@ -277,10 +302,16 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                   const isSelected = selected.has(a.id);
                   const isUrgent = a.flags?.some(f => f.severity === "block") || (a.ai_confidence !== null && a.ai_confidence < 0.7);
                   const isBulkable = canBulkApprove(a);
+                  const ageHours = a.submitted_at && a.status === "submitted"
+                    ? (Date.now() - new Date(a.submitted_at).getTime()) / 3_600_000
+                    : null;
+                  const slaTint = ageHours === null ? "" :
+                    ageHours >= 40 ? "[background:linear-gradient(90deg,rgba(161,37,58,.06),transparent_180px)]" :
+                    ageHours >= 24 ? "[background:linear-gradient(90deg,rgba(184,147,90,.07),transparent_180px)]" : "";
                   return (
                     <tr
                       key={a.id}
-                      className={`border-b border-line-2 hover:bg-paper-2 transition cursor-pointer ${isSelected ? "bg-[#F1F2F6]" : ""} ${isUrgent ? "[background:linear-gradient(90deg,rgba(161,37,58,.04),transparent_140px)]" : ""}`}
+                      className={`border-b border-line-2 hover:bg-paper-2 transition cursor-pointer ${isSelected ? "bg-[#F1F2F6]" : ""} ${isUrgent ? "[background:linear-gradient(90deg,rgba(161,37,58,.04),transparent_140px)]" : slaTint}`}
                       onClick={() => router.push(`/coordinator/applications/${a.id}`)}
                     >
                       <td className="px-3.5 py-3.5 pr-0 w-8" onClick={(e) => { e.stopPropagation(); if (isBulkable) toggleOne(a.id); }}>
@@ -325,8 +356,16 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                           </div>
                         )}
                       </td>
-                      <td className="px-3.5 py-3.5 text-[12.5px] text-ink-4">
-                        {a.submitted_at ? relativeTime(a.submitted_at) : "—"}
+                      <td className="px-3.5 py-3.5 text-[12.5px]">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-ink-4">{a.submitted_at ? relativeTime(a.submitted_at) : "—"}</span>
+                          {ageHours !== null && ageHours >= 24 && (
+                            <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold ${ageHours >= 40 ? "text-crimson" : "text-amber"}`}>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: ageHours >= 40 ? "var(--crimson)" : "var(--amber)" }} />
+                              {ageHours >= 40 ? "SLA breached" : "SLA approaching"}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3.5 py-3.5 text-right">
                         <div className="inline-flex gap-1.5">

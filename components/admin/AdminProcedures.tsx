@@ -26,12 +26,14 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
 
   // SOP upload modal state
   const [step, setStep] = useState<"choose" | "compose" | "confirm">("choose");
-  const [inputMode, setInputMode] = useState<"text" | "url" | null>(null);
+  const [inputMode, setInputMode] = useState<"text" | "url" | "pdf" | null>(null);
   const [procId, setProcId] = useState("");
   const [procName, setProcName] = useState("");
   const [procDesc, setProcDesc] = useState("");
   const [sopText, setSopText] = useState("");
   const [sopUrl, setSopUrl] = useState("");
+  const [pdfMeta, setPdfMeta] = useState<{ filename: string; pages: number; bytes: number } | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +55,29 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
     setInputMode(null);
     setProcId(""); setProcName(""); setProcDesc("");
     setSopText(""); setSopUrl("");
+    setPdfMeta(null);
     setError(null);
+  };
+
+  const handlePdf = async (file: File) => {
+    setPdfBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/admin/procedures/parse-pdf", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!j.ok) {
+        setError(j.error);
+        return;
+      }
+      setSopText(j.data.text);
+      setPdfMeta({ filename: j.data.filename, pages: j.data.pages, bytes: j.data.bytes });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF parse failed");
+    } finally {
+      setPdfBusy(false);
+    }
   };
 
   const submitNew = async () => {
@@ -202,8 +226,8 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                   <ChoiceTile
                     Icon={Paperclip}
                     label="Upload PDF"
-                    desc="Coming soon — paste text for now"
-                    disabled
+                    desc="We'll extract the text"
+                    onClick={() => { setInputMode("pdf"); setStep("compose"); }}
                   />
                 </div>
               )}
@@ -248,7 +272,47 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                         value={sopUrl}
                         onChange={(e) => setSopUrl(e.target.value)}
                       />
-                      <p className="text-[12px] text-ink-4 mt-1.5">PDF parsing isn't wired yet — paste the SOP text below for now.</p>
+                      <p className="text-[12px] text-ink-4 mt-1.5">Stored as a reference link. Paste the SOP text below — we don't auto-fetch URLs.</p>
+                    </div>
+                  )}
+                  {inputMode === "pdf" && (
+                    <div>
+                      <label className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">PDF source</label>
+                      {pdfMeta ? (
+                        <div className="mt-1.5 flex items-center gap-3 rounded-[10px] border border-line-2 bg-paper-2 px-3.5 py-2.5">
+                          <div className="grid place-items-center w-9 h-9 rounded-md bg-card border border-line text-crimson font-semibold text-[11px]">PDF</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13.5px] font-semibold text-ink truncate">{pdfMeta.filename}</div>
+                            <div className="text-[11.5px] text-ink-4 mono mt-0.5">{pdfMeta.pages} pages · {(pdfMeta.bytes / 1024).toFixed(0)} KB · text extracted below</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="ug-btn ghost sm"
+                            onClick={() => { setPdfMeta(null); setSopText(""); }}
+                          >
+                            Replace
+                          </button>
+                        </div>
+                      ) : (
+                        <label className={`mt-1.5 block cursor-pointer rounded-[10px] border-[1.5px] border-dashed border-line bg-card px-4 py-5 text-center transition hover:border-ink-5 ${pdfBusy ? "opacity-60 pointer-events-none" : ""}`}>
+                          <div className="text-[13.5px] font-semibold text-ink-2">
+                            {pdfBusy ? "Parsing PDF…" : "Click to choose a PDF (max 10 MB)"}
+                          </div>
+                          <div className="text-[12px] text-ink-4 mt-1">
+                            We extract the text and auto-fill the SOP box. Scanned/image PDFs will need manual paste.
+                          </div>
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            disabled={pdfBusy}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) void handlePdf(f);
+                            }}
+                          />
+                        </label>
+                      )}
                     </div>
                   )}
                   <div>

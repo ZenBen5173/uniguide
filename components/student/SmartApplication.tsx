@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { StepBody, type StepShape } from "./StepRenderers";
+
+const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
 interface ApplicationData {
   application: {
@@ -37,7 +39,9 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
   const [error, setError] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState<Record<string, unknown>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [autoSaveLabel, setAutoSaveLabel] = useState("just now");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [savedTick, setSavedTick] = useState(0);
+  const hydratedRef = useRef<string | null>(null);
 
   const refresh = async () => {
     try {
@@ -53,6 +57,8 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
       }
       setData(json.data);
       setDraftValue({});
+      hydratedRef.current = null;
+      setLastSavedAt(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -62,31 +68,62 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
   useEffect(() => { void refresh(); }, [id]);
 
-  // Decay the auto-save label
-  useEffect(() => {
-    const t = setInterval(() => {
-      setAutoSaveLabel((prev) => {
-        if (prev === "just now") return "3s ago";
-        if (prev === "3s ago") return "12s ago";
-        return "1m ago";
-      });
-    }, 8000);
-    return () => clearInterval(t);
-  }, []);
-
   const completed = useMemo(() => (data?.steps ?? []).filter((s) => s.status === "completed"), [data]);
   const current = useMemo(() => (data?.steps ?? []).find((s) => s.status === "pending"), [data]);
+
+  // Hydrate draft from localStorage when current step changes.
+  useEffect(() => {
+    if (typeof window === "undefined" || !current) return;
+    if (hydratedRef.current === current.id) return;
+    try {
+      const raw = window.localStorage.getItem(draftKey(id, current.id));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setDraftValue(parsed);
+        }
+      }
+    } catch {
+      // ignore corrupt drafts
+    }
+    hydratedRef.current = current.id;
+  }, [id, current?.id]);
+
+  // Persist draft to localStorage whenever it changes (debounced).
+  useEffect(() => {
+    if (typeof window === "undefined" || !current) return;
+    if (hydratedRef.current !== current.id) return;
+    if (Object.keys(draftValue).length === 0) return;
+    const key = draftKey(id, current.id);
+    const handle = setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(draftValue));
+        setLastSavedAt(Date.now());
+      } catch {
+        // quota or privacy mode — silently ignore
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [draftValue, id, current?.id]);
+
+  // Re-render the relative timestamp every 15s without resetting state.
+  useEffect(() => {
+    const t = setInterval(() => setSavedTick((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, []);
+  void savedTick;
+
+  const autoSaveLabel = lastSavedAt ? relativeAge(lastSavedAt) : "not saved yet";
 
   const submitStep = async () => {
     if (!current) return;
     setSubmitting(true);
-    setAutoSaveLabel("just now");
     try {
-      // For final_submit step type, route to /submit instead.
       if (current.type === "final_submit") {
         const res = await fetch(`/api/applications/${id}/submit`, { method: "POST" });
         const json = await res.json();
         if (!json.ok) { setError(json.error); return; }
+        if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(id, current.id));
         await refresh();
         return;
       }
@@ -97,6 +134,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
       });
       const json = await res.json();
       if (!json.ok) { setError(json.error); return; }
+      if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(id, current.id));
       await refresh();
     } finally {
       setSubmitting(false);
@@ -164,6 +202,17 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                   ? <span className="capitalize">{data.application.status.replace(/_/g, " ")}</span>
                   : `Draft · Step ${completedCount + (current ? 1 : 0)} of ~${totalEstimate}`}
               </span>
+              {!isSubmitted && (
+                <span className="ug-pill whitespace-nowrap" title="Rough estimate based on remaining steps">
+                  <span className="dot" />
+                  {(() => {
+                    const remaining = Math.max(0, totalEstimate - completedCount);
+                    if (remaining === 0) return "Almost done";
+                    const mins = Math.max(1, remaining * 2);
+                    return `~${mins} min remaining`;
+                  })()}
+                </span>
+              )}
               <span className="ug-pill ai whitespace-nowrap">
                 <span className="dot" />
                 Guided by UniGuide AI
@@ -315,13 +364,28 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
           {/* Auto-save indicator */}
           <div className="flex items-center justify-between mt-7 text-[12.5px] text-ink-4">
             <div className="flex items-center gap-2.5">
-              <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-moss">
-                <span className="absolute -inset-1 rounded-full border-[1.5px] border-moss opacity-40 animate-ping" />
-              </span>
-              <span>Draft saved · auto-saved <span className="mono text-ink-3">{autoSaveLabel}</span></span>
+              {lastSavedAt ? (
+                <>
+                  <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-moss">
+                    <span className="absolute -inset-1 rounded-full border-[1.5px] border-moss opacity-40 animate-ping" />
+                  </span>
+                  <span>
+                    Draft saved to this browser
+                    <span className="opacity-60"> · </span>
+                    <span className="mono text-ink-3">{autoSaveLabel}</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink-5" />
+                  <span>Start typing — your draft saves to this browser automatically.</span>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-4">
-              <Link href={`/student/portal`} className="text-ink-3 no-underline hover:text-ink">Back to portal</Link>
+              <Link href={`/student/portal`} className="text-ink-3 no-underline hover:text-ink">
+                Save & exit →
+              </Link>
             </div>
           </div>
         </section>
@@ -419,6 +483,17 @@ function stepHintForType(type: string): string {
     case "coordinator_message": return "The coordinator is asking for something.";
     default: return "";
   }
+}
+
+function relativeAge(ts: number): string {
+  const ms = Date.now() - ts;
+  if (ms < 5000) return "just now";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ago`;
 }
 
 function summariseResponse(data: Record<string, unknown> | null): string {

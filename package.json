@@ -23,7 +23,7 @@
     "lucide-react": "^0.453.0",
     "next": "^15.0.0",
     "openai": "^4.67.3",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^1.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
-    "@types/pdf-parse": "^1.1.4",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.2",
