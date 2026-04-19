@@ -269,6 +269,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                   <Th>AI rec</Th>
                   <Th>Submitted</Th>
                   <Th className="text-right">Flags</Th>
+                  <Th className="w-10" />
                 </tr>
               </thead>
               <tbody>
@@ -351,6 +352,13 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                             </span>
                           ))}
                         </div>
+                      </td>
+                      <td className="pr-3 py-3.5 text-right">
+                        <span className="ug-row-chevron" aria-hidden>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </span>
                       </td>
                     </tr>
                   );

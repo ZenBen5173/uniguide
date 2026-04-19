@@ -118,23 +118,61 @@
 
   /* ─── Buttons ─── */
   .ug-btn {
-    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-[10px] text-sm font-medium transition-colors;
+    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-[10px] text-sm font-medium;
     border: 1px solid var(--line);
     background: var(--card);
     color: var(--ink-2);
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .12s ease, color .15s ease;
   }
-  .ug-btn:hover { border-color: var(--ink-5); }
+  .ug-btn:hover {
+    border-color: var(--ink-5);
+    box-shadow: 0 1px 0 rgba(11,37,69,.04), 0 6px 16px -8px rgba(11,37,69,.18);
+    transform: translateY(-1px);
+  }
+  .ug-btn:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(11,37,69,.04); }
+  .ug-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+
   .ug-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
-  .ug-btn.primary:hover { background: var(--ink-2); }
+  .ug-btn.primary:hover { background: var(--ink-2); border-color: var(--ink-2); box-shadow: 0 1px 0 rgba(11,37,69,.04), 0 8px 20px -8px rgba(11,37,69,.35); }
+
   .ug-btn.ghost { background: transparent; border-color: transparent; color: var(--ink-3); }
-  .ug-btn.ghost:hover { background: rgba(11,37,69,.05); }
+  .ug-btn.ghost:hover { background: rgba(11,37,69,.05); border-color: transparent; box-shadow: none; transform: none; }
+
   .ug-btn.sm { @apply px-2.5 py-1.5 text-xs; }
   .ug-btn.danger-ghost { color: var(--crimson); border-color: transparent; background: transparent; }
-  .ug-btn.danger-ghost:hover { background: var(--crimson-soft); }
+  .ug-btn.danger-ghost:hover { background: var(--crimson-soft); border-color: transparent; box-shadow: none; transform: none; }
+
   .ug-btn.moss { background: var(--moss); color: white; border-color: var(--moss); }
-  .ug-btn.moss:hover { background: #345A42; }
+  .ug-btn.moss:hover { background: #345A42; border-color: #345A42; box-shadow: 0 1px 0 rgba(63,107,78,.08), 0 8px 20px -8px rgba(63,107,78,.4); }
+
   .ug-btn.crimson { background: var(--crimson); color: white; border-color: var(--crimson); }
-  .ug-btn.crimson:hover { background: #862135; }
+  .ug-btn.crimson:hover { background: #862135; border-color: #862135; box-shadow: 0 1px 0 rgba(161,37,58,.08), 0 8px 20px -8px rgba(161,37,58,.4); }
+
+  /* ─── Tile link (interactive card) ─── */
+  /* Apply to ANY clickable card so users can tell it's pressable. */
+  .ug-tile-link {
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .18s ease, transform .14s ease, background .15s ease;
+  }
+  .ug-tile-link:hover {
+    border-color: var(--ink-5);
+    box-shadow: 0 2px 0 rgba(11,37,69,.04), 0 18px 36px -16px rgba(11,37,69,.22);
+    transform: translateY(-2px);
+  }
+  .ug-tile-link:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(11,37,69,.04); }
+
+  /* ─── Row chevron (inbox table) ─── */
+  .ug-row-chevron {
+    display: inline-grid; place-items: center; width: 28px; height: 28px;
+    border-radius: 6px;
+    color: var(--ink-5);
+    transition: color .15s ease, background .15s ease, transform .15s ease;
+  }
+  tr:hover .ug-row-chevron {
+    color: var(--ink);
+    background: var(--card);
+    transform: translateX(3px);
+  }
 
   /* ─── Pills / chips ─── */
   .ug-pill {

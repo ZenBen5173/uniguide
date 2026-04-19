@@ -147,7 +147,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               <Link
                 key={p.id}
                 href={`/admin/procedures/${p.id}`}
-                className="ug-card p-5 no-underline hover:border-ink-5 transition flex flex-col"
+                className="ug-card ug-tile-link p-5 no-underline flex flex-col"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="text-3xl">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>

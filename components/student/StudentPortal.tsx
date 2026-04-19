@@ -134,7 +134,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                 <Link
                   key={a.id}
                   href={`/student/applications/${a.id}`}
-                  className="group ug-card p-4 no-underline hover:border-ink-5 hover:shadow-ug-card transition"
+                  className="ug-card ug-tile-link p-4 no-underline"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="text-[22px] leading-none">{PROCEDURE_ICONS[a.procedure_id] ?? "📄"}</div>
@@ -171,7 +171,14 @@ export default function StudentPortal({ user }: { user: { name: string; initials
             {procedures.map((p) => {
               const ready = (p.sop_chunks ?? 0) > 0;
               return (
-                <div key={p.id} className={`group ug-card p-4 flex flex-col ${ready ? "hover:border-ink-5 hover:shadow-ug-card transition" : "opacity-60"}`}>
+                <div
+                  key={p.id}
+                  className={`ug-card p-4 flex flex-col ${ready ? "ug-tile-link" : "opacity-60"}`}
+                  onClick={ready ? () => startApplication(p.id) : undefined}
+                  role={ready ? "button" : undefined}
+                  tabIndex={ready ? 0 : undefined}
+                  onKeyDown={ready ? (e) => { if (e.key === "Enter" || e.key === " ") startApplication(p.id); } : undefined}
+                >
                   <div className="flex items-start justify-between mb-2">
                     <div className="text-[22px] leading-none">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>
                     {ready ? (
@@ -190,11 +197,15 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                     </div>
                     {ready ? (
                       <button
-                        className="text-[12.5px] font-semibold text-crimson hover:text-[#7a1c2c] inline-flex items-center gap-1"
-                        onClick={() => startApplication(p.id)}
+                        className="ug-btn primary sm"
+                        onClick={(e) => { e.stopPropagation(); startApplication(p.id); }}
                         disabled={starting === p.id}
                       >
-                        {starting === p.id ? "Starting…" : "Apply →"}
+                        {starting === p.id ? "Starting…" : "Apply"}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
                       </button>
                     ) : (
                       <span className="text-[10.5px] text-ink-4 italic">awaiting SOP</span>
