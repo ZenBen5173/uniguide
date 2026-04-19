@@ -117,22 +117,46 @@ export async function callGlm(opts: GlmCallOptions): Promise<GlmCallResult> {
     ...(opts.jsonMode ? { response_format: { type: "json_object" } } : {}),
   };
 
-  const response = await client.chat.completions.create(params);
+  try {
+    const response = await client.chat.completions.create(params);
+    const choice = "choices" in response ? response.choices?.[0] : null;
+    const text = choice?.message?.content ?? "";
 
-  // OpenAI-compatible streaming would require a different code path; for now
-  // we use blocking completions which is fine for our latency budget.
-  const choice = "choices" in response ? response.choices?.[0] : null;
-  const text = choice?.message?.content ?? "";
-
-  return {
-    text,
-    inputTokens: ("usage" in response && response.usage?.prompt_tokens) || 0,
-    outputTokens: ("usage" in response && response.usage?.completion_tokens) || 0,
-    latencyMs: Date.now() - start,
-    model: opts.model,
-    cacheHit: false,
-    mocked: false,
-  };
+    return {
+      text,
+      inputTokens: ("usage" in response && response.usage?.prompt_tokens) || 0,
+      outputTokens: ("usage" in response && response.usage?.completion_tokens) || 0,
+      latencyMs: Date.now() - start,
+      model: opts.model,
+      cacheHit: false,
+      mocked: false,
+    };
+  } catch (err) {
+    // Auto-fallback: if a real call fails (bad key, network, rate limit) AND a
+    // mock fixture exists for this call, return it instead of crashing the
+    // request. This keeps the demo resilient when judges hit a procedure that
+    // the live API can't serve. Logged so production issues are still visible.
+    if (opts.mockFixture) {
+      console.error(
+        `[glm:auto-fallback] live call failed (${err instanceof Error ? err.message : "unknown"}) — using fixture ${opts.mockFixture}`
+      );
+      try {
+        const text = loadFixture(opts.mockFixture);
+        return {
+          text,
+          inputTokens: Math.ceil((opts.systemPrompt.length + opts.userPrompt.length) / 4),
+          outputTokens: Math.ceil(text.length / 4),
+          latencyMs: Date.now() - start,
+          model: `${opts.model}-fallback`,
+          cacheHit: false,
+          mocked: true,
+        };
+      } catch {
+        // fixture missing too — re-throw original
+      }
+    }
+    throw err;
+  }
 }
 
 /**

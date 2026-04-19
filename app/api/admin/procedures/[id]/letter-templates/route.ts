@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const sb = getServiceSupabase();
   const { data: templates } = await sb
     .from("procedure_letter_templates")
-    .select("id, template_type, name, detected_placeholders, updated_at")
+    .select("id, template_type, name, template_text, detected_placeholders, updated_at")
     .eq("procedure_id", procedureId)
     .order("template_type");
 

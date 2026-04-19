@@ -125,7 +125,10 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
       <TopBar
         user={user}
         roleChip={{ label: "Admin · UniGuide" }}
-        nav={[{ href: "/admin", label: "Procedures", active: true }]}
+        nav={[
+          { href: "/admin", label: "Procedures", active: true },
+          { href: "/admin/analytics", label: "Analytics" },
+        ]}
       />
 
       <main className="mx-auto max-w-[1320px] px-8 pt-6 pb-16">

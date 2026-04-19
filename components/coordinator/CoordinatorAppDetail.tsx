@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, MessageSquare, X, Paperclip } from "lucide-react";
+import { Check, MessageSquare, X, Paperclip, Undo2 } from "lucide-react";
 import TopBar from "@/components/shared/TopBar";
 
 interface DetailData {
@@ -70,6 +70,10 @@ export default function CoordinatorAppDetail({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[] } | null>(null);
 
+  // Undo countdown (re-renders every second when decision is recent)
+  const [, setUndoTick] = useState(0);
+  const [undoBusy, setUndoBusy] = useState(false);
+
   const refresh = async () => {
     try {
       const res = await fetch(`/api/coordinator/applications/${id}`);
@@ -133,6 +137,31 @@ export default function CoordinatorAppDetail({
       }
     } finally {
       setBusy(null);
+    }
+  };
+
+  // Tick once a second so the undo countdown updates without a full refetch.
+  useEffect(() => {
+    if (!data?.application.decided_at) return;
+    const ageMs = Date.now() - new Date(data.application.decided_at).getTime();
+    if (ageMs > 5 * 60 * 1000) return;
+    const t = setInterval(() => setUndoTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [data?.application.decided_at]);
+
+  const undo = async () => {
+    if (!confirm("Undo this decision? The letter sent to the student will be removed and the application returns to your queue.")) return;
+    setUndoBusy(true);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/undo`, { method: "POST" });
+      const json = await res.json();
+      if (!json.ok) {
+        alert(`Could not undo: ${json.error}`);
+        return;
+      }
+      await refresh();
+    } finally {
+      setUndoBusy(false);
     }
   };
 
@@ -387,9 +416,38 @@ export default function CoordinatorAppDetail({
                 You'll see the letter and can edit it before it's sent.
               </p>
 
-              {decided && (
-                <p className="text-[12px] text-ink-4 italic">This application has already been decided. Letters are visible above.</p>
-              )}
+              {decided && (() => {
+                const decidedAt = data.application.decided_at ? new Date(data.application.decided_at).getTime() : 0;
+                const remainingMs = decidedAt + 5 * 60 * 1000 - Date.now();
+                if (remainingMs <= 0) {
+                  return (
+                    <p className="text-[12px] text-ink-4 italic">
+                      This application has already been decided. Letters are visible above.
+                    </p>
+                  );
+                }
+                const mm = Math.floor(remainingMs / 60000);
+                const ss = Math.floor((remainingMs % 60000) / 1000);
+                return (
+                  <div className="rounded-[10px] border border-amber-soft bg-amber-soft/40 p-3">
+                    <div className="text-[12px] font-semibold text-amber uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Undo2 className="h-3.5 w-3.5" strokeWidth={2} />
+                      Undo window · <span className="mono">{mm}:{ss.toString().padStart(2, "0")}</span> left
+                    </div>
+                    <p className="text-[12px] text-ink-3 leading-snug mb-2.5">
+                      Made a mistake? You can undo this decision and remove the letter sent to the student.
+                    </p>
+                    <button
+                      className="ug-btn w-full justify-center gap-2 sm"
+                      style={{ background: "var(--card)", color: "var(--ink)", borderColor: "var(--line)" }}
+                      onClick={undo}
+                      disabled={undoBusy}
+                    >
+                      {undoBusy ? "Undoing…" : "Undo this decision"}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </aside>

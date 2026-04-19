@@ -4,6 +4,7 @@ import { Library } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import TopBar from "@/components/shared/TopBar";
+import LetterTemplateEditor from "@/components/admin/LetterTemplateEditor";
 
 export default async function AdminProcedureDetailPage({
   params,
@@ -32,7 +33,10 @@ export default async function AdminProcedureDetailPage({
       <TopBar
         user={{ name, initials, email: user.email }}
         roleChip={{ label: "Admin · UniGuide" }}
-        nav={[{ href: "/admin", label: "Procedures" }]}
+        nav={[
+          { href: "/admin", label: "Procedures" },
+          { href: "/admin/analytics", label: "Analytics" },
+        ]}
       />
 
       <main className="mx-auto max-w-[1320px] px-8 pt-6 pb-16">
@@ -89,38 +93,10 @@ export default async function AdminProcedureDetailPage({
             </div>
           </section>
 
-          {/* Letter templates */}
+          {/* Letter templates — editable */}
           <aside>
             <div className="ug-card overflow-hidden">
-              <div className="px-4 py-3.5 border-b border-line-2 flex items-center justify-between">
-                <div className="text-sm font-semibold">Letter templates</div>
-                <span className="text-[12px] text-ink-4 mono">{templates?.length ?? 0}</span>
-              </div>
-              {(templates ?? []).length === 0 && (
-                <div className="px-4 py-6 text-center text-ink-4 text-[13px]">
-                  No letter templates yet. They're filled in by GLM after a coordinator decides.
-                </div>
-              )}
-              {(templates ?? []).map((t) => (
-                <div key={t.id} className="px-4 py-3.5 border-b border-line-2 last:border-b-0">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={`ug-pill ${t.template_type === "acceptance" ? "ok" : t.template_type === "rejection" ? "" : "warn"}`} style={t.template_type === "rejection" ? { background: "var(--crimson-soft)", color: "var(--crimson)", borderColor: "#E8C5CB" } : undefined}>
-                      {t.template_type.replace(/_/g, " ")}
-                    </span>
-                    <span className="text-[11px] text-ink-4 mono">
-                      {new Date(t.updated_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
-                    </span>
-                  </div>
-                  <div className="text-[13px] font-medium text-ink mb-2">{t.name}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {t.detected_placeholders?.map((p: string) => (
-                      <span key={p} className="text-[10.5px] mono px-1.5 py-0.5 rounded bg-ai-tint text-ai-ink border border-ai-line">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <LetterTemplateEditor procedureId={id} />
             </div>
           </aside>
         </div>
