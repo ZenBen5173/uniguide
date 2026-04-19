@@ -205,7 +205,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
         nav={[{ href: "/student/portal", label: "Portal" }]}
       />
 
-      <main className="mx-auto max-w-[1320px] grid grid-cols-[minmax(0,1fr)_360px] gap-10 px-10 pt-8 pb-20">
+      <main className="mx-auto max-w-[1320px] grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-10 px-4 sm:px-6 lg:px-10 pt-6 lg:pt-8 pb-20">
         <section>
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-[13px] text-ink-4 mb-3.5">
@@ -218,10 +218,10 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
           {/* Title block — pills full-width below so they don't wrap */}
           <div className="mb-4">
-            <h1 className="text-[34px] leading-[1.1] font-semibold tracking-tight m-0 mb-2">
+            <h1 className="text-[24px] sm:text-[28px] lg:text-[34px] leading-[1.1] font-semibold tracking-tight m-0 mb-2">
               {procedureName} <span className="serif italic font-normal text-ink-2">— smart application</span>
             </h1>
-            <p className="text-[15px] text-ink-3 max-w-2xl leading-snug">
+            <p className="text-[14px] lg:text-[15px] text-ink-3 max-w-2xl leading-snug">
               A guided, personalised application prepared from the official UM SOP and your profile. Answers are saved automatically.
             </p>
             <div className="flex flex-wrap gap-2 mt-4">
@@ -420,7 +420,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
         </section>
 
         {/* Right rail */}
-        <aside className="sticky top-[84px] self-start flex flex-col gap-3.5">
+        <aside className="lg:sticky lg:top-[84px] lg:self-start flex flex-col gap-3.5">
           <div className="ug-rail-card">
             <div className="ug-rail-head">
               <div className="ug-rail-title">What <span className="serif">I've</span> shared so far</div>

@@ -113,14 +113,14 @@ export default function StudentPortal({ user }: { user: { name: string; initials
         nav={[{ href: "/student/portal", label: "Portal", active: true }]}
       />
 
-      <main className="mx-auto max-w-[1180px] px-8 pt-8 pb-20">
+      <main className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-6 sm:pt-8 pb-20">
         {/* Welcome */}
-        <section className="mb-8 flex items-end justify-between gap-6">
+        <section className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 sm:gap-6">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-ink-4 mb-1.5">
               {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="text-[30px] leading-[1.1] font-semibold tracking-tight m-0">
+            <h1 className="text-[24px] sm:text-[30px] leading-[1.1] font-semibold tracking-tight m-0">
               Welcome back, <span className="serif italic font-normal text-ink-2">{user.name.split(" ")[0]}</span>
             </h1>
           </div>
@@ -153,7 +153,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {apps.map((a) => (
                 <Link
                   key={a.id}
@@ -198,7 +198,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                 {ready.length === 0 && !loading && (
                   <div className="ug-card p-4 text-ink-4 text-sm">No services published yet — ask your admin to upload an SOP.</div>
                 )}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {ready.map((p) => (
                     <div
                       key={p.id}
@@ -245,7 +245,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                     <h2 className="text-[13px] font-semibold tracking-[0.08em] uppercase text-ink-4">Coming soon</h2>
                     <span className="text-[11.5px] text-ink-4 mono">{comingSoon.length} in roadmap</span>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {comingSoon.map((p) => (
                       <div
                         key={p.id}

@@ -255,7 +255,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
         )}
 
         {/* Table */}
-        <div className="ug-card overflow-hidden">
+        <div className="ug-card overflow-x-auto">
           {loading ? (
             <div className="p-12 text-center text-ink-4">Loading inbox…</div>
           ) : sorted.length === 0 ? (
