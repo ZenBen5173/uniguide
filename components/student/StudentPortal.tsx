@@ -152,66 +152,89 @@ export default function StudentPortal({ user }: { user: { name: string; initials
           )}
         </section>
 
-        {/* Available Services */}
-        <section>
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-[15px] font-semibold tracking-[0.08em] uppercase text-ink-4">Available services</h2>
-            <span className="text-[12px] text-ink-4 mono">{procedures.filter(p => (p.sop_chunks ?? 0) > 0).length} ready</span>
-          </div>
-          {procedures.length === 0 && !loading && (
-            <div className="ug-card p-4 text-ink-4 text-sm">No services published yet — ask your admin to upload an SOP.</div>
-          )}
-          <div className="grid grid-cols-3 gap-3">
-            {procedures.map((p) => {
-              const ready = (p.sop_chunks ?? 0) > 0;
-              return (
-                <div
-                  key={p.id}
-                  className={`ug-card p-4 flex flex-col ${ready ? "ug-tile-link" : "opacity-60"}`}
-                  onClick={ready ? () => startApplication(p.id) : undefined}
-                  role={ready ? "button" : undefined}
-                  tabIndex={ready ? 0 : undefined}
-                  onKeyDown={ready ? (e) => { if (e.key === "Enter" || e.key === " ") startApplication(p.id); } : undefined}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`grid place-items-center w-9 h-9 rounded-[10px] border ${ready ? "bg-paper-2 border-line-2 text-ink-2" : "bg-line-2/50 border-line text-ink-5"}`}>
-                      <ProcedureIcon procedureId={p.id} className="h-[18px] w-[18px]" />
-                    </div>
-                    {ready ? (
-                      <span className="ug-pill ok" style={{ padding: "2px 8px", fontSize: "10.5px" }}><span className="dot" />Live</span>
-                    ) : (
-                      <span className="ug-pill" style={{ padding: "2px 8px", fontSize: "10.5px", color: "var(--ink-4)" }}><span className="dot" style={{ background: "var(--ink-5)" }} />Draft</span>
-                    )}
-                  </div>
-                  <div className="text-[14.5px] font-semibold text-ink leading-tight mb-1">{p.name}</div>
-                  <div className="text-[12px] text-ink-3 mb-3 leading-snug flex-1">
-                    {p.description ?? "—"}
-                  </div>
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="text-[10.5px] text-ink-4 mono">
-                      {p.faculty_scope ?? "All faculties"}
-                    </div>
-                    {ready ? (
-                      <button
-                        className="ug-btn primary sm"
-                        onClick={(e) => { e.stopPropagation(); startApplication(p.id); }}
-                        disabled={starting === p.id}
-                      >
-                        {starting === p.id ? "Starting…" : "Apply"}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                          <polyline points="12 5 19 12 12 19" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <span className="text-[10.5px] text-ink-4 italic">awaiting SOP</span>
-                    )}
-                  </div>
+        {/* Available Services — only ready */}
+        {(() => {
+          const ready = procedures.filter(p => (p.sop_chunks ?? 0) > 0);
+          const comingSoon = procedures.filter(p => (p.sop_chunks ?? 0) === 0);
+          return (
+            <>
+              <section className="mb-10">
+                <div className="flex items-baseline justify-between mb-3">
+                  <h2 className="text-[15px] font-semibold tracking-[0.08em] uppercase text-ink-4">Available services</h2>
+                  <span className="text-[12px] text-ink-4 mono">{ready.length} ready to apply</span>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+                {ready.length === 0 && !loading && (
+                  <div className="ug-card p-4 text-ink-4 text-sm">No services published yet — ask your admin to upload an SOP.</div>
+                )}
+                <div className="grid grid-cols-3 gap-3">
+                  {ready.map((p) => (
+                    <div
+                      key={p.id}
+                      className="ug-card ug-tile-link p-4 flex flex-col"
+                      onClick={() => startApplication(p.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") startApplication(p.id); }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="grid place-items-center w-9 h-9 rounded-[10px] border bg-paper-2 border-line-2 text-ink-2">
+                          <ProcedureIcon procedureId={p.id} className="h-[18px] w-[18px]" />
+                        </div>
+                        <span className="ug-pill ok" style={{ padding: "2px 8px", fontSize: "10.5px" }}><span className="dot" />Live</span>
+                      </div>
+                      <div className="text-[14.5px] font-semibold text-ink leading-tight mb-1">{p.name}</div>
+                      <div className="text-[12px] text-ink-3 mb-3 leading-snug flex-1">
+                        {p.description ?? "—"}
+                      </div>
+                      <div className="flex items-center justify-between mt-auto">
+                        <div className="text-[10.5px] text-ink-4 mono">
+                          {p.faculty_scope ?? "All faculties"}
+                        </div>
+                        <button
+                          className="ug-btn primary sm"
+                          onClick={(e) => { e.stopPropagation(); startApplication(p.id); }}
+                          disabled={starting === p.id}
+                        >
+                          {starting === p.id ? "Starting…" : "Apply"}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {comingSoon.length > 0 && (
+                <section>
+                  <div className="flex items-baseline justify-between mb-3">
+                    <h2 className="text-[13px] font-semibold tracking-[0.08em] uppercase text-ink-4">Coming soon</h2>
+                    <span className="text-[11.5px] text-ink-4 mono">{comingSoon.length} in roadmap</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {comingSoon.map((p) => (
+                      <div
+                        key={p.id}
+                        className="rounded-[10px] border border-dashed border-line-2 bg-paper-2/60 px-3 py-2.5 flex items-center gap-2.5 opacity-75"
+                        title={p.description ?? p.name}
+                      >
+                        <div className="grid place-items-center w-7 h-7 rounded-[8px] bg-line-2/50 text-ink-5 flex-shrink-0">
+                          <ProcedureIcon procedureId={p.id} className="h-[14px] w-[14px]" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[12.5px] font-medium text-ink-3 leading-tight truncate">{p.name}</div>
+                          <div className="text-[10.5px] text-ink-4 italic mt-0.5">awaiting SOP</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          );
+        })()}
 
         {error && <div className="mt-6 ug-card p-4 text-sm text-crimson border-crimson">{error}</div>}
       </main>

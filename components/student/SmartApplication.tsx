@@ -247,6 +247,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                     step={current as StepShape}
                     value={draftValue}
                     onChange={setDraftValue}
+                    applicationId={id}
                   />
 
                   <div className="ug-step-footer">

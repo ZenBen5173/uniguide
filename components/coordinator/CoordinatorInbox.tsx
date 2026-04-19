@@ -320,9 +320,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                               {a.ai_recommendation === "approve" ? "Approve" : a.ai_recommendation === "reject" ? "Reject" : "Review"}
                             </span>
                             {a.ai_confidence !== null && (
-                              <div className="text-[10.5px] text-ink-4 mono mt-1 font-medium">
-                                conf {a.ai_confidence.toFixed(2)}
-                              </div>
+                              <ConfidenceLabel value={a.ai_confidence} />
                             )}
                           </div>
                         )}
@@ -429,6 +427,24 @@ function canBulkApprove(a: InboxApp): boolean {
   if ((a.ai_confidence ?? 0) < 0.7) return false;
   if (a.flags?.some(f => f.severity === "block")) return false;
   return true;
+}
+
+function ConfidenceLabel({ value }: { value: number }) {
+  const { label, color } = confidenceTone(value);
+  return (
+    <div className="text-[10.5px] mt-1 font-medium inline-flex items-center gap-1.5">
+      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+      <span className="text-ink-3">{label}</span>
+      <span className="text-ink-4 mono">{value.toFixed(2)}</span>
+    </div>
+  );
+}
+
+function confidenceTone(value: number): { label: string; color: string } {
+  if (value >= 0.85) return { label: "Very confident", color: "var(--moss)" };
+  if (value >= 0.70) return { label: "Confident", color: "var(--moss)" };
+  if (value >= 0.50) return { label: "Borderline", color: "var(--amber)" };
+  return { label: "Review carefully", color: "var(--crimson)" };
 }
 
 function relativeTime(iso: string): string {

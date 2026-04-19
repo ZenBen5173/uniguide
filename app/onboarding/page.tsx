@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { GraduationCap, Briefcase, MapPin, Globe } from "lucide-react";
 
 const FACULTIES = [
@@ -17,7 +18,7 @@ const FACULTIES = [
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-12 text-slate-500">Loading…</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-12 text-ink-4">Loading…</div>}>
       <OnboardingInner />
     </Suspense>
   );
@@ -26,7 +27,7 @@ export default function OnboardingPage() {
 function OnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/student/intake";
+  const next = searchParams.get("next") ?? "/student/portal";
 
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"student" | "staff">("student");
@@ -54,7 +55,7 @@ function OnboardingInner() {
         ? {
             role,
             full_name: fullName.trim(),
-            faculty: faculty.split(" ")[0], // 'FSKTM' from 'FSKTM (Computer Science & IT)'
+            faculty: faculty.split(" ")[0],
             programme: programme.trim() || null,
             year,
             cgpa: parseFloat(cgpa) || null,
@@ -81,165 +82,193 @@ function OnboardingInner() {
       return;
     }
 
-    router.push(role === "staff" ? "/coordinator/dashboard" : next);
+    router.push(role === "staff" ? "/coordinator/inbox" : next);
   };
 
   return (
-    <div className="mx-auto max-w-md px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">A few quick details</h1>
-      <p className="mt-2 text-slate-600">
-        UniGuide uses these to personalise your workflows. You can change them later.
-      </p>
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-paper">
+      <div className="w-full max-w-[520px]">
+        <Link href="/" className="text-[13px] text-ink-4 hover:text-ink no-underline inline-flex items-center gap-1 mb-6">
+          ← Home
+        </Link>
 
-      <div className="mt-8 space-y-4">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={`flex-1 inline-flex items-center justify-center gap-2 rounded border-2 px-4 py-3 text-sm font-medium ${
-              role === "student"
-                ? "border-brand-500 bg-brand-50 text-brand-900"
-                : "border-slate-200 bg-white text-slate-700"
-            }`}
-            onClick={() => setRole("student")}
-          >
-            <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
-            Student
-          </button>
-          <button
-            type="button"
-            className={`flex-1 inline-flex items-center justify-center gap-2 rounded border-2 px-4 py-3 text-sm font-medium ${
-              role === "staff"
-                ? "border-brand-500 bg-brand-50 text-brand-900"
-                : "border-slate-200 bg-white text-slate-700"
-            }`}
-            onClick={() => setRole("staff")}
-          >
-            <Briefcase className="h-4 w-4" strokeWidth={1.75} />
-            Staff
-          </button>
+        <div className="mb-8">
+          <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-ink-4 mb-2">First-time setup</p>
+          <h1 className="text-[32px] leading-tight font-semibold tracking-tight m-0">
+            A few quick details <span className="serif italic font-normal text-ink-2">— so we can personalise</span>
+          </h1>
+          <p className="mt-2 text-[14.5px] text-ink-3 leading-snug">
+            UniGuide uses these to tailor your applications. You can change them later.
+          </p>
         </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Full name</span>
-          <input
-            type="text"
-            className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Ahmad bin Ali"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium">Faculty</span>
-          <select
-            className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-            value={faculty}
-            onChange={(e) => setFaculty(e.target.value)}
-          >
-            {FACULTIES.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {role === "student" && (
-          <>
-            <label className="block">
-              <span className="text-sm font-medium">Programme</span>
-              <input
-                type="text"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                value={programme}
-                onChange={(e) => setProgramme(e.target.value)}
-                placeholder="e.g. Software Engineering"
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-sm font-medium">Year</span>
-                <select
-                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                  value={year}
-                  onChange={(e) => setYear(parseInt(e.target.value))}
-                >
-                  {[1, 2, 3, 4, 5].map((y) => (
-                    <option key={y} value={y}>
-                      Year {y}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium">CGPA</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                  value={cgpa}
-                  onChange={(e) => setCgpa(e.target.value)}
-                  placeholder="3.50"
-                />
-              </label>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm ${
-                  citizenship === "MY"
-                    ? "border-brand-500 bg-brand-50 text-brand-900"
-                    : "border-slate-200 bg-white"
-                }`}
-                onClick={() => setCitizenship("MY")}
-              >
-                <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} />
-                Malaysian
-              </button>
-              <button
-                type="button"
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm ${
-                  citizenship === "INTL"
-                    ? "border-brand-500 bg-brand-50 text-brand-900"
-                    : "border-slate-200 bg-white"
-                }`}
-                onClick={() => setCitizenship("INTL")}
-              >
-                <Globe className="h-3.5 w-3.5" strokeWidth={1.75} />
-                International
-              </button>
-            </div>
-          </>
-        )}
-
-        {role === "staff" && (
-          <label className="block">
-            <span className="text-sm font-medium">Role</span>
-            <select
-              className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-              value={staffRole}
-              onChange={(e) => setStaffRole(e.target.value as typeof staffRole)}
+        {/* Role */}
+        <div className="mb-5">
+          <label className="block text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4 mb-2">I am a…</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-[10px] border-[1.5px] text-sm font-medium transition ${
+                role === "student"
+                  ? "border-ink bg-ink text-white"
+                  : "border-line bg-card text-ink-2 hover:border-ink-5"
+              }`}
+              onClick={() => setRole("student")}
             >
-              <option value="coordinator">Scholarship Officer (Yayasan UM)</option>
-              <option value="dean">Dean</option>
-              <option value="dvc">Deputy Vice-Chancellor (Academic)</option>
-              <option value="ips_officer">IPS Officer</option>
+              <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
+              Student
+            </button>
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-[10px] border-[1.5px] text-sm font-medium transition ${
+                role === "staff"
+                  ? "border-ink bg-ink text-white"
+                  : "border-line bg-card text-ink-2 hover:border-ink-5"
+              }`}
+              onClick={() => setRole("staff")}
+            >
+              <Briefcase className="h-4 w-4" strokeWidth={1.75} />
+              Staff
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block">
+            <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">Full name</span>
+            <input
+              type="text"
+              className="ug-input mt-1.5"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ahmad bin Ali"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">Faculty</span>
+            <select
+              className="ug-input mt-1.5"
+              value={faculty}
+              onChange={(e) => setFaculty(e.target.value)}
+            >
+              {FACULTIES.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
             </select>
           </label>
-        )}
 
-        <button className="btn-primary w-full" onClick={submit} disabled={loading}>
-          {loading ? "Saving…" : "Continue"}
-        </button>
+          {role === "student" && (
+            <>
+              <label className="block">
+                <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">Programme</span>
+                <input
+                  type="text"
+                  className="ug-input mt-1.5"
+                  value={programme}
+                  onChange={(e) => setProgramme(e.target.value)}
+                  placeholder="e.g. Software Engineering"
+                />
+              </label>
 
-        {error && (
-          <div className="card border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
-        )}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">Year</span>
+                  <select
+                    className="ug-input mt-1.5"
+                    value={year}
+                    onChange={(e) => setYear(parseInt(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5].map((y) => (
+                      <option key={y} value={y}>
+                        Year {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">CGPA</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="ug-input mt-1.5 mono"
+                    value={cgpa}
+                    onChange={(e) => setCgpa(e.target.value)}
+                    placeholder="3.50"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <span className="block text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4 mb-1.5">Citizenship</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-[10px] border-[1.5px] text-sm font-medium transition ${
+                      citizenship === "MY"
+                        ? "border-ink bg-ink text-white"
+                        : "border-line bg-card text-ink-2 hover:border-ink-5"
+                    }`}
+                    onClick={() => setCitizenship("MY")}
+                  >
+                    <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Malaysian
+                  </button>
+                  <button
+                    type="button"
+                    className={`inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-[10px] border-[1.5px] text-sm font-medium transition ${
+                      citizenship === "INTL"
+                        ? "border-ink bg-ink text-white"
+                        : "border-line bg-card text-ink-2 hover:border-ink-5"
+                    }`}
+                    onClick={() => setCitizenship("INTL")}
+                  >
+                    <Globe className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    International
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {role === "staff" && (
+            <label className="block">
+              <span className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-4">Staff role</span>
+              <select
+                className="ug-input mt-1.5"
+                value={staffRole}
+                onChange={(e) => setStaffRole(e.target.value as typeof staffRole)}
+              >
+                <option value="coordinator">Scholarship Officer (Yayasan UM)</option>
+                <option value="dean">Dean</option>
+                <option value="dvc">Deputy Vice-Chancellor (Academic)</option>
+                <option value="ips_officer">IPS Officer</option>
+              </select>
+            </label>
+          )}
+
+          <button
+            className="ug-btn primary w-full justify-center mt-2"
+            onClick={submit}
+            disabled={loading}
+          >
+            {loading ? "Saving…" : "Continue →"}
+          </button>
+
+          {error && (
+            <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <p className="mt-7 text-[12px] text-ink-4 text-center">
+          Your details are stored on UM-side Supabase only. Never shared with third parties.
+        </p>
       </div>
-    </div>
+    </main>
   );
 }

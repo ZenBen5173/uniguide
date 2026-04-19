@@ -7,8 +7,9 @@
  */
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export interface StepShape {
   id: string;
@@ -23,6 +24,7 @@ interface RendererProps {
   step: StepShape;
   value: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
+  applicationId?: string;
 }
 
 /* ─── small helpers ─── */
@@ -71,9 +73,55 @@ export function FormStep({ step, value, onChange }: RendererProps) {
 }
 
 /* ─── file_upload ─── */
-export function FileUploadStep({ step, value, onChange }: RendererProps) {
+export function FileUploadStep({ step, value, onChange, applicationId }: RendererProps) {
   const accepts = (step.config.accepts as string[]) ?? ["application/pdf"];
   const fileName = (value.filename as string) ?? null;
+  const storagePath = (value.storage_path as string) ?? null;
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = async (file: File) => {
+    if (!applicationId) {
+      setError("Internal: missing application context");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const supabase = getBrowserSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in");
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${user.id}/${applicationId}/${step.id}-${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("application-files")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      onChange({
+        filename: file.name,
+        storage_path: path,
+        size: file.size,
+        content_type: file.type,
+        uploaded_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeFile = async () => {
+    if (storagePath) {
+      try {
+        const supabase = getBrowserSupabase();
+        await supabase.storage.from("application-files").remove([storagePath]);
+      } catch {
+        // best-effort; orphan is harmless
+      }
+    }
+    onChange({});
+  };
 
   return (
     <>
@@ -87,29 +135,40 @@ export function FileUploadStep({ step, value, onChange }: RendererProps) {
           <div className="flex-1">
             <div className="text-sm font-semibold text-ink">{fileName}</div>
             <div className="text-[12.5px] text-ink-4 mt-0.5 flex items-center gap-2">
-              <span className="mono">uploaded</span>
+              <span className="mono">{formatSize(value.size as number)}</span>
               <span className="w-[3px] h-[3px] rounded-full bg-ink-5" />
-              <span className="text-moss font-medium">Parsed successfully</span>
+              <span className="text-moss font-medium">Stored securely</span>
             </div>
           </div>
           <button
             className="ug-btn ghost sm danger-ghost"
-            onClick={() => onChange({})}
+            onClick={removeFile}
           >
             Replace
           </button>
         </div>
       ) : (
-        <label className="ug-dropzone cursor-pointer">
+        <label className={`ug-dropzone cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
           <div className="ug-dropzone-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
+            {uploading ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                <line x1="12" y1="2" x2="12" y2="6" />
+                <line x1="12" y1="18" x2="12" y2="22" />
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            )}
           </div>
           <div className="flex-1">
-            <div className="text-[15px] font-semibold text-ink mb-1">Drop file here or click to browse</div>
+            <div className="text-[15px] font-semibold text-ink mb-1">
+              {uploading ? "Uploading…" : "Drop file here or click to browse"}
+            </div>
             <div className="text-[13px] text-ink-3 leading-snug">
               {accepts.join(", ")} up to 10 MB. Scanned copies are fine.
             </div>
@@ -118,15 +177,28 @@ export function FileUploadStep({ step, value, onChange }: RendererProps) {
             type="file"
             accept={accepts.join(",")}
             className="hidden"
+            disabled={uploading}
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) onChange({ filename: f.name, size: f.size });
+              if (f) void handleFile(f);
             }}
           />
         </label>
       )}
+      {error && (
+        <div className="mt-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12.5px] text-crimson">
+          Upload failed: {error}
+        </div>
+      )}
     </>
   );
+}
+
+function formatSize(bytes: number | undefined): string {
+  if (!bytes) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 /* ─── text ─── */
@@ -334,10 +406,10 @@ export function CoordinatorMessageStep({ step, value, onChange }: RendererProps)
 }
 
 /* ─── dispatcher ─── */
-export function StepBody({ step, value, onChange }: RendererProps) {
+export function StepBody({ step, value, onChange, applicationId }: RendererProps) {
   switch (step.type) {
     case "form": return <FormStep step={step} value={value} onChange={onChange} />;
-    case "file_upload": return <FileUploadStep step={step} value={value} onChange={onChange} />;
+    case "file_upload": return <FileUploadStep step={step} value={value} onChange={onChange} applicationId={applicationId} />;
     case "text": return <TextStep step={step} value={value} onChange={onChange} />;
     case "select": return <SelectStep step={step} value={value} onChange={onChange} />;
     case "multiselect": return <MultiselectStep step={step} value={value} onChange={onChange} />;

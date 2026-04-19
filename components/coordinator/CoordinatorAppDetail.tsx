@@ -155,9 +155,14 @@ export default function CoordinatorAppDetail({
                   </svg>
                   AI Briefing
                 </div>
-                <span className={`ug-rec ${data.briefing.recommendation === "approve" ? "approve" : data.briefing.recommendation === "reject" ? "reject" : "review"}`}>
-                  Recommends: {data.briefing.recommendation === "approve" ? "Approve" : data.briefing.recommendation === "reject" ? "Reject" : "Request Info"}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`ug-rec ${data.briefing.recommendation === "approve" ? "approve" : data.briefing.recommendation === "reject" ? "reject" : "review"}`}>
+                    Recommends: {data.briefing.recommendation === "approve" ? "Approve" : data.briefing.recommendation === "reject" ? "Reject" : "Request Info"}
+                  </span>
+                  {typeof data.application.ai_confidence === "number" && (
+                    <ConfidenceTag value={data.application.ai_confidence} />
+                  )}
+                </div>
               </div>
 
               {/* Reasoning */}
@@ -333,19 +338,83 @@ function studentInitials(name?: string | null): string {
   return name.split(/\s+/).map(p => p[0]?.toUpperCase() ?? "").slice(0, 2).join("");
 }
 
+function ConfidenceTag({ value }: { value: number }) {
+  const { label, color, bg } = (() => {
+    if (value >= 0.85) return { label: "Very confident", color: "var(--moss)", bg: "var(--moss-soft)" };
+    if (value >= 0.70) return { label: "Confident", color: "var(--moss)", bg: "var(--moss-soft)" };
+    if (value >= 0.50) return { label: "Borderline", color: "var(--amber)", bg: "var(--amber-soft)" };
+    return { label: "Review carefully", color: "var(--crimson)", bg: "var(--crimson-soft)" };
+  })();
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-semibold"
+      style={{ background: bg, color }}
+    >
+      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+      {label}
+      <span className="opacity-60 mono font-medium">{value.toFixed(2)}</span>
+    </span>
+  );
+}
+
 function renderResponse(s: { type: string; response_data: Record<string, unknown> | null }): React.ReactNode {
   const r = s.response_data;
   if (!r) return <span className="italic text-ink-4">no response</span>;
   if (typeof r.text === "string") return <span className="whitespace-pre-wrap">{r.text}</span>;
-  if (typeof r.filename === "string") return (
-    <span className="inline-flex items-center gap-1.5">
-      <Paperclip className="h-3.5 w-3.5 text-ink-3" strokeWidth={1.75} />
-      {r.filename}
-    </span>
-  );
+  if (typeof r.filename === "string") {
+    const path = typeof r.storage_path === "string" ? r.storage_path : null;
+    return path
+      ? <FileViewLink filename={r.filename} path={path} size={typeof r.size === "number" ? r.size : undefined} />
+      : (
+        <span className="inline-flex items-center gap-1.5 text-ink-4 italic">
+          <Paperclip className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {r.filename} <span className="text-[11px]">(legacy — file not stored)</span>
+        </span>
+      );
+  }
   if (Array.isArray(r.values)) return <span>{(r.values as string[]).join(", ")}</span>;
   if (typeof r.value === "string") return <span>{r.value}</span>;
   if (r.confirmed) return <span className="text-moss font-medium">Confirmed</span>;
   if (r.acknowledged) return <span className="text-moss font-medium">Acknowledged</span>;
   return <span className="mono text-[12px]">{JSON.stringify(r)}</span>;
+}
+
+function FileViewLink({ filename, path, size }: { filename: string; path: string; size?: number }) {
+  const [opening, setOpening] = useState(false);
+  const open = async () => {
+    setOpening(true);
+    try {
+      const res = await fetch(`/api/files/sign?path=${encodeURIComponent(path)}`);
+      const json = await res.json();
+      if (json.ok) {
+        window.open(json.data.url, "_blank", "noopener,noreferrer");
+      } else {
+        alert(`Could not open file: ${json.error}`);
+      }
+    } catch (err) {
+      alert(`Could not open file: ${err instanceof Error ? err.message : "network error"}`);
+    } finally {
+      setOpening(false);
+    }
+  };
+  const sizeLabel = size ? formatFileSize(size) : null;
+  return (
+    <button
+      type="button"
+      onClick={open}
+      disabled={opening}
+      className="inline-flex items-center gap-1.5 text-crimson hover:underline disabled:opacity-60"
+    >
+      <Paperclip className="h-3.5 w-3.5" strokeWidth={1.75} />
+      <span className="font-medium">{filename}</span>
+      {sizeLabel && <span className="text-[11px] text-ink-4 mono">{sizeLabel}</span>}
+      <span className="text-[11px] text-ink-4">{opening ? "Opening…" : "(view)"}</span>
+    </button>
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
