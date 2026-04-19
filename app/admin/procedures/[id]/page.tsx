@@ -31,10 +31,7 @@ export default async function AdminProcedureDetailPage({
       <TopBar
         user={{ name, initials, email: user.email }}
         roleChip={{ label: "Admin · UniGuide" }}
-        nav={[
-          { href: "/admin", label: "Procedures", active: true },
-          { href: "/admin", label: "Audit log" },
-        ]}
+        nav={[{ href: "/admin", label: "Procedures" }]}
       />
 
       <main className="mx-auto max-w-[1320px] px-8 pt-6 pb-16">
@@ -61,9 +58,6 @@ export default async function AdminProcedureDetailPage({
                 </a>
               </>}
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/admin" className="ug-btn no-underline">↻ Re-upload SOP</Link>
           </div>
         </div>
 

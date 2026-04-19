@@ -135,10 +135,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
     <>
       <TopBar
         user={user}
-        nav={[
-          { href: "/student/portal", label: "Portal", active: false },
-          { href: "/student/portal", label: "My Applications", active: true },
-        ]}
+        nav={[{ href: "/student/portal", label: "Portal" }]}
       />
 
       <main className="mx-auto max-w-[1320px] grid grid-cols-[minmax(0,1fr)_360px] gap-10 px-10 pt-8 pb-20">
@@ -209,7 +206,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                     </div>
                     <div className="ug-step-summary mt-1 truncate">{summariseResponse(s.response_data)}</div>
                   </div>
-                  <div className="ug-step-meta text-[12px] text-ink-5 hover:text-ink cursor-pointer">Edit</div>
+                  <div className="ug-step-meta text-[11.5px] text-moss font-medium">Saved</div>
                 </div>
               </article>
             ))}
@@ -388,25 +385,6 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
             </div>
           )}
 
-          {/* Help CTA — soft, not aggressive */}
-          <div className="rounded-[14px] p-4 border border-line bg-paper-2">
-            <div className="flex items-start gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-card border border-line text-ink-3 flex-shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13.5px] font-semibold text-ink mb-0.5">Need a human?</div>
-                <div className="text-[12.5px] text-ink-3 leading-snug mb-2.5">
-                  Nor A. from the Yayasan UM office is on duty today. Replies usually within 2 hours.
-                </div>
-                <button className="text-[12.5px] font-semibold text-crimson hover:text-[#7a1c2c] inline-flex items-center gap-1">
-                  Send a message →
-                </button>
-              </div>
-            </div>
-          </div>
         </aside>
       </main>
     </>

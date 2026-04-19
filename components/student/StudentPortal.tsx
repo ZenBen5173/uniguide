@@ -86,10 +86,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
     <>
       <TopBar
         user={user}
-        nav={[
-          { href: "/student/portal", label: "Portal", active: true },
-          { href: "/student/portal", label: "My Applications" },
-        ]}
+        nav={[{ href: "/student/portal", label: "Portal", active: true }]}
       />
 
       <main className="mx-auto max-w-[1180px] px-8 pt-8 pb-20">

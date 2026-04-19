@@ -91,12 +91,11 @@ export function FileUploadStep({ step, value, onChange }: RendererProps) {
               <span className="text-moss font-medium">Parsed successfully</span>
             </div>
           </div>
-          <button className="ug-btn ghost sm">Preview</button>
           <button
             className="ug-btn ghost sm danger-ghost"
             onClick={() => onChange({})}
           >
-            Remove
+            Replace
           </button>
         </div>
       ) : (

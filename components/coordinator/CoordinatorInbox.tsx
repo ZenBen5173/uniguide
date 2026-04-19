@@ -39,6 +39,7 @@ const FILTER_TABS = [
 export default function CoordinatorInbox({ user }: { user: { name: string; initials: string; email?: string } }) {
   const router = useRouter();
   const [filter, setFilter] = useState("pending");
+  const [search, setSearch] = useState("");
   const [apps, setApps] = useState<InboxApp[]>([]);
   const [counts, setCounts] = useState<Counts>({ pending: 0, approved: 0, rejected: 0, more_info: 0 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -63,14 +64,27 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   useEffect(() => { void refresh(); }, [filter]);
 
   // Sort: AI urgency first (low confidence + flags), then submitted_at desc.
+  // Search: filter by student name, matric, or procedure name (case-insensitive).
   const sorted = useMemo(() => {
-    return [...apps].sort((a, b) => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? apps.filter((a) => {
+          const hay = [
+            a.student_profiles?.full_name,
+            a.procedures?.name,
+            a.procedure_id,
+            a.student_summary,
+          ].filter(Boolean).join(" ").toLowerCase();
+          return hay.includes(q);
+        })
+      : apps;
+    return [...filtered].sort((a, b) => {
       const urgentA = (a.flags?.some(f => f.severity === "block") ? 2 : 0) + (a.ai_confidence !== null && a.ai_confidence < 0.7 ? 1 : 0);
       const urgentB = (b.flags?.some(f => f.severity === "block") ? 2 : 0) + (b.ai_confidence !== null && b.ai_confidence < 0.7 ? 1 : 0);
       if (urgentA !== urgentB) return urgentB - urgentA;
       return (b.submitted_at ?? "").localeCompare(a.submitted_at ?? "");
     });
-  }, [apps]);
+  }, [apps, search]);
 
   const toggleAll = () => {
     if (selected.size === sorted.length) setSelected(new Set());
@@ -109,10 +123,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
       <TopBar
         user={user}
         roleChip={{ label: "Coordinator · Yayasan UM" }}
-        nav={[
-          { href: "/coordinator/inbox", label: "Inbox", active: true },
-          { href: "/coordinator/inbox", label: "Decided" },
-        ]}
+        nav={[{ href: "/coordinator/inbox", label: "Inbox", active: true }]}
       />
 
       <main className="mx-auto max-w-[1440px] px-8 pt-6 pb-16">
@@ -142,9 +153,18 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
             </svg>
             <input
               className="flex-1 border-0 outline-none bg-transparent text-sm text-ink"
-              placeholder="Search by student, matric, scholarship…"
+              placeholder="Search by student name or procedure…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-            <span className="font-mono text-[11px] px-1.5 py-0.5 border border-line rounded text-ink-4 bg-paper-2">⌘K</span>
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-[11px] text-ink-4 hover:text-ink"
+              >
+                Clear
+              </button>
+            )}
           </div>
           <div className="flex gap-1.5 flex-1">
             {FILTER_TABS.map((t) => (
@@ -169,8 +189,11 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
               </button>
             ))}
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ai-line bg-ai-tint text-[13px] font-medium text-ai-ink">
-            <span className="opacity-70">Sort</span> AI urgency
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ai-line bg-ai-tint text-[13px] font-medium text-ai-ink" title="Applications with low AI confidence or block-flags surface first">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l2.35 5.6L20 8l-4 4 1.1 5.9L12 15.5 6.9 17.9 8 12 4 8l5.65-.4z" />
+            </svg>
+            <span className="opacity-70">Sorted by</span> AI urgency
           </div>
         </div>
 

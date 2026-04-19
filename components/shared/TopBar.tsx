@@ -38,10 +38,11 @@ export default function TopBar({ roleChip, nav, user }: Props) {
         </nav>
       )}
 
-      <div className="flex items-center gap-3.5 text-[13px] text-ink-3">
-        <span className="hidden sm:inline">EN · BM</span>
-        <span className="hidden sm:inline">{user.name}</span>
-        <div className="ug-avatar">{user.initials}</div>
+      <div className="flex items-center gap-3 text-[13px] text-ink-3">
+        <div className="hidden sm:flex items-center gap-2.5" title={user.email}>
+          <div className="ug-avatar">{user.initials}</div>
+          <span className="font-medium text-ink-2">{user.name}</span>
+        </div>
         <SignOutButton />
       </div>
     </header>
