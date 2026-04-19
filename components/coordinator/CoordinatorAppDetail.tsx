@@ -57,10 +57,18 @@ export default function CoordinatorAppDetail({
   user: { name: string; initials: string; email?: string };
 }) {
   const router = useRouter();
+  void router;
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Letter preview modal state
+  const [previewKind, setPreviewKind] = useState<"approve" | "reject" | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewLetter, setPreviewLetter] = useState("");
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[] } | null>(null);
 
   const refresh = async () => {
     try {
@@ -74,17 +82,71 @@ export default function CoordinatorAppDetail({
 
   useEffect(() => { void refresh(); }, [id]);
 
-  const decide = async (decision: "approve" | "reject" | "request_info") => {
-    if (decision === "request_info" && !comment.trim()) {
-      alert("Please type what you'd like the student to provide.");
-      return;
+  const openPreview = async (kind: "approve" | "reject") => {
+    setPreviewKind(kind);
+    setPreviewBusy(true);
+    setPreviewError(null);
+    setPreviewLetter("");
+    setPreviewMeta(null);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/preview-letter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: kind, comment: comment.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        setPreviewError(json.error);
+        return;
+      }
+      setPreviewLetter(json.data.letter_text);
+      setPreviewMeta({
+        template_name: json.data.template_name,
+        unfilled: json.data.unfilled_placeholders ?? [],
+      });
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setPreviewBusy(false);
     }
-    setBusy(decision);
+  };
+
+  const confirmDecision = async () => {
+    if (!previewKind) return;
+    setBusy(previewKind);
     try {
       const res = await fetch(`/api/coordinator/applications/${id}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, comment: comment.trim() || undefined }),
+        body: JSON.stringify({
+          decision: previewKind,
+          comment: comment.trim() || undefined,
+          letter_text_override: previewLetter || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        await refresh();
+        setComment("");
+        setPreviewKind(null);
+        setPreviewLetter("");
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const requestInfo = async () => {
+    if (!comment.trim()) {
+      alert("Please type what you'd like the student to provide.");
+      return;
+    }
+    setBusy("request_info");
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: "request_info", comment: comment.trim() }),
       });
       const json = await res.json();
       if (json.ok) {
@@ -301,14 +363,14 @@ export default function CoordinatorAppDetail({
 
               <button
                 className="ug-btn moss w-full justify-center gap-2"
-                onClick={() => decide("approve")}
-                disabled={busy !== null || decided}
+                onClick={() => openPreview("approve")}
+                disabled={busy !== null || decided || previewBusy}
               >
-                {busy === "approve" ? "Approving…" : (<><Check className="h-4 w-4" strokeWidth={2.25} />Approve · generate acceptance letter</>)}
+                <Check className="h-4 w-4" strokeWidth={2.25} />Preview & approve
               </button>
               <button
                 className="ug-btn w-full justify-center gap-2"
-                onClick={() => decide("request_info")}
+                onClick={requestInfo}
                 disabled={busy !== null}
                 style={{ background: "var(--amber-soft)", color: "var(--amber)", borderColor: "#E8DBB5" }}
               >
@@ -316,11 +378,14 @@ export default function CoordinatorAppDetail({
               </button>
               <button
                 className="ug-btn crimson w-full justify-center gap-2"
-                onClick={() => decide("reject")}
-                disabled={busy !== null || decided}
+                onClick={() => openPreview("reject")}
+                disabled={busy !== null || decided || previewBusy}
               >
-                {busy === "reject" ? "Rejecting…" : (<><X className="h-4 w-4" strokeWidth={2.25} />Reject · generate rejection letter</>)}
+                <X className="h-4 w-4" strokeWidth={2.25} />Preview & reject
               </button>
+              <p className="text-[11px] text-ink-4 text-center pt-1">
+                You'll see the letter and can edit it before it's sent.
+              </p>
 
               {decided && (
                 <p className="text-[12px] text-ink-4 italic">This application has already been decided. Letters are visible above.</p>
@@ -329,6 +394,90 @@ export default function CoordinatorAppDetail({
           </div>
         </aside>
       </main>
+
+      {previewKind && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-6" onClick={() => previewBusy ? null : setPreviewKind(null)}>
+          <div className="ug-card w-full max-w-[760px] max-h-[88vh] overflow-hidden flex flex-col shadow-ug-lift" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-line-2 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">
+                  Preview · {previewKind === "approve" ? "Acceptance" : "Rejection"} letter
+                </div>
+                <div className="text-[18px] font-semibold mt-0.5">
+                  Review what the student will see
+                </div>
+                {previewMeta && (
+                  <div className="text-[12px] text-ink-4 mt-1.5 mono">
+                    template: {previewMeta.template_name}
+                    {previewMeta.unfilled.length > 0 && (
+                      <span className="ml-2 text-amber font-semibold">
+                        · {previewMeta.unfilled.length} unfilled placeholder{previewMeta.unfilled.length === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                className="ug-btn ghost"
+                onClick={() => setPreviewKind(null)}
+                disabled={previewBusy || busy !== null}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {previewBusy ? (
+                <div className="text-center py-8 text-ink-4">Generating preview…</div>
+              ) : previewError ? (
+                <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
+                  {previewError}
+                </div>
+              ) : (
+                <>
+                  <label className="block">
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">
+                      Editable letter — your changes are sent verbatim
+                    </span>
+                    <textarea
+                      className="ug-textarea mt-1.5 min-h-[340px] text-[13.5px] leading-relaxed font-sans"
+                      value={previewLetter}
+                      onChange={(e) => setPreviewLetter(e.target.value)}
+                      disabled={busy !== null}
+                    />
+                  </label>
+                  {previewMeta && previewMeta.unfilled.length > 0 && (
+                    <div className="mt-3 px-3 py-2 rounded-lg bg-amber-soft border border-[#E8DBB5] text-[12px] text-amber">
+                      The AI couldn't fill: {previewMeta.unfilled.map((p) => `{{${p}}}`).join(", ")}. Edit them in the text above before sending.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {!previewBusy && !previewError && (
+              <div className="px-6 py-4 border-t border-line-2 flex items-center justify-between gap-3">
+                <div className="text-[12px] text-ink-4">
+                  Once sent, the letter is delivered to the student immediately.
+                </div>
+                <button
+                  className={`ug-btn ${previewKind === "approve" ? "moss" : "crimson"} gap-2`}
+                  onClick={confirmDecision}
+                  disabled={busy !== null || !previewLetter.trim()}
+                >
+                  {busy ? `${previewKind === "approve" ? "Approving" : "Rejecting"}…` : (
+                    <>
+                      {previewKind === "approve"
+                        ? <><Check className="h-4 w-4" strokeWidth={2.25} />Confirm & send acceptance</>
+                        : <><X className="h-4 w-4" strokeWidth={2.25} />Confirm & send rejection</>}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

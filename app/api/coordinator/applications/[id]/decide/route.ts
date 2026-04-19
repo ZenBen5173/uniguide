@@ -21,6 +21,9 @@ import { apiError, apiSuccess } from "@/lib/utils/responses";
 const Body = z.object({
   decision: z.enum(["approve", "reject", "request_info"]),
   comment: z.string().max(2000).optional(),
+  /** If set, this exact text is used as the letter (skip GLM regen). Set when
+   *  the coordinator previewed and edited the letter before sending. */
+  letter_text_override: z.string().max(20000).optional(),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -113,44 +116,51 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   let letterRowId: string | null = null;
 
   if (template) {
-    const appCtx = await loadApplicationContext(applicationId);
-    const history = await buildHistory(applicationId);
-    const briefingRow = briefing
-      ? await sb.from("application_briefings").select("reasoning").eq("id", briefing.id).single()
-      : { data: null };
-    const summary = briefingRow.data?.reasoning ?? `Application reviewed by coordinator.`;
+    let letterText: string | null = null;
 
-    let filled;
-    try {
-      filled = await fillLetter(
-        {
-          templateText: template.template_text,
-          templateType,
-          procedureName: appCtx?.procedure.name ?? "UM Procedure",
-          studentProfile: appCtx?.studentProfile ?? {
-            full_name: null, faculty: null, programme: null,
-            year: null, cgpa: null, citizenship: "MY",
+    if (parsed.data.letter_text_override && parsed.data.letter_text_override.trim().length > 0) {
+      // Coordinator previewed and edited the letter — use their text verbatim.
+      letterText = parsed.data.letter_text_override.trim();
+    } else {
+      const appCtx = await loadApplicationContext(applicationId);
+      // history fetched but unused here; kept for potential prompt enrichment
+      void buildHistory;
+      const briefingRow = briefing
+        ? await sb.from("application_briefings").select("reasoning").eq("id", briefing.id).single()
+        : { data: null };
+      const summary = briefingRow.data?.reasoning ?? `Application reviewed by coordinator.`;
+
+      try {
+        const filled = await fillLetter(
+          {
+            templateText: template.template_text,
+            templateType,
+            procedureName: appCtx?.procedure.name ?? "UM Procedure",
+            studentProfile: appCtx?.studentProfile ?? {
+              full_name: null, faculty: null, programme: null,
+              year: null, cgpa: null, citizenship: "MY",
+            },
+            applicationSummary: summary,
+            coordinatorComment: parsed.data.comment ?? null,
+            detectedPlaceholders: template.detected_placeholders ?? [],
           },
-          applicationSummary: summary,
-          coordinatorComment: parsed.data.comment ?? null,
-          detectedPlaceholders: template.detected_placeholders ?? [],
-        },
-        { applicationId }
-      );
-    } catch (err) {
-      // Letter generation failed — still record the decision but skip letter.
-      console.error("[decide] letter generation failed:", err);
-      filled = null;
+          { applicationId }
+        );
+        letterText = filled.filled_text;
+      } catch (err) {
+        console.error("[decide] letter generation failed:", err);
+        letterText = null;
+      }
     }
 
-    if (filled) {
+    if (letterText) {
       const { data: letterRow } = await sb
         .from("application_letters")
         .insert({
           application_id: applicationId,
           template_id: template.id,
           letter_type: templateType,
-          generated_text: filled.filled_text,
+          generated_text: letterText,
           delivered_to_student_at: new Date().toISOString(),
         })
         .select("id")

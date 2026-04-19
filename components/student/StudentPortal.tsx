@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 interface MyApplication {
   id: string;
@@ -34,6 +35,15 @@ export default function StudentPortal({ user }: { user: { name: string; initials
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshApps = async () => {
+    try {
+      const a = await fetch("/api/applications").then((r) => r.json());
+      if (a.ok) setApps(a.data.applications);
+    } catch {
+      // ignore — initial load already showed error
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -52,6 +62,28 @@ export default function StudentPortal({ user }: { user: { name: string; initials
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  // Realtime: when any of this user's applications flips status, refetch list
+  // so the portal badge updates without a manual reload.
+  useEffect(() => {
+    const supabase = getBrowserSupabase();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    (async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      channel = supabase
+        .channel(`portal:${authUser.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${authUser.id}` },
+          () => { void refreshApps(); }
+        )
+        .subscribe();
+    })();
+    return () => {
+      if (channel) void supabase.removeChannel(channel);
+    };
   }, []);
 
   const startApplication = async (procedureId: string) => {

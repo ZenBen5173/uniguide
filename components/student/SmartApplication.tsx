@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
@@ -67,6 +68,34 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
   };
 
   useEffect(() => { void refresh(); }, [id]);
+
+  // Realtime: refetch whenever this application's row, its steps, or its
+  // letters change server-side. Lets the student see the coordinator decision
+  // (status flip + new letter) without a manual refresh.
+  useEffect(() => {
+    const supabase = getBrowserSupabase();
+    const channel = supabase
+      .channel(`app:${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "applications", filter: `id=eq.${id}` },
+        () => { void refresh(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "application_steps", filter: `application_id=eq.${id}` },
+        () => { void refresh(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "application_letters", filter: `application_id=eq.${id}` },
+        () => { void refresh(); }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id]);
 
   const completed = useMemo(() => (data?.steps ?? []).filter((s) => s.status === "completed"), [data]);
   const current = useMemo(() => (data?.steps ?? []).find((s) => s.status === "pending"), [data]);
