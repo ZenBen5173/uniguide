@@ -7,26 +7,17 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Stage = "email" | "code";
 
+const DEMO_STUDENT = { email: "demo-student@uniguide.local", password: "demo-student-2026" };
+const DEMO_COORD =   { email: "demo-coordinator@uniguide.local", password: "demo-coord-2026" };
+const DEMO_ADMIN =   { email: "demo-admin@uniguide.local", password: "demo-admin-2026" };
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-16 text-slate-500">Loading…</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-md px-6 py-16 text-ink-4">Loading…</div>}>
       <LoginInner />
     </Suspense>
   );
 }
-
-const DEMO_STUDENT = {
-  email: "demo-student@uniguide.local",
-  password: "demo-student-2026",
-};
-const DEMO_COORD = {
-  email: "demo-coordinator@uniguide.local",
-  password: "demo-coord-2026",
-};
-const DEMO_ADMIN = {
-  email: "demo-admin@uniguide.local",
-  password: "demo-admin-2026",
-};
 
 function LoginInner() {
   const router = useRouter();
@@ -49,206 +40,243 @@ function LoginInner() {
     opts: { reset?: boolean } = {}
   ) => {
     setDemoBusy(creds.email);
-    setError(null);
-    setInfo(null);
-
-    if (opts.reset) {
-      await fetch("/api/demo/reset", { method: "POST" });
-    }
-
+    setError(null); setInfo(null);
+    if (opts.reset) await fetch("/api/demo/reset", { method: "POST" });
     const { error: err } = await supabase.auth.signInWithPassword(creds);
-    if (err) {
-      setDemoBusy(null);
-      setError(err.message);
-      return;
-    }
+    if (err) { setDemoBusy(null); setError(err.message); return; }
     router.push(redirectTo);
     router.refresh();
   };
 
   const sendCode = async () => {
-    setLoading(true);
-    setError(null);
-    setInfo(null);
-
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-
+    setLoading(true); setError(null); setInfo(null);
+    const { error: err } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
     setLoading(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setInfo(`We sent a 6-digit code to ${email}. It usually arrives within 30 seconds.`);
+    if (err) { setError(err.message); return; }
+    setInfo(`We sent a 6-digit code to ${email}.`);
     setStage("code");
   };
 
   const verifyCode = async () => {
-    setLoading(true);
-    setError(null);
-
-    const { data, error: err } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: "email",
-    });
-
-    if (err || !data.user) {
-      setLoading(false);
-      setError(err?.message ?? "Invalid code");
-      return;
-    }
-
-    // Bootstrap the user's public profile if missing.
+    setLoading(true); setError(null);
+    const { data, error: err } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "email" });
+    if (err || !data.user) { setLoading(false); setError(err?.message ?? "Invalid code"); return; }
     const profileRes = await fetch("/api/profile/bootstrap", { method: "POST" });
     const profileJson = await profileRes.json();
-
     setLoading(false);
-
-    if (profileJson.data?.needs_onboarding) {
-      router.push("/onboarding?next=" + encodeURIComponent(next));
-    } else {
-      router.push(next);
-    }
+    if (profileJson.data?.needs_onboarding) router.push("/onboarding?next=" + encodeURIComponent(next));
+    else router.push(next);
   };
 
   return (
-    <div className="mx-auto max-w-md px-6 py-16">
-      <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
-        ← Back
-      </Link>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.05fr_1fr]">
+      {/* Left: brand panel */}
+      <aside className="hidden lg:flex flex-col justify-between p-12 bg-ink text-white relative overflow-hidden">
+        <div className="absolute -right-32 -top-32 w-[400px] h-[400px] rounded-full opacity-30"
+             style={{ background: "radial-gradient(circle, rgba(161,37,58,.6) 0%, transparent 65%)" }} />
+        <div className="absolute -left-20 -bottom-32 w-[300px] h-[300px] rounded-full opacity-20"
+             style={{ background: "radial-gradient(circle, rgba(184,147,90,.5) 0%, transparent 65%)" }} />
 
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-slate-600">
-        Use your email below — or jump straight in with a demo account.
-      </p>
-
-      <div className="mt-6 card border-brand-200 bg-brand-50 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-          Demo accounts (instant sign-in)
-        </p>
-        <div className="mt-3 space-y-2">
-          <button
-            className="btn-primary w-full justify-between text-sm"
-            onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal")}
-            disabled={!!demoBusy}
-          >
-            <span>🎓 Sign in as Demo Student</span>
-            <span className="text-xs opacity-80">B40, CGPA 3.10, FSKTM Y3</span>
-          </button>
-          <button
-            className="btn-primary w-full justify-between text-sm"
-            onClick={() => demoSignIn(DEMO_COORD, "/coordinator/inbox")}
-            disabled={!!demoBusy}
-          >
-            <span>🧑‍💼 Sign in as Demo Coordinator</span>
-            <span className="text-xs opacity-80">Yayasan UM Scholarship Officer</span>
-          </button>
-          <button
-            className="btn-primary w-full justify-between text-sm bg-slate-700 hover:bg-slate-800"
-            onClick={() => demoSignIn(DEMO_ADMIN, "/admin")}
-            disabled={!!demoBusy}
-          >
-            <span>🛠️ Sign in as Demo Admin</span>
-            <span className="text-xs opacity-80">Platform admin (manages procedures + SOPs)</span>
-          </button>
-          <button
-            className="btn w-full justify-between border border-slate-300 bg-white text-slate-700 text-sm hover:bg-slate-50"
-            onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal", { reset: true })}
-            disabled={!!demoBusy}
-          >
-            <span>🔄 Reset Demo Student & sign in</span>
-            <span className="text-xs text-slate-500">wipes all prior applications</span>
-          </button>
+        <div className="relative">
+          <Link href="/" className="inline-flex items-center gap-2.5 text-white no-underline">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white font-bold text-sm">U</div>
+            <span className="font-bold text-lg tracking-tight">UniGuide</span>
+            <span className="ml-1 text-sm text-white/60 font-medium">· Universiti Malaya</span>
+          </Link>
         </div>
-        <p className="mt-3 text-xs text-brand-700">
-          {demoBusy ? "Signing in…" : "Pick one — judges typically use Demo Student → Coordinator."}
-        </p>
-      </div>
 
-      <div className="mt-6 card p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Or use your own email (6-digit code)
-        </p>
-        {stage === "email" && (
-          <>
-            <label className="block">
-              <span className="text-sm font-medium">Email</span>
-              <input
-                type="email"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                placeholder="you@um.edu.my"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                autoFocus
+        <div className="relative max-w-md">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-white/60 mb-4">UMHackathon 2026 · Domain 1</p>
+          <h2 className="text-[40px] leading-[1.1] font-semibold tracking-tight m-0 mb-5">
+            Your AI co-pilot for university <span className="serif italic font-normal">paperwork</span>.
+          </h2>
+          <p className="text-[15px] text-white/70 leading-relaxed">
+            UniGuide reads your situation in plain English, builds your application from the official UM SOP,
+            and walks you through it adaptively — catching the silent-fail traps before they cost you a semester.
+          </p>
+        </div>
+
+        <div className="relative text-[12px] text-white/50">
+          Powered by <span className="font-semibold text-white/70">Z.AI GLM</span> · Built by Team Breaking Bank
+        </div>
+      </aside>
+
+      {/* Right: signin */}
+      <main className="flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-12">
+        <div className="mx-auto w-full max-w-[480px]">
+          <Link href="/" className="text-[13px] text-ink-4 hover:text-ink no-underline inline-flex items-center gap-1">
+            ← Home
+          </Link>
+
+          <h1 className="mt-5 text-[32px] leading-tight font-semibold tracking-tight">
+            Sign in <span className="serif italic font-normal text-ink-2">— pick a way</span>
+          </h1>
+          <p className="mt-2 text-[14.5px] text-ink-3">
+            Use your email below, or jump in with a demo account so you can poke around immediately.
+          </p>
+
+          {/* Demo accounts — 3 horizontal tiles */}
+          <div className="mt-7">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-4">Demo accounts · instant</span>
+              <span className="flex-1 h-px bg-line" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <DemoTile
+                emoji="🎓"
+                label="Student"
+                tag="B40 · CGPA 3.10"
+                accent="moss"
+                busy={demoBusy === DEMO_STUDENT.email}
+                disabled={!!demoBusy}
+                onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal")}
               />
-            </label>
-            <button
-              className="btn-primary w-full"
-              onClick={sendCode}
-              disabled={loading || !email.includes("@")}
-            >
-              {loading ? "Sending…" : "Send code"}
-            </button>
-          </>
-        )}
-
-        {stage === "code" && (
-          <>
-            <label className="block">
-              <span className="text-sm font-medium">Verification code</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-3 text-center text-2xl tracking-widest"
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                disabled={loading}
-                autoFocus
+              <DemoTile
+                emoji="🧑‍💼"
+                label="Coordinator"
+                tag="Yayasan UM"
+                accent="amber"
+                busy={demoBusy === DEMO_COORD.email}
+                disabled={!!demoBusy}
+                onClick={() => demoSignIn(DEMO_COORD, "/coordinator/inbox")}
               />
-            </label>
-            <button
-              className="btn-primary w-full"
-              onClick={verifyCode}
-              disabled={loading || code.length !== 6}
-            >
-              {loading ? "Verifying…" : "Sign in"}
-            </button>
-            <button
-              className="btn-ghost w-full text-sm"
-              onClick={() => {
-                setStage("email");
-                setCode("");
-                setInfo(null);
-              }}
-              disabled={loading}
-            >
-              Use a different email
-            </button>
-          </>
-        )}
-      </div>
+              <DemoTile
+                emoji="🛠️"
+                label="Admin"
+                tag="Manage SOPs"
+                accent="navy"
+                busy={demoBusy === DEMO_ADMIN.email}
+                disabled={!!demoBusy}
+                onClick={() => demoSignIn(DEMO_ADMIN, "/admin")}
+              />
+            </div>
 
-      {info && (
-        <div className="mt-4 card border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-          {info}
-        </div>
-      )}
-      {error && (
-        <div className="mt-4 card border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {error}
-        </div>
-      )}
+            <button
+              className="mt-2.5 w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-[10px] text-[13px] font-medium text-ink-3 hover:text-ink hover:bg-paper-2 border border-dashed border-line"
+              onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal", { reset: true })}
+              disabled={!!demoBusy}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              Reset Demo Student & sign in
+              <span className="text-[11px] text-ink-4 font-normal">— wipes prior applications</span>
+            </button>
+          </div>
 
-      <p className="mt-6 text-xs text-slate-400">
-        First time signing in? We'll ask for a few details (faculty, programme, CGPA) on the next screen.
-      </p>
+          {/* Email signin */}
+          <div className="mt-7">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-4">Or use your email</span>
+              <span className="flex-1 h-px bg-line" />
+            </div>
+
+            {stage === "email" && (
+              <div className="space-y-3">
+                <input
+                  type="email"
+                  className="ug-input"
+                  placeholder="you@um.edu.my"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  className="ug-btn primary w-full justify-center"
+                  onClick={sendCode}
+                  disabled={loading || !email.includes("@")}
+                >
+                  {loading ? "Sending code…" : "Send 6-digit code →"}
+                </button>
+              </div>
+            )}
+
+            {stage === "code" && (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="ug-input mono text-center text-[24px] tracking-[0.4em] py-3"
+                  placeholder="000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  disabled={loading}
+                  autoFocus
+                />
+                <button
+                  className="ug-btn primary w-full justify-center"
+                  onClick={verifyCode}
+                  disabled={loading || code.length !== 6}
+                >
+                  {loading ? "Verifying…" : "Verify & sign in"}
+                </button>
+                <button
+                  className="ug-btn ghost w-full text-sm justify-center"
+                  onClick={() => { setStage("email"); setCode(""); setInfo(null); }}
+                  disabled={loading}
+                >
+                  Use a different email
+                </button>
+              </div>
+            )}
+          </div>
+
+          {info && (
+            <div className="mt-4 px-4 py-3 rounded-[10px] bg-ai-tint border border-ai-line text-[13px] text-ai-ink">
+              {info}
+            </div>
+          )}
+          {error && (
+            <div className="mt-4 px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
+              {error}
+            </div>
+          )}
+
+          <p className="mt-7 text-[12px] text-ink-4 text-center">
+            First time? We'll ask for faculty, programme, and CGPA after you sign in.
+          </p>
+        </div>
+      </main>
     </div>
+  );
+}
+
+interface TileProps {
+  emoji: string;
+  label: string;
+  tag: string;
+  accent: "moss" | "amber" | "navy";
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}
+
+function DemoTile({ emoji, label, tag, accent, busy, disabled, onClick }: TileProps) {
+  const cls = {
+    moss:  "border-[#CFDDCF] hover:border-moss bg-card hover:bg-moss-soft",
+    amber: "border-[#E8DBB5] hover:border-amber bg-card hover:bg-amber-soft",
+    navy:  "border-line hover:border-ink   bg-card hover:bg-paper-2",
+  }[accent];
+  const labelTone = {
+    moss: "text-moss",
+    amber: "text-amber",
+    navy: "text-ink",
+  }[accent];
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`group relative flex flex-col items-start gap-1 p-3.5 rounded-[12px] border transition disabled:opacity-50 ${cls}`}
+    >
+      <span className="text-[22px] leading-none">{emoji}</span>
+      <span className={`text-[14px] font-semibold ${labelTone}`}>
+        {busy ? "Signing in…" : label}
+      </span>
+      <span className="text-[11.5px] text-ink-4">{tag}</span>
+    </button>
   );
 }

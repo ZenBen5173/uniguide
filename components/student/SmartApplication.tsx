@@ -152,27 +152,25 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
             <span className="text-ink font-medium">{procedureName}</span>
           </div>
 
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-6 mb-4">
-            <div>
-              <h1 className="text-[34px] leading-[1.1] font-semibold tracking-tight m-0 mb-2">
-                {procedureName} <span className="serif italic font-normal text-ink-2">— smart application</span>
-              </h1>
-              <p className="text-[15px] text-ink-3 max-w-xl leading-snug">
-                A guided, personalised application prepared from the official UM SOP and your profile. Answers are saved automatically.
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2.5 pt-1">
-              <div className="flex gap-2">
-                <span className="ug-pill">
-                  <span className="dot" />
-                  {isSubmitted ? data.application.status.replace(/_/g, " ") : `Draft · Step ${completedCount + (current ? 1 : 0)} of ~${totalEstimate}`}
-                </span>
-                <span className="ug-pill ai">
-                  <span className="dot" />
-                  Guided by UniGuide AI
-                </span>
-              </div>
+          {/* Title block — pills full-width below so they don't wrap */}
+          <div className="mb-4">
+            <h1 className="text-[34px] leading-[1.1] font-semibold tracking-tight m-0 mb-2">
+              {procedureName} <span className="serif italic font-normal text-ink-2">— smart application</span>
+            </h1>
+            <p className="text-[15px] text-ink-3 max-w-2xl leading-snug">
+              A guided, personalised application prepared from the official UM SOP and your profile. Answers are saved automatically.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <span className="ug-pill whitespace-nowrap">
+                <span className="dot" />
+                {isSubmitted
+                  ? <span className="capitalize">{data.application.status.replace(/_/g, " ")}</span>
+                  : `Draft · Step ${completedCount + (current ? 1 : 0)} of ~${totalEstimate}`}
+              </span>
+              <span className="ug-pill ai whitespace-nowrap">
+                <span className="dot" />
+                Guided by UniGuide AI
+              </span>
             </div>
           </div>
 
@@ -203,11 +201,15 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <div>
-                    <div className="ug-step-title">{stepLabelFromPrompt(s.prompt_text)}</div>
-                    <div className="ug-step-summary">{summariseResponse(s.response_data)}</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] mono text-ink-4 uppercase tracking-wider">Step {s.ordinal}</span>
+                      <span className="text-[11px] text-ink-4">·</span>
+                      <span className="text-[12.5px] text-ink-3 font-medium">{stepTypeLabel(s.type)}</span>
+                    </div>
+                    <div className="ug-step-summary mt-1 truncate">{summariseResponse(s.response_data)}</div>
                   </div>
-                  <div className="ug-step-meta">Step {s.ordinal}</div>
+                  <div className="ug-step-meta text-[12px] text-ink-5 hover:text-ink cursor-pointer">Edit</div>
                 </div>
               </article>
             ))}
@@ -217,23 +219,31 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
               <article className="ug-step current">
                 <div className="ug-step-header">
                   <div className="ug-step-index">{current.ordinal}</div>
-                  <div>
-                    <div className="ug-step-title">
-                      {stepLabelFromPrompt(current.prompt_text)}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] mono text-ink-4 uppercase tracking-wider">Step {current.ordinal}</span>
+                      <span className="text-[11px] text-ink-4">·</span>
+                      <span className="text-[15px] font-semibold text-ink">{stepTypeLabel(current.type)}</span>
                       {current.emitted_by === "ai" && (
-                        <span className="ug-pill ai" style={{ padding: "3px 8px", fontSize: "11px" }}>
-                          <span className="dot" />Adaptive
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold uppercase tracking-wider bg-ai-tint text-ai-ink border border-ai-line">
+                          <span className="w-1.5 h-1.5 rounded-full bg-ai-ink" />
+                          Adaptive
                         </span>
                       )}
                       {current.emitted_by === "coordinator" && (
-                        <span className="ug-pill" style={{ padding: "3px 8px", fontSize: "11px", background: "var(--crimson-soft)", color: "var(--crimson)", borderColor: "#E8C5CB" }}>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold uppercase tracking-wider bg-crimson-soft text-crimson border border-[#E8C5CB]">
                           From coordinator
                         </span>
                       )}
                     </div>
-                    <div className="ug-step-sub">{stepHintForType(current.type)}</div>
+                    <div className="text-[13px] text-ink-4 mt-0.5">{stepHintForType(current.type)}</div>
                   </div>
-                  <div className="ug-step-meta"><span className="mono">Step {current.ordinal}</span></div>
+                  <div className="ug-step-meta flex items-center gap-1.5 text-[11.5px] text-ink-4">
+                    <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-moss">
+                      <span className="absolute -inset-1 rounded-full border-[1.5px] border-moss opacity-40 animate-ping" />
+                    </span>
+                    <span>Auto-saving</span>
+                  </div>
                 </div>
                 <div className="ug-step-body">
                   <StepBody
@@ -346,14 +356,14 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
           </div>
 
           {data.application.student_summary && (
-            <div className="ug-flag-card">
-              <div className="ug-flag-head">
+            <div className="rounded-[14px] border border-ai-line bg-ai-tint p-4">
+              <div className="flex items-center gap-2 mb-2 text-[11px] font-bold uppercase tracking-wider text-ai-ink">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2l2.35 5.6L20 8l-4 4 1.1 5.9L12 15.5 6.9 17.9 8 12 4 8l5.65-.4z" />
                 </svg>
-                AI summary so far
+                AI understands
               </div>
-              <div className="ug-flag-body">{data.application.student_summary}</div>
+              <div className="text-[13px] text-ai-ink/80 leading-relaxed">{data.application.student_summary}</div>
             </div>
           )}
 
@@ -378,13 +388,23 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
             </div>
           )}
 
-          {/* Help CTA */}
-          <div className="rounded-ug p-4 relative overflow-hidden bg-ink text-white">
-            <div className="absolute right-[-40px] top-[-40px] w-[140px] h-[140px] rounded-full" style={{ background: "radial-gradient(circle, rgba(161,37,58,.45) 0%, transparent 70%)" }} />
-            <div className="relative">
-              <div className="text-[13.5px] font-semibold mb-1.5">Talk to a human coordinator</div>
-              <div className="text-[12.5px] text-white/70 mb-3 leading-snug">If anything feels unclear, the Yayasan UM office responds within 2 hours on weekdays.</div>
-              <button className="ug-btn sm" style={{ background: "white", color: "var(--ink)", border: 0 }}>Send a message</button>
+          {/* Help CTA — soft, not aggressive */}
+          <div className="rounded-[14px] p-4 border border-line bg-paper-2">
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-card border border-line text-ink-3 flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13.5px] font-semibold text-ink mb-0.5">Need a human?</div>
+                <div className="text-[12.5px] text-ink-3 leading-snug mb-2.5">
+                  Nor A. from the Yayasan UM office is on duty today. Replies usually within 2 hours.
+                </div>
+                <button className="text-[12.5px] font-semibold text-crimson hover:text-[#7a1c2c] inline-flex items-center gap-1">
+                  Send a message →
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -394,10 +414,18 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 }
 
 /* ─── helpers ─── */
-function stepLabelFromPrompt(prompt: string): string {
-  // Use the first sentence (or first 60 chars) as the step label.
-  const firstSentence = prompt.split(/[.!?]/)[0] ?? prompt;
-  return firstSentence.length > 60 ? firstSentence.slice(0, 60) + "…" : firstSentence;
+function stepTypeLabel(type: string): string {
+  switch (type) {
+    case "form": return "A few quick details";
+    case "file_upload": return "Upload a document";
+    case "text": return "In your own words";
+    case "select": return "Pick one";
+    case "multiselect": return "Pick all that apply";
+    case "info": return "Heads up";
+    case "final_submit": return "Review & submit";
+    case "coordinator_message": return "From the coordinator";
+    default: return "Next up";
+  }
 }
 
 function stepHintForType(type: string): string {

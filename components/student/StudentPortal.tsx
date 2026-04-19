@@ -48,7 +48,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
       try {
         const [a, p] = await Promise.all([
           fetch("/api/applications").then((r) => r.json()),
-          fetch("/api/admin/procedures").then((r) => r.json()),
+          fetch("/api/procedures").then((r) => r.json()),
         ]);
         if (cancelled) return;
         if (a.ok) setApps(a.data.applications);
@@ -92,49 +92,66 @@ export default function StudentPortal({ user }: { user: { name: string; initials
         ]}
       />
 
-      <main className="mx-auto max-w-[1320px] px-10 pt-8 pb-20">
+      <main className="mx-auto max-w-[1180px] px-8 pt-8 pb-20">
         {/* Welcome */}
-        <section className="mb-9">
-          <h1 className="text-[32px] leading-[1.1] font-semibold tracking-tight m-0 mb-2">
-            Welcome back, <span className="serif italic font-normal text-ink-2">{user.name.split(" ")[0]}</span>
-          </h1>
-          <p className="text-[15px] text-ink-3 max-w-2xl">
-            Pick a service to begin a new application, or continue one you've already started.
-          </p>
+        <section className="mb-8 flex items-end justify-between gap-6">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-ink-4 mb-1.5">
+              {new Date().toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="text-[30px] leading-[1.1] font-semibold tracking-tight m-0">
+              Welcome back, <span className="serif italic font-normal text-ink-2">{user.name.split(" ")[0]}</span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 text-[12.5px] text-ink-4">
+            <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-moss">
+              <span className="absolute -inset-1 rounded-full border-[1.5px] border-moss opacity-40 animate-ping" />
+            </span>
+            All systems normal
+          </div>
         </section>
 
         {/* My Applications */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">My Applications</h2>
-            <span className="text-[13px] text-ink-4 mono">{apps.length} total</span>
+        <section className="mb-10">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[15px] font-semibold tracking-tight uppercase tracking-[0.08em] text-ink-4">My Applications</h2>
+            <span className="text-[12px] text-ink-4 mono">{apps.length} total</span>
           </div>
           {loading ? (
-            <div className="ug-card p-6 text-ink-4 text-sm">Loading…</div>
+            <div className="ug-card p-4 text-ink-4 text-sm">Loading…</div>
           ) : apps.length === 0 ? (
-            <div className="ug-card p-8 text-center">
-              <p className="text-[15px] text-ink-3 mb-1.5">You haven't started anything yet.</p>
-              <p className="text-[13px] text-ink-4">Pick a service below to get going.</p>
+            <div className="rounded-[12px] border border-dashed border-line-2 bg-paper-2 px-5 py-6 flex items-center gap-4">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-card border border-line text-ink-4 flex-shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-[14px] text-ink-2 font-medium">Nothing in flight yet</p>
+                <p className="text-[12.5px] text-ink-4 mt-0.5">Pick a service below to begin your first application.</p>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-3 gap-3">
               {apps.map((a) => (
                 <Link
                   key={a.id}
                   href={`/student/applications/${a.id}`}
-                  className="ug-card p-5 no-underline hover:border-ink-5 transition"
+                  className="group ug-card p-4 no-underline hover:border-ink-5 hover:shadow-ug-card transition"
                 >
-                  <div className="text-2xl mb-2">{PROCEDURE_ICONS[a.procedure_id] ?? "📄"}</div>
-                  <div className="text-[15px] font-semibold text-ink mb-1">{a.procedures?.name ?? a.procedure_id}</div>
-                  <div className="text-[12.5px] text-ink-4 mb-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="text-[22px] leading-none">{PROCEDURE_ICONS[a.procedure_id] ?? "📄"}</div>
+                    <StatusBadge status={a.status} />
+                  </div>
+                  <div className="text-[14.5px] font-semibold text-ink leading-tight mb-1">{a.procedures?.name ?? a.procedure_id}</div>
+                  <div className="text-[11.5px] text-ink-4 mb-3 mono">
                     Started {new Date(a.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
                   </div>
-                  <StatusBadge status={a.status} />
                   {a.progress_estimated_total && a.status === "draft" && (
-                    <div className="mt-3 flex items-center gap-2 text-[12px] text-ink-4">
+                    <div className="flex items-center gap-2 text-[11.5px] text-ink-4">
                       <span className="mono">{a.progress_current_step}/{a.progress_estimated_total}</span>
-                      <div className="flex-1 h-1 rounded bg-line-2 overflow-hidden">
-                        <div className="h-full bg-ink" style={{ width: `${(a.progress_current_step / a.progress_estimated_total) * 100}%` }} />
+                      <div className="flex-1 h-[3px] rounded-full bg-line-2 overflow-hidden">
+                        <div className="h-full bg-ink rounded-full transition-all" style={{ width: `${(a.progress_current_step / a.progress_estimated_total) * 100}%` }} />
                       </div>
                     </div>
                   )}
@@ -146,34 +163,44 @@ export default function StudentPortal({ user }: { user: { name: string; initials
 
         {/* Available Services */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Available services</h2>
-            <span className="text-[13px] text-ink-4">{procedures.filter(p => (p.sop_chunks ?? 0) > 0).length} ready</span>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[15px] font-semibold tracking-[0.08em] uppercase text-ink-4">Available services</h2>
+            <span className="text-[12px] text-ink-4 mono">{procedures.filter(p => (p.sop_chunks ?? 0) > 0).length} ready</span>
           </div>
-          <div className="grid grid-cols-3 gap-3.5">
+          {procedures.length === 0 && !loading && (
+            <div className="ug-card p-4 text-ink-4 text-sm">No services published yet — ask your admin to upload an SOP.</div>
+          )}
+          <div className="grid grid-cols-3 gap-3">
             {procedures.map((p) => {
               const ready = (p.sop_chunks ?? 0) > 0;
               return (
-                <div key={p.id} className={`ug-card p-5 ${ready ? "" : "opacity-60"}`}>
-                  <div className="text-2xl mb-2">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>
-                  <div className="text-[15px] font-semibold text-ink mb-1">{p.name}</div>
-                  <div className="text-[12.5px] text-ink-3 mb-3 leading-snug min-h-[36px]">
-                    {p.description ?? ""}
+                <div key={p.id} className={`group ug-card p-4 flex flex-col ${ready ? "hover:border-ink-5 hover:shadow-ug-card transition" : "opacity-60"}`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="text-[22px] leading-none">{PROCEDURE_ICONS[p.id] ?? "📄"}</div>
+                    {ready ? (
+                      <span className="ug-pill ok" style={{ padding: "2px 8px", fontSize: "10.5px" }}><span className="dot" />Live</span>
+                    ) : (
+                      <span className="ug-pill" style={{ padding: "2px 8px", fontSize: "10.5px", color: "var(--ink-4)" }}><span className="dot" style={{ background: "var(--ink-5)" }} />Draft</span>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11.5px] text-ink-4 mono">
-                      {p.faculty_scope ?? "All faculties"} · {p.sop_chunks ?? 0} SOP sections
+                  <div className="text-[14.5px] font-semibold text-ink leading-tight mb-1">{p.name}</div>
+                  <div className="text-[12px] text-ink-3 mb-3 leading-snug flex-1">
+                    {p.description ?? "—"}
+                  </div>
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="text-[10.5px] text-ink-4 mono">
+                      {p.faculty_scope ?? "All faculties"}
                     </div>
                     {ready ? (
                       <button
-                        className="ug-btn primary sm"
+                        className="text-[12.5px] font-semibold text-crimson hover:text-[#7a1c2c] inline-flex items-center gap-1"
                         onClick={() => startApplication(p.id)}
                         disabled={starting === p.id}
                       >
-                        {starting === p.id ? "Starting…" : "Apply"}
+                        {starting === p.id ? "Starting…" : "Apply →"}
                       </button>
                     ) : (
-                      <span className="text-[11px] text-ink-4 italic">SOP not yet indexed</span>
+                      <span className="text-[10.5px] text-ink-4 italic">awaiting SOP</span>
                     )}
                   </div>
                 </div>
