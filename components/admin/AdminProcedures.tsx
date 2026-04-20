@@ -128,6 +128,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
         nav={[
           { href: "/admin", label: "Procedures", active: true },
           { href: "/admin/analytics", label: "Analytics" },
+          { href: "/admin/glm-traces", label: "GLM traces" },
         ]}
       />
 

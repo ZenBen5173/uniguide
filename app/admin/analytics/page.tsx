@@ -81,6 +81,7 @@ export default async function AdminAnalyticsPage() {
         nav={[
           { href: "/admin", label: "Procedures" },
           { href: "/admin/analytics", label: "Analytics", active: true },
+          { href: "/admin/glm-traces", label: "GLM traces" },
         ]}
       />
 

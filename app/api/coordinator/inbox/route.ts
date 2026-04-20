@@ -57,13 +57,17 @@ export async function GET(req: NextRequest) {
     (briefings ?? []).map((b) => [b.application_id, b.flags])
   );
 
-  // Inbox metrics
-  const counts = { pending: 0, approved: 0, rejected: 0, more_info: 0 };
-  for (const a of applications ?? []) {
+  // Inbox metrics — counted across ALL applications (not just current filter slice).
+  const { data: allForCounts } = await sb
+    .from("applications")
+    .select("status");
+  const counts = { pending: 0, approved: 0, rejected: 0, more_info: 0, draft: 0 };
+  for (const a of allForCounts ?? []) {
     if (a.status === "submitted") counts.pending++;
     else if (a.status === "approved") counts.approved++;
     else if (a.status === "rejected") counts.rejected++;
     else if (a.status === "more_info_requested") counts.more_info++;
+    else if (a.status === "draft") counts.draft++;
   }
 
   // Resolve assignee names for the rows that have one.

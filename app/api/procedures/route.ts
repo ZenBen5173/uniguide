@@ -16,7 +16,7 @@ export async function GET() {
   const sb = getServiceSupabase();
 
   const [{ data: procedures }, { data: chunks }, { data: applications }] = await Promise.all([
-    sb.from("procedures").select("id, name, description, source_url, faculty_scope, indexed_at").order("name"),
+    sb.from("procedures").select("id, name, description, source_url, faculty_scope, indexed_at, deadline_date, deadline_label").order("name"),
     sb.from("procedure_sop_chunks").select("procedure_id"),
     sb.from("applications").select("procedure_id, status"),
   ]);

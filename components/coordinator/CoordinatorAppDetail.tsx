@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, MessageSquare, X, Paperclip, Undo2 } from "lucide-react";
 import TopBar from "@/components/shared/TopBar";
 import InternalNotes from "@/components/coordinator/InternalNotes";
+import MessageThread from "@/components/shared/MessageThread";
 
 interface DetailData {
   application: {
@@ -218,6 +219,7 @@ export default function CoordinatorAppDetail({
 
   const sp = data.application.student_profiles;
   const decided = data.application.decided_at !== null;
+  const isDraft = data.application.status === "draft";
 
   return (
     <>
@@ -407,14 +409,34 @@ export default function CoordinatorAppDetail({
             </div>
           )}
 
+          {/* Message thread with student */}
+          <div className="mb-5">
+            <MessageThread applicationId={id} variant="panel" />
+          </div>
+
           {/* Internal notes (staff-only) */}
           <InternalNotes applicationId={id} />
         </section>
 
         {/* Right rail: action panel */}
         <aside className="sticky top-[84px] self-start space-y-3">
+          {/* Draft banner */}
+          {isDraft && (
+            <div className="ug-card p-4 border-amber" style={{ background: "var(--amber-soft)" }}>
+              <div className="text-[11px] uppercase tracking-wider font-semibold text-amber mb-1.5">
+                Draft — read only
+              </div>
+              <p className="text-[12.5px] text-ink-2 leading-snug">
+                The student is still working on this application. You can monitor progress here, but there's nothing to decide until they hit Submit.
+              </p>
+              <p className="text-[11.5px] text-ink-3 mt-2">
+                {data.steps.filter(s => s.status === "completed").length} of ~{data.steps.length} steps completed.
+              </p>
+            </div>
+          )}
+
           {/* Claim / assignee */}
-          {!decided && (() => {
+          {!decided && !isDraft && (() => {
             const assignedTo = data.application.assigned_to;
             const viewerId = data.viewer?.id;
             const mine = assignedTo && viewerId && assignedTo === viewerId;
@@ -463,6 +485,7 @@ export default function CoordinatorAppDetail({
             );
           })()}
 
+          {!isDraft && (
           <div className="ug-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Decide on this application</div>
             <div className="p-5 space-y-3">
@@ -538,6 +561,7 @@ export default function CoordinatorAppDetail({
               })()}
             </div>
           </div>
+          )}
         </aside>
       </main>
 

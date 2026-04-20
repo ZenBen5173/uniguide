@@ -7,6 +7,7 @@ import TopBar from "@/components/shared/TopBar";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
 import SopViewer from "./SopViewer";
+import MessageThread from "@/components/shared/MessageThread";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -18,7 +19,7 @@ interface ApplicationData {
     progress_current_step: number;
     progress_estimated_total: number | null;
     student_summary: string | null;
-    procedures?: { name: string; description: string | null };
+    procedures?: { name: string; description: string | null; deadline_date?: string | null; deadline_label?: string | null };
   };
   steps: Array<{
     id: string;
@@ -306,6 +307,27 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                   })()}
                 </span>
               )}
+              {(() => {
+                const dd = data.application.procedures?.deadline_date ?? null;
+                const dl = data.application.procedures?.deadline_label ?? null;
+                if (!dd && !dl) return null;
+                const ms = dd ? new Date(dd).getTime() - Date.now() : null;
+                const daysLeft = ms === null ? null : Math.ceil(ms / (24 * 60 * 60 * 1000));
+                const tone = daysLeft === null ? "" : daysLeft < 0 ? "" : daysLeft <= 7 ? "warn" : "";
+                const text = dl
+                  ? `Deadline · ${dl}`
+                  : daysLeft === null ? "Deadline" :
+                    daysLeft < 0 ? "Closed" :
+                    daysLeft === 0 ? "Closes today" :
+                    daysLeft === 1 ? "1 day left" :
+                    `${daysLeft} days left`;
+                return (
+                  <span className={`ug-pill whitespace-nowrap ${tone}`}>
+                    <span className="dot" />
+                    {text}
+                  </span>
+                );
+              })()}
               <span className="ug-pill ai whitespace-nowrap">
                 <span className="dot" />
                 Guided by UniGuide AI
@@ -547,6 +569,9 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
           {/* Source SOP viewer */}
           <SopViewer procedureId={data.application.procedure_id} />
+
+          {/* Message thread with coordinator */}
+          <MessageThread applicationId={id} variant="rail" />
 
           {/* Letters delivered */}
           {data.letters.length > 0 && (

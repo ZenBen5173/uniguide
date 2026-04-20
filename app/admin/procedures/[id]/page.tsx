@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import TopBar from "@/components/shared/TopBar";
 import LetterTemplateEditor from "@/components/admin/LetterTemplateEditor";
+import DeadlineEditor from "@/components/admin/DeadlineEditor";
 
 export default async function AdminProcedureDetailPage({
   params,
@@ -36,6 +37,7 @@ export default async function AdminProcedureDetailPage({
         nav={[
           { href: "/admin", label: "Procedures" },
           { href: "/admin/analytics", label: "Analytics" },
+          { href: "/admin/glm-traces", label: "GLM traces" },
         ]}
       />
 
@@ -93,8 +95,13 @@ export default async function AdminProcedureDetailPage({
             </div>
           </section>
 
-          {/* Letter templates — editable */}
-          <aside>
+          {/* Right rail: deadline + letter templates */}
+          <aside className="space-y-4">
+            <DeadlineEditor
+              procedureId={id}
+              initialDate={procedure.deadline_date ?? null}
+              initialLabel={procedure.deadline_label ?? null}
+            />
             <div className="ug-card overflow-hidden">
               <LetterTemplateEditor procedureId={id} />
             </div>

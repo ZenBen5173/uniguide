@@ -28,10 +28,11 @@ interface InboxApp {
   flags: Array<{ severity: "info" | "warn" | "block"; message: string }>;
 }
 
-interface Counts { pending: number; approved: number; rejected: number; more_info: number }
+interface Counts { pending: number; approved: number; rejected: number; more_info: number; draft: number }
 
 const FILTER_TABS = [
   { key: "pending", label: "Pending" },
+  { key: "draft", label: "Drafts" },
   { key: "all", label: "All" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
@@ -44,7 +45,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const [search, setSearch] = useState("");
   const [procedureFilter, setProcedureFilter] = useState<string>("all");
   const [apps, setApps] = useState<InboxApp[]>([]);
-  const [counts, setCounts] = useState<Counts>({ pending: 0, approved: 0, rejected: 0, more_info: 0 });
+  const [counts, setCounts] = useState<Counts>({ pending: 0, approved: 0, rejected: 0, more_info: 0, draft: 0 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -281,6 +282,11 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                   <span className={`mono text-[11px] px-1.5 rounded ${
                     filter === "pending" ? "bg-ink text-white" : "bg-line-2 text-ink-3"
                   }`}>{counts.pending}</span>
+                )}
+                {t.key === "draft" && counts.draft > 0 && (
+                  <span className={`mono text-[11px] px-1.5 rounded ${
+                    filter === "draft" ? "bg-ink text-white" : "bg-line-2 text-ink-3"
+                  }`}>{counts.draft}</span>
                 )}
                 {t.key === "more_info_requested" && counts.more_info > 0 && (
                   <span className="mono text-[11px] px-1.5 rounded bg-crimson text-white">{counts.more_info}</span>

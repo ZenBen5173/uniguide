@@ -25,6 +25,8 @@ interface Procedure {
   faculty_scope: string | null;
   sop_chunks?: number;
   letter_templates?: number;
+  deadline_date?: string | null;
+  deadline_label?: string | null;
 }
 
 export default function StudentPortal({ user }: { user: { name: string; initials: string; email?: string } }) {
@@ -132,6 +134,21 @@ export default function StudentPortal({ user }: { user: { name: string; initials
           </div>
         </section>
 
+        {/* KPI strip */}
+        {!loading && apps.length > 0 && (() => {
+          const inFlight = apps.filter(a => ["draft", "submitted", "under_review", "more_info_requested"].includes(a.status)).length;
+          const approved = apps.filter(a => a.status === "approved").length;
+          const needsReply = apps.filter(a => a.status === "more_info_requested").length;
+          return (
+            <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8">
+              <PortalKpi k="Total" v={apps.length} sub="all time" />
+              <PortalKpi k="In flight" v={inFlight} sub="working / waiting" />
+              <PortalKpi k="Approved" v={approved} sub="this year" tone="moss" />
+              <PortalKpi k="Needs your reply" v={needsReply} sub={needsReply > 0 ? "respond soon" : "all caught up"} tone={needsReply > 0 ? "crimson" : undefined} />
+            </section>
+          );
+        })()}
+
         {/* My Applications */}
         <section className="mb-10">
           <div className="flex items-baseline justify-between mb-3">
@@ -230,6 +247,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
                       <div className="text-[12px] text-ink-3 mb-3 leading-snug flex-1">
                         {p.description ?? "—"}
                       </div>
+                      <DeadlineChip date={p.deadline_date ?? null} label={p.deadline_label ?? null} />
                       <div className="flex items-center justify-between mt-auto">
                         <div className="text-[10.5px] text-ink-4 mono">
                           {p.faculty_scope ?? "All faculties"}
@@ -283,6 +301,46 @@ export default function StudentPortal({ user }: { user: { name: string; initials
         {error && <div className="mt-6 ug-card p-4 text-sm text-crimson border-crimson">{error}</div>}
       </main>
     </>
+  );
+}
+
+function DeadlineChip({ date, label }: { date: string | null; label: string | null }) {
+  if (!date && !label) return null;
+  const ms = date ? new Date(date).getTime() - Date.now() : null;
+  const daysLeft = ms === null ? null : Math.ceil(ms / (24 * 60 * 60 * 1000));
+  const tone = daysLeft === null ? "neutral" : daysLeft < 0 ? "past" : daysLeft <= 7 ? "urgent" : daysLeft <= 30 ? "soon" : "neutral";
+  const cls = {
+    neutral: "bg-paper-2 text-ink-3 border-line-2",
+    soon: "bg-amber-soft text-amber border-[#E8DBB5]",
+    urgent: "bg-crimson-soft text-crimson border-[#E8C5CB]",
+    past: "bg-line-2 text-ink-4 border-line",
+  }[tone];
+  const text = label
+    ? label
+    : daysLeft === null ? "" :
+      daysLeft < 0 ? "Closed" :
+      daysLeft === 0 ? "Closes today" :
+      daysLeft === 1 ? "1 day left" :
+      `${daysLeft} days left`;
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-semibold border mb-2 ${cls}`}>
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+      </svg>
+      {text}
+    </div>
+  );
+}
+
+function PortalKpi({ k, v, sub, tone }: { k: string; v: number; sub?: string; tone?: "moss" | "crimson" }) {
+  const cls = tone === "moss" ? "border-[#CFDDCF] bg-moss-soft" : tone === "crimson" ? "border-[#E8C5CB] bg-crimson-soft" : "border-line bg-card";
+  const valueCls = tone === "moss" ? "text-moss" : tone === "crimson" ? "text-crimson" : "text-ink";
+  return (
+    <div className={`rounded-[10px] px-3.5 py-2.5 border ${cls}`}>
+      <div className="text-[10.5px] uppercase tracking-wider font-semibold text-ink-4">{k}</div>
+      <div className={`text-[22px] font-semibold mt-0.5 leading-none ${valueCls}`}>{v}</div>
+      {sub && <div className="text-[10.5px] text-ink-4 mt-1.5">{sub}</div>}
+    </div>
   );
 }
 
