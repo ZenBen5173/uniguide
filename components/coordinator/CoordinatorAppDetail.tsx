@@ -513,26 +513,24 @@ export default function CoordinatorAppDetail({
             <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Decide on this application</div>
             <div className="p-5 space-y-3">
               <label className="block">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">
-                    Comment to student
-                  </span>
-                  <div className="flex items-center gap-1.5 mono">
-                    <span className="text-[10.5px] text-ink-4 hidden sm:inline">AI suggest:</span>
-                    {(["request_info", "approve", "reject"] as const).map((intent) => (
-                      <button
-                        key={intent}
-                        type="button"
-                        onClick={() => suggestComment(intent)}
-                        disabled={suggestBusy !== null}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium border border-ai-line bg-ai-tint text-ai-ink hover:bg-card disabled:opacity-50"
-                        title={`Draft a ${intent.replace("_", " ")} comment based on the AI briefing`}
-                      >
-                        <Sparkles className="h-2.5 w-2.5" strokeWidth={2.25} />
-                        {suggestBusy === intent ? "…" : intent.replace("_", " ")}
-                      </button>
-                    ))}
-                  </div>
+                <span className="block text-[12px] uppercase tracking-wider font-semibold text-ink-4 mb-1.5">
+                  Comment to student
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="text-[10.5px] text-ink-4 mono">AI suggest:</span>
+                  {(["request_info", "approve", "reject"] as const).map((intent) => (
+                    <button
+                      key={intent}
+                      type="button"
+                      onClick={() => suggestComment(intent)}
+                      disabled={suggestBusy !== null}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border border-ai-line bg-ai-tint text-ai-ink hover:bg-card disabled:opacity-50 whitespace-nowrap"
+                      title={`Draft a ${intent.replace("_", " ")} comment based on the AI briefing`}
+                    >
+                      <Sparkles className="h-2.5 w-2.5" strokeWidth={2.25} />
+                      {suggestBusy === intent ? "…" : intent.replace("_", " ")}
+                    </button>
+                  ))}
                 </div>
                 <textarea
                   className="ug-textarea min-h-[140px]"
