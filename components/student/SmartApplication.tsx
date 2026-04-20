@@ -146,6 +146,23 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
   const autoSaveLabel = lastSavedAt ? relativeAge(lastSavedAt) : "not saved yet";
 
   const [withdrawing, setWithdrawing] = useState(false);
+  const [revisingStepId, setRevisingStepId] = useState<string | null>(null);
+
+  const reviseStep = async (stepId: string, ordinal: number) => {
+    if (!confirm(`Revise Step ${ordinal}? Your answer for this step + all answers after it will be cleared so the AI can replan from your new response.`)) return;
+    setRevisingStepId(stepId);
+    try {
+      const res = await fetch(`/api/applications/${id}/revise/${stepId}`, { method: "POST" });
+      const json = await res.json();
+      if (!json.ok) {
+        alert(`Could not revise: ${json.error}`);
+        return;
+      }
+      await refresh();
+    } finally {
+      setRevisingStepId(null);
+    }
+  };
 
   const withdraw = async () => {
     if (!confirm("Withdraw this application? Your draft + uploaded files stay for audit, but the application stops here. This cannot be undone.")) return;
@@ -331,7 +348,19 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                     </div>
                     <div className="ug-step-summary mt-1 truncate">{summariseResponse(s.response_data)}</div>
                   </div>
-                  <div className="ug-step-meta text-[11.5px] text-moss font-medium">Saved</div>
+                  <div className="ug-step-meta flex items-center gap-2">
+                    {!isSubmitted && (
+                      <button
+                        onClick={() => reviseStep(s.id, s.ordinal)}
+                        disabled={revisingStepId !== null}
+                        className="text-[11.5px] text-ink-4 hover:text-crimson font-medium disabled:opacity-50"
+                        title="Edit this answer (clears later steps so the AI can replan)"
+                      >
+                        {revisingStepId === s.id ? "Revising…" : "Revise"}
+                      </button>
+                    )}
+                    <span className="text-[11.5px] text-moss font-medium">Saved</span>
+                  </div>
                 </div>
               </article>
             ))}
@@ -528,8 +557,17 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
               <div className="py-1.5">
                 {data.letters.map((l) => (
                   <div key={l.id} className="px-4 py-3 border-b border-line-2 last:border-0">
-                    <div className="text-[12.5px] uppercase tracking-wider font-semibold text-ink-4 mb-1">
-                      {l.letter_type.replace(/_/g, " ")}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[12.5px] uppercase tracking-wider font-semibold text-ink-4">
+                        {l.letter_type.replace(/_/g, " ")}
+                      </div>
+                      <Link
+                        href={`/letters/${l.id}/print`}
+                        target="_blank"
+                        className="text-[11px] text-crimson hover:underline no-underline font-medium"
+                      >
+                        Open / Print →
+                      </Link>
                     </div>
                     <pre className="text-[12px] text-ink-2 whitespace-pre-wrap font-sans leading-snug max-h-48 overflow-auto">
                       {l.generated_text}

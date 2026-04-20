@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SignOutButton from "@/components/auth/SignOutButton";
+import NotificationBell from "@/components/shared/NotificationBell";
 
 interface NavItem { href: string; label: string; active?: boolean }
 
@@ -39,6 +40,7 @@ export default function TopBar({ roleChip, nav, user }: Props) {
       )}
 
       <div className="flex items-center gap-3 text-[13px] text-ink-3">
+        <NotificationBell />
         <Link
           href="/settings/profile"
           className="hidden sm:flex items-center gap-2.5 no-underline text-ink-3 hover:text-ink rounded-md px-1 py-0.5 hover:bg-paper-2"

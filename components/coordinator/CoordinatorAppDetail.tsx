@@ -375,7 +375,16 @@ export default function CoordinatorAppDetail({
               <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Letters delivered to student</div>
               {data.letters.map((l) => (
                 <div key={l.id} className="px-5 py-4 border-b border-line-2 last:border-b-0">
-                  <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4 mb-2">{l.letter_type.replace(/_/g, " ")}</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">{l.letter_type.replace(/_/g, " ")}</div>
+                    <Link
+                      href={`/letters/${l.id}/print`}
+                      target="_blank"
+                      className="text-[11px] text-crimson hover:underline no-underline font-medium"
+                    >
+                      Open / Print →
+                    </Link>
+                  </div>
                   <pre className="text-[13px] text-ink-2 whitespace-pre-wrap font-sans leading-snug">{l.generated_text}</pre>
                 </div>
               ))}

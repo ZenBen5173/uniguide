@@ -151,6 +151,28 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
     }
   };
 
+  const [bulkInfoOpen, setBulkInfoOpen] = useState(false);
+  const [bulkInfoMessage, setBulkInfoMessage] = useState("");
+
+  const bulkRequestInfo = async () => {
+    if (selected.size === 0 || bulkInfoMessage.trim().length === 0) return;
+    setBulkBusy(true);
+    try {
+      await Promise.all([...selected].map(id =>
+        fetch(`/api/coordinator/applications/${id}/decide`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: "request_info", comment: bulkInfoMessage.trim() }),
+        })
+      ));
+      setBulkInfoOpen(false);
+      setBulkInfoMessage("");
+      await refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const eligibleForBulk = sorted.filter(canBulkApprove);
   const excludedFromBulk = sorted.length - eligibleForBulk.length;
 
@@ -321,11 +343,52 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                 Clear
               </button>
               <button
+                onClick={() => setBulkInfoOpen((v) => !v)}
+                disabled={bulkBusy}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-amber-soft text-amber border border-amber-soft hover:bg-white/[.14]"
+                style={{ borderColor: "#E8DBB5" }}
+                title="Send the same request-for-info to all selected"
+              >
+                Request info
+              </button>
+              <button
                 onClick={bulkApprove}
                 disabled={bulkBusy}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white text-ink border border-white"
               >
                 {bulkBusy ? "Approving…" : `Approve ${selected.size} selected`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {bulkInfoOpen && selected.size > 0 && (
+          <div className="sticky top-[100px] z-10 bg-card border border-line rounded-[12px] px-4 py-3 mb-3 shadow-ug-card">
+            <div className="text-[12px] uppercase tracking-wider font-semibold text-amber mb-2">
+              Request info from {selected.size} selected
+            </div>
+            <textarea
+              className="ug-textarea text-[13px]"
+              placeholder="What do you need from each of these students? This message will be added as the next step in their flow."
+              value={bulkInfoMessage}
+              onChange={(e) => setBulkInfoMessage(e.target.value)}
+              autoFocus
+            />
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <button
+                className="ug-btn ghost sm"
+                onClick={() => { setBulkInfoOpen(false); setBulkInfoMessage(""); }}
+                disabled={bulkBusy}
+              >
+                Cancel
+              </button>
+              <button
+                className="ug-btn primary sm"
+                onClick={bulkRequestInfo}
+                disabled={bulkBusy || bulkInfoMessage.trim().length === 0}
+                style={{ background: "var(--amber)", color: "white", borderColor: "var(--amber)" }}
+              >
+                {bulkBusy ? "Sending…" : `Send to ${selected.size}`}
               </button>
             </div>
           </div>
