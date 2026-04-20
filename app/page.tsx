@@ -81,15 +81,14 @@ export default async function LandingPage() {
       <main className="mx-auto max-w-6xl px-6 py-20">
         <section className="text-center">
           <p className="text-sm font-medium uppercase tracking-wider text-brand-600">
-            AI-driven workflow assistant
+            UMHackathon 2026 · Domain 1 · AI Systems & Agentic Workflow Automation
           </p>
           <h1 className="mt-3 text-balance text-5xl font-semibold tracking-tight sm:text-6xl">
             Your AI co-pilot for university paperwork.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg text-slate-600">
-            Tell UniGuide what you need — like <em>"i need a scholarship, my family is B40"</em> —
-            and Z.AI's GLM filters the right scholarships, walks you through the application, and
-            pre-digests your submission for the staff who'll approve it.
+            Pick a UM procedure. Z.AI's GLM reads the official SOP, asks you only what's relevant,
+            and pre-digests your submission so the coordinator can decide in minutes — not weeks.
           </p>
           <div className="mt-8 flex flex-col items-center gap-2.5">
             <Link href={ctaHref} className="btn-primary text-base px-6 py-3">
@@ -157,26 +156,40 @@ export default async function LandingPage() {
           )}
         </section>
 
-        <section className="mt-20 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {[
-            {
-              t: "Plain English in",
-              b: 'Type "i need a scholarship, my family income is RM3500, cgpa 3.1" and let GLM understand the rest.',
-            },
-            {
-              t: "Personalised plan out",
-              b: "GLM reads the official SOP and renders your workflow on a visual canvas — branched for your specific case.",
-            },
-            {
-              t: "Adaptive at every step",
-              b: "Questions reword themselves. Documents auto-parse. Decisions reason over what you actually said.",
-            },
-          ].map((x) => (
-            <div key={x.t}>
-              <h3 className="text-lg font-semibold">{x.t}</h3>
-              <p className="mt-1 text-slate-600">{x.b}</p>
-            </div>
-          ))}
+        <section className="mt-20">
+          <h2 className="text-center text-2xl font-semibold mb-2">How it works</h2>
+          <p className="text-center text-sm text-slate-500 mb-10">Three roles, one shared application record.</p>
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            {[
+              {
+                step: "1",
+                role: "Student",
+                t: "AI walks you through it",
+                b: "Pick a procedure (Scholarship, FYP, Deferment…). The AI emits one step at a time — form, file upload, or short answer — based on your earlier responses and the official SOP. Auto-saves. Citations show which SOP section drove each question.",
+              },
+              {
+                step: "2",
+                role: "Coordinator",
+                t: "Pre-digested for review",
+                b: "Submitted applications land in an inbox sorted by AI urgency. Each has a briefing (recommendation, confidence, extracted facts, flags) so a 30-minute review collapses to 3 minutes. Approve / reject / request more info — the AI drafts the letter; you edit and send.",
+              },
+              {
+                step: "3",
+                role: "Admin",
+                t: "Upload SOP, the rest builds itself",
+                b: "Paste text, paste a URL, or upload the PDF. UniGuide chunks it, indexes it, and the procedure goes live for students. Letter templates with {{placeholders}} get auto-filled at decision time. Full GLM trace audit log included.",
+              },
+            ].map((x) => (
+              <div key={x.role} className="card p-6">
+                <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">
+                  <span className="grid place-items-center w-5 h-5 rounded-full bg-brand-600 text-white text-[10px]">{x.step}</span>
+                  {x.role}
+                </div>
+                <h3 className="text-lg font-semibold mt-3">{x.t}</h3>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{x.b}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <footer className="mt-24 border-t border-slate-200 pt-8 text-center text-sm text-slate-500">
