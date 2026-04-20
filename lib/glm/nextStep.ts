@@ -121,5 +121,18 @@ function pickFixture(input: NextStepInput): string {
     if (n === 4) return "next_step_scholarship_5_review";
     return "next_step_scholarship_6_complete";
   }
+  if (proc === "final_year_project") {
+    if (n === 0) return "next_step_fyp_1_intake";
+    if (n === 1) return "next_step_fyp_2_supervisor";
+    if (n === 2) return "next_step_fyp_3_ethics";
+    if (n === 3) return "next_step_fyp_4_review";
+    return "next_step_generic_complete";
+  }
+  if (proc === "deferment_of_studies") {
+    if (n === 0) return "next_step_deferment_1_reason";
+    if (n === 1) return "next_step_deferment_2_proof";
+    if (n === 2) return "next_step_deferment_3_review";
+    return "next_step_generic_complete";
+  }
   return "next_step_generic_complete";
 }
