@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -31,12 +31,14 @@ interface Procedure {
 
 export default function StudentPortal({ user }: { user: { name: string; initials: string; email?: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [apps, setApps] = useState<MyApplication[]>([]);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [procSearch, setProcSearch] = useState("");
+  const autoStartedRef = useRef(false);
 
   const refreshApps = async () => {
     try {
@@ -108,6 +110,20 @@ export default function StudentPortal({ user }: { user: { name: string; initials
       setStarting(null);
     }
   };
+
+  // Auto-start an application when redirected here with ?start=<procedure_id>
+  // (from a landing-page click). One-shot: fires once procedures are loaded
+  // and only if the procedure exists with an indexed SOP.
+  useEffect(() => {
+    if (autoStartedRef.current || loading) return;
+    const startId = searchParams.get("start");
+    if (!startId) return;
+    const target = procedures.find((p) => p.id === startId);
+    if (!target) return;
+    if ((target.sop_chunks ?? 0) === 0) return;
+    autoStartedRef.current = true;
+    void startApplication(startId);
+  }, [loading, procedures, searchParams]);
 
   return (
     <>
