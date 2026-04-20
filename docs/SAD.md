@@ -1,11 +1,12 @@
 # SYSTEM ANALYSIS DOCUMENTATION (SAD)
 
 **Project:** UniGuide
+**Version:** 2.0 (sync with shipped state 2026-04-20)
 **Domain:** AI Systems & Agentic Workflow Automation (Domain 1)
 **Team:** Breaking Bank
 **Submission:** UMHackathon 2026 — Preliminary Round
-**Date:** 18 April 2026
 **Companion document:** [PRD.md](PRD.md)
+**Live deployment:** https://uniguide-blush.vercel.app
 
 ---
 
@@ -15,43 +16,45 @@
 This System Analysis Documentation (SAD) describes the technical scope, architectural decisions, data design, and operational strategy behind UniGuide — an AI-driven workflow assistant that guides Universiti Malaya students through complex multi-step administrative procedures using Z.AI's GLM as the central reasoning engine.
 
 The document covers:
-- **Architecture:** browser-based single-page application backed by serverless Next.js API routes, a Supabase Postgres database with `pgvector`, and Z.AI GLM as a service layer.
-- **Data flows:** how a student's free-text intent moves through GLM-powered planning, adaptive step execution, and structured output generation.
-- **Model process:** end-to-end workflow for the demonstrative Scholarship & Financial Aid Application procedure — from intake through coordinator approval.
+- **Architecture:** browser-based three-role app backed by serverless Next.js 15 App Router APIs, a Supabase Postgres database with `pgvector`, Supabase Storage for file uploads, Supabase Realtime for instant client updates, and Z.AI GLM as a versioned-prompt service layer.
+- **Data flows:** how a student's procedure choice moves through GLM-powered turn-by-turn step emission, document upload + retrieval, coordinator briefing, and letter generation with hallucination check.
+- **Model process:** end-to-end workflow for the demonstrative Scholarship & Financial Aid Application procedure — from intake through coordinator approval, including the realtime-update path back to the student.
 - **Role of reference:** binding contract for the development team, reviewers, and judges to verify what is being built and why.
 
 ### Background
-Universiti Malaya runs hundreds of administrative procedures across faculty, postgraduate, international-student, and examination domains. Today these procedures are documented in fragmented PDFs and word-of-mouth, with three separate student-facing portals (MAYA, SiswaMail, SPeCTRUM) that don't share a single procedural status surface. Students miss deadlines they didn't know existed; staff triage submissions that are missing the same fields week after week. The pain is universal across Malaysian public universities.
+Universiti Malaya runs hundreds of administrative procedures across faculty, postgraduate, international-student, and examination domains. Today these procedures are documented in fragmented PDFs and word-of-mouth, with three separate student-facing portals (MAYA, SiswaMail, SPeCTRUM) that don't share a single procedural status surface. Students miss deadlines they didn't know existed; staff triage submissions that are missing the same fields week after week.
 
 ### Previous Version
 None — this is a greenfield project built specifically for UMHackathon 2026.
 
 ### Changes in Major Architectural Components (vs. Conventional University Workflow Tools)
-Conventional workflow tools require an administrator to **hand-design** a workflow template before users can execute it. Templates are static; branching logic is hard-coded in conditional rules; routing is regex over form fields. UniGuide inverts this:
+Conventional workflow tools require an administrator to **hand-design** a workflow template before users can execute it. Templates are static; branching logic is hard-coded; routing is regex over form fields. UniGuide inverts this:
 
 | Conventional Tool | UniGuide |
 |---|---|
-| Admin hand-builds template upfront | **GLM plans the workflow at runtime** from indexed SOP documents |
-| Routing = pre-coded edges + regex over form fields | **Routing = GLM reasons over actual response content** with confidence + reasoning trace |
-| Steps = static forms shown to all users identically | **Steps adapt per user** — GLM rewrites questions, skips irrelevant fields, pre-fills from prior context |
-| Failure = task stuck, manual escalation | **GLM proposes recovery actions** — chase email drafts, escalation suggestions, parallel sub-flows |
+| Admin hand-builds template upfront | **GLM emits the next step at runtime** from the indexed SOP + the student's complete history |
+| Routing = pre-coded edges + regex over form fields | **There are no edges** — every step is a fresh `nextStep` GLM call that reads everything answered so far |
+| Steps = static forms shown to all users identically | **Steps are emitted per-user per-turn** — type, prompt, config, citations all decided at runtime |
+| Failure = task stuck, manual escalation | **GLM auto-fallback to fixtures** + 5-minute coordinator undo + step revise — multiple recovery paths |
+| Coordinator decides on raw form | **Pre-digested briefing** + AI-suggest comment + previewable letter + hallucination check |
 
-Removing the GLM service layer collapses UniGuide to a static form filler. There is **no fallback to a hard-coded workflow engine** — this is by deliberate design, in line with the hackathon brief that "if the GLM component is removed, the system should lose its ability to coordinate and execute the workflow effectively."
+Removing the GLM service layer collapses UniGuide to nothing — there is no static workflow template to fall back on. This is by deliberate design, in line with the hackathon brief.
 
 ---
 
 ## Target Stakeholders
 
-| Stakeholder | Role | Expectations |
+| Stakeholder | Role | What they get |
 |---|---|---|
-| **Student (Undergraduate)** | Initiates a workflow for an administrative procedure (scholarship application, exam appeal, deferment, etc.). Provides intent, answers questions, uploads documents. | Be told clearly what to do next, in their context. Never miss a hidden deadline. Receive ready-to-use artefacts (filled forms, draft emails, calendar). |
-| **Student (Postgraduate)** | Same as above, plus research-mode supervisor matching, candidature defence scheduling. | Lower hand-holding for technical content; same hand-holding for procedural compliance. |
-| **Student (International)** | Same as above, plus EMGS visa renewal, MoE attendance/CGPA compliance. | Cross-procedure deadline awareness (don't let visa lapse during thesis defence). |
-| **Yayasan UM Scholarship Officer** | Reviews student scholarship applications. | Receive a GLM-prepared briefing per submission with extracted facts (income tier inferred from EPF/payslip, CGPA shortfall + hardship justification surfaced, Bumiputera status confirmed), flagged edge cases, recommended decision + reasoning. Approve clear B40 cases in seconds. |
-| **Faculty Postgraduate Committee Member** | Reviews postgraduate admission applications. | Same as above for admissions. |
-| **Faculty Dean / Deputy Dean** | Escalation tier. | See escalated cases with full reasoning trace; audit consistency across coordinators. |
-| **Development Team** | Build and maintain UniGuide. | Clear module boundaries, well-documented GLM integration, reproducible local setup, schema migrations under version control. |
-| **QA Reviewer** | Validate system behaviour across roles and edge cases. | Documented test cases, deterministic test fixtures for GLM responses, AI output acceptance criteria. |
+| **Student (Undergraduate)** | Initiates a workflow for an administrative procedure. | Adaptive turn-by-turn steps with citations, real file uploads to Supabase Storage, real-time status updates, profile editor, withdraw + revise, message thread with coordinator, source-SOP viewer. |
+| **Student (Postgraduate)** | Same as undergraduate, plus research-mode supervisor matching. | Same surface; procedure-specific SOP indexes provide the variation. |
+| **Student (International)** | Same plus EMGS visa renewal, MoE attendance compliance. | Same surface. |
+| **Yayasan UM Scholarship Coordinator** | Reviews student scholarship applications. | Inbox sorted by AI urgency, plain-English confidence labels, AI briefing per submission, AI-suggest comment, preview-and-edit letters with hallucination check, undo within 5 min, internal notes (staff-only), realtime message thread with student. |
+| **Faculty Postgraduate Committee Member** | Reviews postgraduate admission applications. | Same coordinator surface. |
+| **Faculty Dean / Deputy Dean** | Escalation tier; admin-level access. | All coordinator features + analytics + GLM trace audit. |
+| **Admin** | Indexes SOPs, edits letter templates, sets deadlines. | Procedures library, 3-step SOP upload modal (paste / URL / **PDF**), letter template editor with sensible defaults, deadline editor, analytics dashboard, GLM reasoning-trace viewer. |
+| **Development Team** | Build and maintain UniGuide. | Versioned prompts in `lib/glm/prompts/*.md`, Zod-validated GLM I/O, 14 numbered Supabase migrations, Next.js App Router with strict TypeScript. |
+| **QA Reviewer** | Validate system behaviour across roles and edge cases. | Test fixtures in `tests/fixtures/glm/`, mock-mode demo seed (5 sample applications via `/api/demo/reset`). |
 
 ---
 
@@ -61,29 +64,33 @@ Removing the GLM service layer collapses UniGuide to a static form filler. There
 
 | Type | Details |
 |---|---|
-| **System** | Web application (responsive, browser-based) |
-| **Architecture** | Single-page Next.js app + serverless API routes + Postgres with `pgvector` + Z.AI GLM as service layer |
-| **Hosting** | Vercel (frontend + API routes), Supabase Cloud (Postgres + Storage + Auth) |
-| **Topology** | UniGuide is a client-server-based system. Clients are: (1) Student SPA, (2) Coordinator Dashboard SPA. Both communicate via the Next.js API layer, which orchestrates Postgres reads/writes, Supabase Storage for file uploads, and external Z.AI GLM API calls. The API layer is stateless (serverless functions); all session and workflow state lives in Postgres. |
+| **System** | Web application (responsive on student-facing pages) |
+| **Architecture** | Next.js 15 App Router (server + client components) + ~30 API route handlers + Postgres with `pgvector` + Supabase Storage + Supabase Realtime + Z.AI GLM as service layer |
+| **Hosting** | Vercel (frontend + API routes), pinned to `sin1` (Singapore) for ~70ms RTT to Supabase. Supabase Cloud `ap-northeast-2` (Seoul). |
+| **Topology** | Three role-distinct browser surfaces (Student / Coordinator / Admin) all served from a single Next.js deployment. Stateless API layer; all session state in Supabase Postgres. Realtime channels push status updates from Postgres → client without polling. |
 
 #### Component Diagram
 
 ```mermaid
 flowchart TB
     subgraph Browser
-        StudentSPA[Student SPA<br/>Next.js + ReactFlow]
-        AdminSPA[Coordinator Dashboard<br/>Next.js]
+        StudentSPA[Student surfaces<br/>/student/portal<br/>/student/applications/[id]<br/>/settings/profile]
+        CoordSPA[Coordinator surfaces<br/>/coordinator/inbox<br/>/coordinator/applications/[id]]
+        AdminSPA[Admin surfaces<br/>/admin<br/>/admin/procedures/[id]<br/>/admin/analytics<br/>/admin/glm-traces]
     end
 
-    subgraph "Vercel (Edge + Serverless)"
-        API[Next.js API Routes<br/>/api/intake<br/>/api/plan<br/>/api/step<br/>/api/decision<br/>/api/admin/briefing]
-        GLMClient[GLM Service Layer<br/>lib/glm/*]
+    subgraph "Vercel — sin1"
+        API[Next.js API Routes ~30 endpoints]
+        Engine[lib/applications/engine.ts<br/>recordResponseAndAdvance<br/>emitNextStep<br/>loadApplicationContext<br/>buildHistory]
+        GLMClient[lib/glm/* service layer]
+        AuthGuard[lib/auth/guards.ts<br/>requireUser, requireRole]
     end
 
-    subgraph "Supabase Cloud"
-        DB[(Postgres + pgvector)]
-        Store[(Object Storage<br/>Uploaded documents)]
-        Auth[Auth]
+    subgraph "Supabase — ap-northeast-2"
+        DB[(Postgres + pgvector<br/>14 migrations)]
+        Store[(Storage<br/>application-files bucket<br/>RLS-protected)]
+        Auth[Auth<br/>OTP + demo passwords]
+        Realtime[Realtime publication<br/>applications, application_steps,<br/>application_letters, application_messages]
     end
 
     subgraph "Z.AI"
@@ -91,192 +98,170 @@ flowchart TB
     end
 
     StudentSPA -->|HTTPS| API
+    CoordSPA -->|HTTPS| API
     AdminSPA -->|HTTPS| API
-    API -->|SQL| DB
-    API -->|signed URL| Store
-    API -->|JWT verify| Auth
-    API --> GLMClient
-    GLMClient -->|HTTPS<br/>function-calling| GLM
-    GLMClient -->|kNN query<br/>cosine sim| DB
+    StudentSPA <-->|WebSocket| Realtime
+    CoordSPA <-->|WebSocket| Realtime
+    StudentSPA -.signed URL.-> Store
+    API -->|service role SQL| DB
+    API --> Engine
+    API --> AuthGuard
+    Engine --> GLMClient
+    GLMClient -->|HTTPS JSON-mode| GLM
+    GLMClient -->|on error → fixture| GLMClient
+    Realtime -.publish.- DB
 ```
 
 ### LLM as Service Layer
 
-The GLM integration is **not** a generic "AI module" sprinkled across the codebase. It is encapsulated in a dedicated service layer (`lib/glm/`) with a strict contract:
+GLM is encapsulated in `lib/glm/`:
 
-- **Single entry point per use case** — `planWorkflow()`, `extractIntent()`, `adaptStep()`, `routeDecision()`, `parseDocument()`, `generateBriefing()`. No GLM calls outside this layer.
-- **Deterministic input/output schemas** — every endpoint validates input with Zod, calls GLM with a versioned system prompt and JSON-mode output schema, and validates the response with Zod before returning.
-- **Centralised retry, caching, and rate limiting** — Upstash Redis token-bucket limiter and prompt-prefix caching live in this layer.
-- **Centralised reasoning-trace persistence** — every call writes a row to `glm_reasoning_trace` with the model version, prompt hash, response, latency, token counts, and any tool calls.
+| File | Purpose |
+|---|---|
+| `client.ts` | The single `callGlm({model, systemPrompt, userPrompt, jsonMode, mockFixture, ...})` entry point. Handles real Z.AI calls + mock-mode + auto-fallback to fixtures on error. Never imported directly outside `lib/glm/`. |
+| `schemas.ts` | Zod schemas for every GLM input + output. `NextStepInputSchema`, `NextStepOutputSchema`, `BriefingOutputSchema`, `FillLetterOutputSchema`, `EstimateProgressOutputSchema`, `FormFieldSchema` (with file field type), `StepConfigSchema`. |
+| `nextStep.ts` | Calls `callGlm(model: glm-4.6)` to emit the next application step. Returns `{ is_complete, next_step?, reasoning, running_summary?, citations[] }`. |
+| `generateBriefing.ts` | Calls `callGlm(model: glm-4.6)` to produce the coordinator briefing. Returns `{ extracted_facts, flags[], recommendation, reasoning, confidence }`. |
+| `fillLetter.ts` | Calls `callGlm(model: glm-4.6, jsonMode: true)` to fill a `{{placeholder}}` template against application context. Returns `{ filled_text, unfilled_placeholders[] }`. |
+| `estimateProgress.ts` | Calls `callGlm(model: glm-4.5-flash)` for total step count. |
+| (suggestComment) | Inline system prompt in `/api/coordinator/applications/[id]/suggest-comment` route. Drafts coordinator-side comment based on briefing flags + decision intent. |
+| `loadPrompt.ts` | Loads system-prompt `.md` files from `prompts/` so prompt content is versioned in source. |
+| `trace.ts` | After every `callGlm`, writes a row to `glm_reasoning_trace` (model_version, prompt_hash, input_summary, output, latency_ms, input_tokens, output_tokens, confidence, cache_hit). |
+| `prompts/*.md` | The actual system prompt for each endpoint, version-controlled and hash-loggable. |
+
+Every endpoint's I/O is JSON-mode with strict Zod validation. Schema violation throws → caller returns 500. There is no free-text "freestyling" — GLM always speaks structured JSON to UniGuide.
 
 #### Dependency Diagram (GLM Service Layer Internals)
 
 ```mermaid
 flowchart LR
-    subgraph "API Route Handler"
-        Handler[e.g., /api/decision]
-    end
-
-    subgraph "GLM Service Layer (lib/glm/)"
-        ContextBuilder[Context Builder<br/>- Load procedure SOP from KB<br/>- Load student profile<br/>- Load prior step responses<br/>- Apply token budget]
-        PromptComposer[Prompt Composer<br/>- Versioned system prompt<br/>- Few-shot examples<br/>- JSON-mode schema instruction<br/>- Tool surface declaration]
-        TokenGuard[Token Guard<br/>- Count tokens<br/>- Truncate / chunk<br/>- Reject if &gt; budget]
-        Cache[Prompt Cache<br/>cache by prefix hash<br/>TTL 24h]
-        RateLimit[Rate Limiter<br/>Upstash Redis<br/>10 calls/min/user<br/>500 calls/day/team]
-        GLMSDK[GLM SDK Client<br/>function-calling<br/>JSON mode<br/>retry x1 on schema fail]
-        ResponseValidator[Response Validator<br/>Zod schema<br/>citation verification]
-        TraceWriter[Reasoning Trace Writer<br/>writes to glm_reasoning_trace]
-    end
-
-    subgraph "External"
-        ZGLM[(Z.AI GLM API)]
-        KB[(KB: pgvector)]
-        Profile[(User Profile DB)]
-    end
-
-    Handler --> ContextBuilder
-    ContextBuilder --> KB
-    ContextBuilder --> Profile
-    ContextBuilder --> PromptComposer
-    PromptComposer --> TokenGuard
-    TokenGuard -->|over budget| Handler
-    TokenGuard --> Cache
-    Cache -->|hit| ResponseValidator
-    Cache -->|miss| RateLimit
-    RateLimit --> GLMSDK
-    GLMSDK -->|HTTPS| ZGLM
-    GLMSDK --> ResponseValidator
-    ResponseValidator --> TraceWriter
-    TraceWriter --> Handler
+    Caller[API route handler] --> Endpoint[lib/glm/nextStep.ts<br/>or briefing / letter / etc.]
+    Endpoint --> LoadPrompt[loadPrompt.ts]
+    LoadPrompt --> PromptFile[prompts/next_step.md]
+    Endpoint --> Schema[schemas.ts<br/>Zod validate]
+    Endpoint --> Client[client.ts<br/>callGlm]
+    Client --> ZAI[Z.AI GLM<br/>HTTPS JSON-mode]
+    Client -.on error.- Fixture[tests/fixtures/glm/*.json]
+    Client --> Trace[trace.ts]
+    Trace --> DB[(glm_reasoning_trace)]
+    Endpoint --> Caller
 ```
 
-**What goes into the context window** (per call type):
-
-| Endpoint | System prompt | User prompt content | Max tokens |
-|---|---|---|---|
-| `extractIntent` | Role: classifier. Output: `{procedure_id, confidence, clarifying_questions[]}` | Raw user text + list of available procedure IDs | 2,000 in / 200 out |
-| `planWorkflow` | Role: planner. Few-shot: 3 reference workflows. Output schema: `WorkflowPlan` | Procedure SOP markdown + student profile JSON + intent | 16,000 in / 2,000 out |
-| `adaptStep` | Role: tutor. Tone guidelines. Output: `{question_text, expected_response_type, context_hint}` | Step definition + prior responses + student profile | 4,000 in / 500 out |
-| `routeDecision` | Role: judge. Chain-of-thought + JSON output | Decision-node config + relevant prior responses + uploaded doc text | 8,000 in / 1,000 out |
-| `parseDocument` | Role: extractor. Schema-bound output | Document text (PDF-extracted or OCR'd) + extraction schema | 16,000 in / 2,000 out |
-| `generateBriefing` | Role: admin assistant. Few-shot briefings. Output: `AdminBriefing` | All workflow responses + reasoning traces + procedure SOP excerpt | 12,000 in / 1,500 out |
-
-**Token-limit enforcement:** the `TokenGuard` step counts tokens before the call. Procedure SOPs are pre-chunked at index time into sections ≤4,000 tokens. If the assembled context exceeds the budget for an endpoint, `TokenGuard` (a) attempts to drop oldest conversation turns from the running summary, (b) drops less-relevant SOP chunks (lowest cosine similarity first), (c) if still over budget, returns a structured error and the API surfaces "input too large; please simplify."
-
-**Response parsing:**
-1. GLM SDK returns raw text (JSON mode forces valid JSON syntactically).
-2. `ResponseValidator` runs Zod parse against the per-endpoint schema.
-3. On schema violation, **one** retry with a corrective system prompt addendum: *"Your previous response failed schema validation with error: [error]. Return only valid JSON matching the schema."*
-4. On second failure, return structured error to the API handler, which surfaces a graceful error state to the user.
-5. Citations (regulation references) are cross-checked against the KB; any citation not found in the KB is stripped from the user-facing response and logged as a hallucination event.
-
-**Tool surface (function-calling):**
-- `lookup_procedure(name: string)` → procedure metadata
-- `get_student_profile()` → faculty, programme, year, CGPA, citizenship
-- `parse_document(file_id: string)` → structured fields
-- `lookup_regulation(reference: string)` → regulation text + source URL
-- `add_calendar_event(title, due_date, description)` → adds to deadline calendar
-- `draft_email(to_role, context)` → generates email draft
-- `generate_form(template_id, field_data)` → fills PDF template
-
-### Sequence Diagram — Scholarship Application (Happy Path)
+### Sequence Diagram — Scholarship Application (Happy Path, Submit-to-Approve)
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor Student
-    participant SPA as Student SPA
+    participant Student
+    participant StudentApp as Browser (student)
     participant API as Next.js API
-    participant GLM as GLM Service Layer
-    participant KB as KB (pgvector)
-    participant DB as Postgres
-    participant Coord as Scholarship Officer
-    participant CDash as Coordinator Dashboard
+    participant Engine as engine.ts
+    participant GLM as Z.AI GLM
+    participant DB as Supabase Postgres
+    participant Realtime as Supabase Realtime
+    participant CoordApp as Browser (coordinator)
+    participant Coordinator
 
-    Student->>SPA: "i need a scholarship, family income RM3500, cgpa 3.10"
-    SPA->>API: POST /api/intake { text }
-    API->>GLM: extractIntent(text)
-    GLM->>KB: vector search (procedure list)
-    GLM-->>API: { procedure_id: "scholarship_application", confidence: 0.93 }
-    API->>DB: insert workflow_session
-    API->>GLM: planWorkflow(procedure_id, profile)
-    GLM->>KB: fetch procedure SOP chunks
-    GLM-->>API: WorkflowPlan { stages, steps, decisions, deadlines }
-    API->>DB: insert workflow + stages + steps
-    API-->>SPA: { workflow_id, plan }
-    SPA-->>Student: Render canvas (ReactFlow)
+    Student->>StudentApp: Click "Apply" on Scholarship card
+    StudentApp->>API: POST /api/applications {procedure_id}
+    API->>DB: insert applications (status=draft)
+    API->>Engine: emitNextStep(applicationId)
+    Engine->>DB: load procedure + sopChunks + history
+    Engine->>GLM: nextStep prompt + SOP + history
+    GLM-->>Engine: { next_step: {form fields}, citations: ["Eligibility"] }
+    Engine->>DB: insert application_steps (status=pending, config.citations=...)
+    Engine-->>API: first_step
+    API-->>StudentApp: { application, first_step }
+    StudentApp->>Student: render Step 1 with citation chips
 
-    Student->>SPA: Click active step → upload parents' EPF statement
-    SPA->>API: POST /api/step/:id { file }
-    API->>GLM: parseDocument(file)
-    GLM-->>API: { estimated_monthly_income_rm: 3800, income_tier_inferred: "B40", ... }
-    API->>DB: persist response, advance progress
+    loop Per step
+        Student->>StudentApp: fill form, click Submit step
+        StudentApp->>API: POST /api/applications/[id]/respond
+        API->>Engine: recordResponseAndAdvance
+        Engine->>DB: update step (status=completed)
+        Engine->>GLM: nextStep with full history
+        GLM-->>Engine: { next_step or is_complete }
+        Engine->>DB: insert next step OR mark complete
+    end
 
-    Note over API,GLM: Reach decision node:<br/>"Income tier branch (need-based vs merit-only)"
-    API->>GLM: routeDecision(node, prior_responses)
-    GLM-->>API: { branch: "need_based_eligible", confidence: 0.94, reasoning: "..." }
-    API->>DB: persist decision + reasoning trace
-    API-->>SPA: Advance to next stage (Yayasan UM application)
+    Student->>StudentApp: Submit final step
+    StudentApp->>API: POST /api/applications/[id]/submit
+    API->>DB: update status=submitted, submitted_at=now()
+    API->>GLM: generateBriefing
+    GLM-->>API: briefing
+    API->>DB: insert application_briefings
+    DB->>Realtime: publish UPDATE on applications
+    Realtime-->>StudentApp: status=submitted (instant)
 
-    Note over Student: Completes all student-side steps
-    Student->>SPA: Submit
-    SPA->>API: POST /api/submit
-    API->>GLM: generateBriefing(workflow_id)
-    GLM-->>API: AdminBriefing { facts, flags, recommendation, reasoning }
-    API->>DB: insert pending_review
-    API-->>Coord: Push notification
+    Coordinator->>CoordApp: Open inbox → click row
+    CoordApp->>API: GET /api/coordinator/applications/[id]
+    API->>DB: load application + briefing + steps + decisions + letters
+    API-->>CoordApp: { application, briefing, ... }
+    CoordApp->>Coordinator: render briefing card
 
-    Coord->>CDash: Open dashboard
-    CDash->>API: GET /api/admin/queue
-    API->>DB: fetch pending reviews
-    API-->>CDash: Briefings list
-    Coord->>CDash: Click Approve
-    CDash->>API: POST /api/admin/decision { approve }
-    API->>DB: advance workflow, log decision
-    API-->>SPA: Notify student (in-app)
+    Coordinator->>CoordApp: Click "AI suggest: approve"
+    CoordApp->>API: POST /api/coordinator/applications/[id]/suggest-comment
+    API->>GLM: suggestComment(intent=approve, briefing flags)
+    GLM-->>API: { suggested_comment }
+    API-->>CoordApp: pre-fill comment
+
+    Coordinator->>CoordApp: Click "Preview & approve"
+    CoordApp->>API: POST /api/coordinator/applications/[id]/preview-letter
+    API->>GLM: fillLetter(template, facts)
+    GLM-->>API: filled letter
+    API->>API: hallucinationCheck(letter, app context)
+    API-->>CoordApp: { letter_text, hallucination_issues }
+    CoordApp->>Coordinator: show editable letter + warnings
+
+    Coordinator->>CoordApp: Edit + click "Confirm & send"
+    CoordApp->>API: POST /api/coordinator/applications/[id]/decide {letter_text_override}
+    API->>DB: insert application_decisions + application_letters
+    API->>DB: update applications (status=approved, decided_at)
+    DB->>Realtime: publish UPDATE
+    Realtime-->>StudentApp: status=approved (instant)
+    Realtime-->>StudentApp: new letter row visible
+    StudentApp->>Student: status flipped + "Open / Print →" link appears
 ```
 
-### Sequence Diagram — Decision Node with Low Confidence (Adaptive Re-prompt)
+### Sequence Diagram — Coordinator Requests More Info (Loop)
 
 ```mermaid
 sequenceDiagram
-    actor Student
-    participant SPA
-    participant API
-    participant GLM
+    participant Coordinator
+    participant CoordApp as Browser (coordinator)
+    participant API as Next.js API
+    participant Engine as engine.ts
+    participant GLM as Z.AI GLM
+    participant DB as Supabase Postgres
+    participant Realtime
+    participant StudentApp as Browser (student)
 
-    Note over API,GLM: Reach decision node;<br/>student response is ambiguous
-    API->>GLM: routeDecision(node, responses)
-    GLM-->>API: { branch: "blocked", confidence: 0.55, reasoning: "ambiguous" }
-    Note over API: confidence &lt; 0.7 threshold
-    API->>GLM: adaptStep(disambiguation_prompt)
-    GLM-->>API: { question_text: "Your declared income RM 9,200 is borderline between M40 and T20. Could you confirm — is this gross or net monthly?" }
-    API-->>SPA: Show disambiguation question
-    Student->>SPA: Clarifies
-    SPA->>API: POST /api/step/:id
-    API->>GLM: routeDecision(node, updated_responses)
-    GLM-->>API: { branch: "proceed", confidence: 0.91 }
-    API-->>SPA: Advance
+    Coordinator->>CoordApp: Type "Please upload latest payslip"<br/>Click "Request more info"
+    CoordApp->>API: POST decide {decision: "request_info", comment}
+    API->>DB: insert application_decisions
+    API->>Engine: emitNextStep(applicationId, coordinatorRequest=text)
+    Engine->>GLM: nextStep prompt with coordinatorRequest
+    GLM-->>Engine: { next_step: file_upload, prompt_text: "Please upload..." }
+    Engine->>DB: insert application_steps (emitted_by=coordinator)
+    API->>DB: update applications (status=more_info_requested)
+    DB->>Realtime: publish
+    Realtime-->>StudentApp: new step appears with crimson "From coordinator" pill
 ```
 
 ### Technological Stack
 
-| Layer | Technology | Rationale |
+| Layer | Choice | Why |
 |---|---|---|
-| Frontend Framework | Next.js 15 (App Router, React 19) | SSR + serverless API routes in one deployment; aligned with Vercel hosting |
-| UI Library | Tailwind CSS 4 + shadcn/ui patterns | Fast styling; no design-system maintenance burden |
-| Workflow Canvas | ReactFlow v11 | Mature graph-rendering library; supports custom node types and edges |
-| State Management | TanStack Query v5 | Server-state sync, optimistic mutations, cache invalidation |
-| Validation | Zod v4 | Single schema for runtime validation + TypeScript inference |
-| Backend (API) | Next.js API Routes (serverless) on Vercel | Stateless functions; easy GLM SDK integration |
-| Database | Supabase Postgres (managed) + `pgvector` extension | Single managed service for relational data + vector retrieval |
-| File Storage | Supabase Storage with signed URLs | Magic-byte validation; tenant-scoped buckets |
-| Auth | Supabase Auth (email + magic link for MVP) | Stub auth fast; production-ready when needed |
-| LLM | **Z.AI GLM API** — `glm-4.6` (planner, decision router, briefing) + `glm-4.5-flash` (intent, step adapter) | **Mandatory by hackathon rules.** Tool-calling, JSON mode, long context, prompt caching. |
-| Document Parsing | `pdf-parse` (PDF) + `tesseract.js` (OCR fallback) | Lightweight, no external service dependency |
-| Rate Limiting / Cache | Upstash Redis | Serverless-native; token-bucket limiter + prompt-prefix cache |
-| Monitoring / Errors | Sentry (errors) + Vercel Analytics + custom metrics table | Free tier sufficient for hackathon; production-ready |
-| CI/CD | GitHub Actions → Vercel preview deployments per PR | Zero-config preview URLs for demo dry-runs |
+| Frontend framework | Next.js 15 App Router (React 19) | Server components for data-heavy admin pages; client components where realtime/interactivity needed. |
+| Language | TypeScript (strict) | Schema-driven I/O via Zod; catches GLM contract drift at compile time. |
+| Styling | Tailwind CSS 4 + custom design tokens | Custom palette (--ink navy, --crimson, --moss, --ai-tint lavender). Component-scoped classes (`ug-card`, `ug-btn`, `ug-input`, `ug-pill`). |
+| Icons | Lucide React | Single icon system; replaced all emoji to keep the UI professional and accessible. |
+| Auth | Supabase Auth (OTP email + demo password) | Cookie-based JWT via `@supabase/ssr`. Three demo accounts seeded for one-click sign-in. |
+| Database | Supabase Postgres + `pgvector` | One managed service for relational + vector. All tables RLS-protected. |
+| Storage | Supabase Storage (`application-files` bucket) | Private bucket. RLS: INSERT requires owner folder; SELECT requires owner OR staff/admin. Signed URLs (60s) via `/api/files/sign`. |
+| Realtime | Supabase Realtime publication | `applications`, `application_steps`, `application_letters`, `application_messages` published. Client subscribes to filtered channels. |
+| LLM | Z.AI GLM via OpenAI-compatible SDK | `glm-4.6` for reasoning; `glm-4.5-flash` for high-volume. JSON mode + system+user prompts + max_tokens. |
+| PDF parsing | `pdf-parse` (server-side) | Marked as `serverExternalPackages` in `next.config.ts` to avoid webpack bundling its Node-only deps. |
+| Hosting | Vercel (`sin1` region) | Pinned to Singapore for low latency to Supabase Seoul. |
 
 ---
 
@@ -285,206 +270,169 @@ sequenceDiagram
 ### Data Flow Diagram (DFD — Level 1)
 
 ```mermaid
-flowchart LR
+flowchart TB
     Student((Student))
-    Coord((Coordinator))
+    Coordinator((Coordinator))
+    Admin((Admin))
 
-    subgraph "UniGuide System"
-        Intake[Process: Intent Intake]
-        Planner[Process: Workflow Planning]
-        StepEng[Process: Adaptive Step Execution]
-        Router[Process: Decision Routing]
-        DocParser[Process: Document Parsing]
-        Briefer[Process: Admin Briefing Generation]
-        OutputGen[Process: Structured Output Generation]
-    end
+    Procedures[(procedures)]
+    SopChunks[(procedure_sop_chunks)]
+    LetterTemplates[(procedure_letter_templates)]
+    Applications[(applications)]
+    Steps[(application_steps)]
+    Briefings[(application_briefings)]
+    Decisions[(application_decisions)]
+    Letters[(application_letters)]
+    Notes[(application_coordinator_notes)]
+    Messages[(application_messages)]
+    Files[(Storage: application-files)]
+    Trace[(glm_reasoning_trace)]
 
-    KBStore[(KB Store:<br/>SOP chunks + embeddings)]
-    SessionStore[(Session Store:<br/>workflows, steps, responses)]
-    TraceStore[(Trace Store:<br/>glm_reasoning_trace)]
-    DocStore[(Document Store:<br/>uploaded files)]
+    Student -->|pick procedure| Applications
+    Student -->|answer step| Steps
+    Student -->|upload file| Files
+    Student -->|chat| Messages
+    Student -->|withdraw / revise| Applications
 
-    GLMExt((Z.AI GLM API))
+    Coordinator -->|read briefing| Briefings
+    Coordinator -->|read steps| Steps
+    Coordinator -->|view file via signed URL| Files
+    Coordinator -->|decide / undo| Decisions
+    Coordinator -->|preview & edit letter| Letters
+    Coordinator -->|claim| Applications
+    Coordinator -->|chat| Messages
+    Coordinator -->|note| Notes
 
-    Student -- intent text --> Intake
-    Intake -- intent + procedure_id --> GLMExt
-    GLMExt -- classified intent --> Intake
-    Intake -- session record --> SessionStore
+    Admin -->|index SOP| SopChunks
+    Admin -->|edit template| LetterTemplates
+    Admin -->|set deadline| Procedures
+    Admin -->|audit| Trace
 
-    Intake -- procedure_id --> Planner
-    Planner -- SOP query --> KBStore
-    KBStore -- relevant SOP chunks --> Planner
-    Planner -- workflow plan request --> GLMExt
-    GLMExt -- workflow JSON --> Planner
-    Planner -- workflow + stages + steps --> SessionStore
-
-    Student -- step response + uploads --> StepEng
-    StepEng -- file --> DocStore
-    StepEng -- file content --> DocParser
-    DocParser -- parse request --> GLMExt
-    GLMExt -- structured fields --> DocParser
-    DocParser -- extracted fields --> StepEng
-    StepEng -- response record --> SessionStore
-
-    StepEng -- decision request --> Router
-    Router -- prior responses --> SessionStore
-    Router -- decision request --> GLMExt
-    GLMExt -- branch + reasoning --> Router
-    Router -- decision + trace --> TraceStore
-    Router -- next stage --> SessionStore
-
-    SessionStore -- completed workflow --> Briefer
-    Briefer -- briefing request --> GLMExt
-    GLMExt -- briefing JSON --> Briefer
-    Briefer -- pending review --> SessionStore
-
-    Coord -- approve/reject --> Briefer
-    Briefer -- decision --> SessionStore
-    SessionStore -- triggers --> OutputGen
-    OutputGen -- forms, emails, .ics --> Student
+    Steps -->|emit next via GLM| GLMSL[GLM Service Layer]
+    Briefings -->|generate via GLM| GLMSL
+    Letters -->|fill via GLM| GLMSL
+    GLMSL -->|every call logged| Trace
 ```
 
 ### Normalized Database Schema (3NF — ERD)
 
-```mermaid
-erDiagram
-    USERS ||--o{ STUDENT_PROFILES : has
-    USERS ||--o{ STAFF_PROFILES : has
-    USERS ||--o{ WORKFLOWS : initiates
-    USERS ||--o{ ADMIN_DECISIONS : makes
+**14 tables across 13 migrations:**
 
-    PROCEDURES ||--o{ PROCEDURE_SOP_CHUNKS : "split into"
-    PROCEDURES ||--o{ WORKFLOWS : "instantiated as"
+```
+users (id PK, email UNIQUE, role CHECK in admin/student/staff, created_at)
 
-    WORKFLOWS ||--o{ WORKFLOW_STAGES : contains
-    WORKFLOW_STAGES ||--o{ WORKFLOW_STEPS : contains
-    WORKFLOW_STAGES ||--o{ WORKFLOW_EDGES : "source of"
-    WORKFLOW_STAGES ||--o{ WORKFLOW_EDGES : "target of"
-    WORKFLOW_STEPS ||--o{ STEP_RESPONSES : "answered by"
+student_profiles (user_id PK→users.id, full_name, faculty, programme,
+    year CHECK 1-8, cgpa CHECK 0-4, citizenship default MY, matric_no UNIQUE)
 
-    WORKFLOWS ||--o{ ATTACHMENTS : "has uploaded"
-    WORKFLOWS ||--o{ GLM_REASONING_TRACE : "produces"
-    WORKFLOWS ||--o{ ADMIN_BRIEFINGS : "submitted as"
-    ADMIN_BRIEFINGS ||--o{ ADMIN_DECISIONS : "resolved by"
+staff_profiles (user_id PK→users.id, full_name, faculty,
+    staff_role CHECK in admin/coordinator/dean/dvc/ips_officer)
 
-    USERS {
-        uuid id PK
-        text email UK
-        text role "student | staff"
-        timestamptz created_at
-    }
-    STUDENT_PROFILES {
-        uuid user_id PK,FK
-        text faculty
-        text programme
-        int year
-        numeric cgpa
-        text citizenship
-    }
-    STAFF_PROFILES {
-        uuid user_id PK,FK
-        text faculty
-        text role "coordinator | dean | dvc"
-    }
-    PROCEDURES {
-        text id PK "scholarship_application"
-        text name
-        text description
-        text source_url
-        timestamptz indexed_at
-    }
-    PROCEDURE_SOP_CHUNKS {
-        uuid id PK
-        text procedure_id FK
-        int chunk_order
-        text content
-        vector embedding "pgvector(1536)"
-    }
-    WORKFLOWS {
-        uuid id PK
-        uuid user_id FK
-        text procedure_id FK
-        text status "planning | active | submitted | approved | rejected"
-        jsonb plan_snapshot
-        timestamptz created_at
-    }
-    WORKFLOW_STAGES {
-        uuid id PK
-        uuid workflow_id FK
-        int order
-        text label
-        text status "locked | active | completed | skipped"
-        text node_type "stage | decision | end"
-    }
-    WORKFLOW_STEPS {
-        uuid id PK
-        uuid stage_id FK
-        int order
-        text type "form | upload | approval | conditional"
-        jsonb config
-        text status "pending | completed"
-    }
-    WORKFLOW_EDGES {
-        uuid id PK
-        uuid workflow_id FK
-        uuid source_stage_id FK
-        uuid target_stage_id FK
-        text condition_key
-    }
-    STEP_RESPONSES {
-        uuid id PK
-        uuid step_id FK
-        uuid user_id FK
-        jsonb response_data
-        timestamptz responded_at
-    }
-    ATTACHMENTS {
-        uuid id PK
-        uuid workflow_id FK
-        text storage_path
-        text mime_type
-        int size_bytes
-        jsonb extracted_fields
-    }
-    GLM_REASONING_TRACE {
-        uuid id PK
-        uuid workflow_id FK
-        text endpoint "plan | adapt | route | parse | brief"
-        text model_version
-        text prompt_hash
-        jsonb input_summary
-        jsonb output
-        numeric confidence
-        int input_tokens
-        int output_tokens
-        int latency_ms
-        timestamptz called_at
-    }
-    ADMIN_BRIEFINGS {
-        uuid id PK
-        uuid workflow_id FK
-        jsonb extracted_facts
-        jsonb flags
-        text recommendation "approve | reject | request_info"
-        text reasoning
-        text status "pending | resolved"
-    }
-    ADMIN_DECISIONS {
-        uuid id PK
-        uuid briefing_id FK
-        uuid staff_user_id FK
-        text decision "approve | reject | request_info"
-        text comment
-        timestamptz decided_at
-    }
+procedures (id PK text, name, description, source_url, faculty_scope,
+    indexed_at, deadline_date, deadline_label)
+
+procedure_sop_chunks (id PK uuid, procedure_id→procedures.id, chunk_order,
+    section, content, source_url, embedding vector(1536), indexed_at)
+
+procedure_letter_templates (id PK uuid, procedure_id→procedures.id,
+    template_type CHECK in acceptance/rejection/request_info/custom,
+    name, template_text, detected_placeholders text[],
+    created_by→users.id, created_at, updated_at,
+    UNIQUE(procedure_id, template_type, name))
+
+applications (id PK uuid, user_id→users.id, procedure_id→procedures.id,
+    status CHECK in draft/submitted/under_review/more_info_requested/
+        approved/rejected/withdrawn,
+    progress_current_step, progress_estimated_total,
+    student_summary, ai_recommendation, ai_confidence,
+    assigned_to→auth.users(id), assigned_at,
+    created_at, submitted_at, decided_at, updated_at)
+
+application_steps (id PK uuid, application_id→applications.id, ordinal,
+    type CHECK in form/file_upload/text/select/multiselect/info/
+        final_submit/coordinator_message,
+    prompt_text, config jsonb, emitted_by CHECK in ai/coordinator,
+    emitted_by_user_id→users.id, status CHECK in pending/completed/skipped,
+    response_data jsonb, created_at, completed_at)
+
+application_briefings (id PK uuid, application_id→applications.id,
+    extracted_facts jsonb, flags jsonb default '[]',
+    recommendation CHECK, reasoning,
+    status CHECK in pending/resolved, created_at)
+
+application_decisions (id PK uuid, application_id→applications.id,
+    briefing_id→application_briefings.id, decided_by→users.id,
+    decision CHECK in approve/reject/request_info/withdrawn,
+    comment, decided_at)
+
+application_letters (id PK uuid, application_id→applications.id,
+    template_id→procedure_letter_templates.id,
+    letter_type CHECK, generated_text, pdf_storage_path,
+    delivered_to_student_at, delivered_via_email default false, created_at)
+
+application_coordinator_notes (id PK uuid,
+    application_id→applications.id, author_id→auth.users(id),
+    body CHECK length 1-4000, created_at, updated_at)
+    [RLS: staff/admin read+insert, author delete-own]
+
+application_messages (id PK uuid, application_id→applications.id,
+    author_id→auth.users(id),
+    author_role CHECK in student/coordinator,
+    body CHECK length 1-4000, created_at)
+    [RLS: owner+staff read; insert by role with author_role match]
+    [Realtime publication: yes]
+
+glm_reasoning_trace (id PK uuid, workflow_id, endpoint CHECK,
+    model_version, prompt_hash, input_summary jsonb, output jsonb,
+    confidence, citations text[], citation_verified default true,
+    input_tokens, output_tokens, latency_ms, cache_hit default false,
+    retry_count default 0, called_at)
+
+attachments (legacy v1 table — superseded by Storage bucket + step.response_data)
 ```
 
-**3NF justifications:**
-- `STUDENT_PROFILES` and `STAFF_PROFILES` are split from `USERS` to avoid nullable role-specific columns and to allow per-role indexes.
-- `WORKFLOW_EDGES` is its own table (M:N would be wrong; it's 1:M from each stage but the relationship metadata — condition_key — belongs on the edge, not on the stage).
-- `STEP_RESPONSES` is separate from `WORKFLOW_STEPS` because a step's *definition* is a different lifecycle entity than its *response* (response can be re-submitted; definition is immutable for the workflow's lifetime).
-- `GLM_REASONING_TRACE` is append-only and indexed by `workflow_id, called_at` for per-workflow audit queries.
-- `ADMIN_DECISIONS` is separate from `ADMIN_BRIEFINGS` so a single briefing can have a decision history (e.g., request_info → approve).
+**Storage:**
+- `application-files` bucket (private, 10 MB limit, MIME-restricted to PDF/JPG/PNG/WEBP/DOC/DOCX)
+- Path: `{user_id}/{application_id}/{step_id}-{timestamp}-{safeName}`
+- RLS:
+  - INSERT: `(storage.foldername(name))[1] = auth.uid()::text`
+  - SELECT: same OR staff/admin
+  - DELETE: owner only
+
+**Realtime publication (`supabase_realtime`):** `applications`, `application_steps`, `application_letters`, `application_messages`.
+
+### API Surface (~30 endpoints)
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/procedures` | any user | List procedures for student portal |
+| GET | `/api/procedures/[id]/sop` | any user | SOP chunks for the SOP viewer |
+| GET, POST | `/api/applications` | student | List my apps / create new |
+| GET | `/api/applications/[id]` | owner+staff | Full application |
+| POST | `/api/applications/[id]/respond` | owner | Submit step response → emit next |
+| POST | `/api/applications/[id]/submit` | owner | Final submit → trigger briefing |
+| POST | `/api/applications/[id]/withdraw` | owner | Cancel an in-flight app |
+| POST | `/api/applications/[id]/revise/[stepId]` | owner | Reset a completed step + delete later steps |
+| GET, POST | `/api/applications/[id]/messages` | owner+staff | Message thread |
+| GET | `/api/coordinator/inbox` | staff/admin | Inbox queue with briefings inlined |
+| GET | `/api/coordinator/applications/[id]` | staff/admin | Detail view with briefing/steps/decisions/letters/assignee |
+| POST | `/api/coordinator/applications/[id]/decide` | staff/admin | Approve / reject / request info, with optional `letter_text_override` |
+| POST | `/api/coordinator/applications/[id]/preview-letter` | staff/admin | Generate letter without committing + run hallucination check |
+| POST | `/api/coordinator/applications/[id]/suggest-comment` | staff/admin | AI-draft a coordinator comment |
+| POST | `/api/coordinator/applications/[id]/undo` | staff/admin | Revert a decision within 5 min |
+| POST, DELETE | `/api/coordinator/applications/[id]/claim` | staff/admin | Claim / release an application |
+| GET, POST | `/api/coordinator/applications/[id]/notes` | staff/admin | Internal notes |
+| DELETE | `/api/coordinator/applications/[id]/notes/[noteId]` | author | Delete own note |
+| GET, POST | `/api/admin/procedures` | admin | List / create procedures |
+| PATCH | `/api/admin/procedures/[id]` | admin | Update deadline, description, faculty_scope |
+| POST | `/api/admin/procedures/[id]/sop` | admin | Upload SOP text → chunk + index |
+| POST | `/api/admin/procedures/parse-pdf` | admin | Extract text from a PDF (`pdf-parse`) |
+| GET, POST | `/api/admin/procedures/[id]/letter-templates` | admin | List / upsert templates |
+| DELETE | `/api/admin/procedures/[id]/letter-templates/[templateId]` | admin | Delete template |
+| GET | `/api/files/sign?path=…` | owner+staff | 60s signed URL for an uploaded file |
+| GET | `/api/notifications` | any user | Last-14-days events feed for the bell |
+| GET, POST | `/api/profile` | any user | Read / upsert profile |
+| POST | `/api/profile/bootstrap` | any user | Returns whether onboarding needed |
+| POST | `/api/demo/reset` | any user | Wipe + reseed demo student with 5 sample apps |
 
 ---
 
@@ -492,41 +440,38 @@ erDiagram
 
 ### Minimum Viable Product (MVP)
 
-| # | Feature | Description |
-|---|---|---|
-| 1 | **Conversational Intent Intake + GLM Workflow Planner** | Student types intent in plain English; GLM extracts the procedure, asks clarifying questions if confidence is low, and emits a structured workflow plan rendered on a ReactFlow canvas. |
-| 2 | **Adaptive Step Engine with Document Parsing** | Each step's question is rewritten by GLM for the student's specific context. Document uploads (PDF/image) are parsed via GLM into structured fields and pre-fill subsequent steps. |
-| 3 | **AI-Reasoned Decision Routing** | At every decision node, GLM evaluates the student's responses and chooses the next branch with a confidence score and natural-language reasoning. Below-threshold confidence triggers a clarifying question. |
-| 4 | **Coordinator Briefing Dashboard** | Each completed submission is presented to the coordinator as a GLM-generated briefing — extracted facts, flagged edge cases, recommended decision with reasoning trace. One-click Approve / Reject / Request More Info. |
-| 5 | **Structured Output Bundle** | At workflow completion, the system generates: (a) the official PDF form filled with collected data, (b) draft emails to the relevant offices, (c) `.ics` calendar with all deadlines, (d) a remaining-actions checklist. |
+**Live demo procedure: Scholarship & Financial Aid (Yayasan UM)** — implemented end-to-end.
+
+All 28 functionalities (F1–F28 in PRD §4.2) are wired and demoable. The demo seeds 5 sample applications (mid-flow draft, high-conf approve, low-conf+flagged, approved, rejected) so coordinator inbox + analytics + GLM traces all populate immediately on `/api/demo/reset`.
+
+Six procedures listed in the catalogue; only Scholarship is Live (others get "Coming soon" badges so the catalogue communicates scope without misleading).
 
 ### Non-Functional Requirements (NFRs)
 
-| Quality | Requirement | Implementation |
+| NFR | Target | How achieved |
 |---|---|---|
-| **Scalability** | System must handle 50 concurrent active workflows in MVP; designed to scale to 500 in production with horizontal API scaling and Postgres read replicas. | Vercel serverless auto-scales API routes. Supabase Pro tier supports 500+ concurrent connections via connection pooling (PgBouncer). |
-| **Reliability** | GLM endpoint failures must not lose workflow state. p95 successful workflow completion ≥ 95%. | All step responses persisted to Postgres before any GLM call. GLM-call retry once on schema-violation; on second failure, persist the failure event and surface user-facing error. Workflow can be resumed from any persisted step. |
-| **Maintainability** | All GLM calls go through a single service layer (`lib/glm/`); no inline GLM SDK calls in API routes or components. Each endpoint has a versioned system prompt under source control. | Lint rule rejects direct `@anthropic`-style SDK imports outside `lib/glm/`. System prompts stored as `.md` files in `lib/glm/prompts/`, hashed and versioned per release. |
-| **Token Latency** | GLM call p95 latency must be < 4s for planner / decision-router endpoints, < 1.5s for step-adapter. End-to-end "intent submitted → canvas rendered" p95 < 6s. | Use `glm-4.5-flash` for high-volume low-stakes calls. Stream UI affordances ("planning your workflow…") while planner runs. Async-with-timeout pattern (10s hard timeout, retry once). |
-| **Cost Efficiency** | Average token cost per completed workflow must not exceed RM 0.50 (estimated 60,000 tokens). | (a) Prompt-prefix caching for SOPs and few-shot examples (target ≥ 60% cache hit rate). (b) Model tiering — flash for cheap calls, full glm-4.6 only for planning/routing. (c) Conversation summarisation: turns older than 20 collapsed to ≤500-token rolling summary. (d) Per-team daily quota (500 calls) with circuit breaker. |
-| **Security** | No service-role keys in client bundle. All API routes verify Supabase Auth JWT. File uploads validated for magic bytes (not just MIME header). RLS enforced on every table. | API routes call `supabase.auth.getUser()` from the cookie; no anon-key client writes to user data. `validateMagicBytes()` helper before storing uploads. RLS policies in migrations under version control. |
-| **Auditability** | Every GLM decision is logged with model version, prompt hash, response, and latency. Every coordinator decision is logged with timestamp and actor. | `glm_reasoning_trace` and `admin_decisions` tables append-only. `created_at` defaults to `now()`. No `DELETE` permissions in RLS policies. |
-| **Hallucination Mitigation** | No regulation citation surfaced to the user unless verified to exist in the indexed KB. | `ResponseValidator` cross-checks every citation against `procedures.id` and `procedure_sop_chunks` table; unverified citations stripped and logged as hallucination event. |
+| **Latency p95 — `nextStep`** | < 4s | Model: glm-4.6, JSON mode, max_tokens 2000. Vercel `sin1` ↔ Supabase Seoul ~70ms. |
+| **Latency p95 — `suggestComment`** | < 1.5s | Model: glm-4.5-flash, max_tokens 400. |
+| **Realtime push p95** | < 1s | Supabase Realtime publication; client-side subscription with filter. |
+| **File upload p95** | < 3s for 5 MB | Direct browser-to-Storage via Supabase JS client; no Next.js relay. |
+| **Auth p95** | < 500ms | Cookie-based JWT verified via `@supabase/ssr`. |
+| **Security — file privacy** | Owner + staff only | Bucket RLS + signed URLs. Verified by demo cross-account test. |
+| **Audit — every GLM call** | 100% | `trace.ts` writes `glm_reasoning_trace` for every `callGlm` invocation. Visible at `/admin/glm-traces`. |
+| **Resilience — GLM outage** | Demo continues | Auto-fallback to fixtures with logged error; `model: …-fallback` marker in trace. |
 
 ### Out of Scope / Future Enhancements
 
-- Real integration with MAYA / SiswaMail / SPeCTRUM / EMGS APIs (mocked for MVP).
-- Email sending via SMTP (drafts generated; user copies and sends manually).
-- Payment processing for exam appeal fees, EMGS fees.
-- Native mobile apps (iOS/Android).
-- Voice input.
-- Bahasa Melayu UI (procedures may include BM document names; UI is English).
-- Multi-user real-time collaboration on a single workflow.
-- Per-faculty admin configuration UI (faculty rules are baked into the KB at index time for MVP).
-- Postgrad-research candidature defence scheduling integration.
-- Convocation-registration procedure.
-- Hostel / accommodation procedure.
-- Human-template-builder UI (not needed — GLM plans at runtime).
+- Email delivery via SMTP (currently in-app letter delivery)
+- Server-side PDF generation (currently browser print)
+- OCR for image-only PDFs
+- Bahasa Melayu UI
+- Voice intake
+- Real MAYA / SiswaMail / EMGS API integrations
+- Payment processing
+- Multi-tenant isolation
+- Native mobile apps
+- Push notifications
+- Coordinator-side bulk reject
 
 ---
 
@@ -534,96 +479,64 @@ erDiagram
 
 ### Technical Evaluation
 
-#### Grayscale Rollout & A/B Testing
-- **Pre-launch (hackathon):** all features behind a single flag; deployed only to the team's own demo accounts and the 5 mock student accounts seeded in the database.
-- **Post-launch (production roadmap):** 5% rollout via the UM HEPA scholarship office, monitor planner-success rate and officer approval-time delta. Expand to 25%, then 100%, gating each step on AI Output Pass Rate ≥ 80% and zero P0/P1 bugs.
-- **A/B testing:** test two prompting strategies for the decision router (chain-of-thought vs. structured-only) on a 50/50 split, measuring confidence-calibration accuracy.
+#### Rollout Strategy
+- **Mock mode default** (`GLM_MOCK_MODE=true`) on shared deploy + demo banner. Real Z.AI mode is one env var flip on Vercel (`GLM_MOCK_MODE=false` + valid `ZAI_API_KEY`).
+- **Auto-fallback on real-mode error** — even after flipping to real, if a call errors, the fixture saves the demo. Logged loudly to `console.error` so production monitoring catches it.
 
-#### Emergency Rollback (ER) & Golden Release
-- **Golden Release:** every passing CI run on `main` is tagged and saved to a Vercel deployment URL. Last known good deployment is documented in `docs/RELEASES.md`.
-- **Trigger conditions for ER:**
-  - GLM call success rate < 90% over a 5-minute window
-  - p95 end-to-end latency > 15 seconds for 3 consecutive minutes
-  - Hallucination event rate > 1% of decision-router calls
-  - Any unhandled 5xx rate > 2%
-- **Rollback action:** Vercel `promote --to <golden-url>`, automated via GitHub Action on alert webhook from Sentry.
+#### Emergency Rollback
+- Each round of features was committed + pushed independently (~12 commits across 7 rounds). Vercel keeps prior deployments — one-click rollback via dashboard.
+- Database migrations are additive (no destructive ALTERs); rollback typically only needs Vercel rollback, not migration reversal.
 
-#### Priority Matrix
+#### Priority Matrix (what gets fixed first if demo breaks)
 
-| Priority | Definition | Example | Action |
-|---|---|---|---|
-| **P0 — Critical** | Service-down, data loss, or security breach | GLM service layer leaking student data into reasoning trace; auth bypass | Page on-call immediately; emergency rollback to Golden Release; postmortem within 24h |
-| **P1 — High** | Core feature broken for all users | Planner returns invalid JSON for all procedures; canvas blank for all workflows | Hotfix within 4h; rollback if no fix in 4h |
-| **P2 — Medium** | Single-procedure or single-edge-case failure | Decision router mis-routes 10% of borderline M40-vs-T20 income-tier cases | Fix within 2 days; mitigate with confidence threshold tweak |
-| **P3 — Low** | Cosmetic, single-user, or rare edge case | Toast styling broken on Safari < 16; one user reports a typo | Backlog; fix in next sprint |
+| Priority | Surface | Why |
+|---|---|---|
+| P0 | Student demo flow (`/login` → `/student/portal` → application → submit) | Core narrative for judges |
+| P0 | Coordinator demo flow (`/login` → `/coordinator/inbox` → detail → preview & approve) | Other half of core narrative |
+| P1 | `/admin/glm-traces` | Transparency story; judges may ask |
+| P1 | Realtime updates | Wow factor; if broken, flag manually |
+| P2 | Admin SOP upload | Less likely demoed live |
 
 #### Monitoring
-- **Health checks:** `/api/health` returns 200 if Postgres is reachable and GLM API responds to a canary prompt within 5s.
-- **Sentry:** all unhandled errors, including GLM schema-violation events, captured with workflow_id and user_id breadcrumbs.
-- **Custom metrics table** (`metrics_glm_calls`): per-call duration, token counts, cache hit/miss, retry count. Aggregated nightly.
-- **Alerts (post-MVP):** PagerDuty integration with thresholds on success rate, latency p95, hallucination rate.
+- Vercel deployment logs + runtime logs
+- `glm_reasoning_trace` for every model call (latency, tokens, errors)
+- Supabase dashboard for DB + Storage metrics
+- `console.error` from auto-fallback path captured in Vercel logs
 
 ### Assumptions
-- **A1.** Students have a stable internet connection during workflow sessions (poor connectivity will time out GLM calls; we surface a "retry" affordance).
-- **A2.** Coordinators have desktop access for the briefing dashboard (mobile-responsive but not optimised for phone).
-- **A3.** UM SOPs change infrequently enough that a quarterly KB re-index is sufficient.
-- **A4.** Z.AI GLM API uptime is ≥ 99.5% and rate limits accommodate a hackathon-scale demo (~500 calls/day).
-- **A5.** Document uploads are predominantly machine-readable PDFs; OCR is fallback only.
-- **A6.** Mock student profiles seeded in the database are sufficient for the demo; real MAYA integration is a separate production track.
+- UM SOPs change infrequently enough that re-indexing once a semester is sufficient.
+- Coordinators are willing to read briefings + edit GLM-drafted letters (vs. full automation, which we deliberately don't do).
+- Students are willing to accept turn-by-turn step emission as a flow (vs. seeing the whole form upfront — we believe step-at-a-time reduces overwhelm).
+- Z.AI GLM availability is sufficient for production scale; rate-limit + cost monitoring is in roadmap.
 
 ### External Dependencies
-
-| Tool / Service | Purpose | Risk | Mitigation |
-|---|---|---|---|
-| **Z.AI GLM API** | Core reasoning engine — planning, decision routing, document parsing, briefing generation | **Critical**: GLM API outage or rate-limit breach kills the core product (by design — see "no fallback" architectural decision). | Per-team daily quota (500 calls), per-user rate limit (10/min), prompt caching, pre-recorded demo backup video for live presentation, Sentry alert on call-success rate < 90%. |
-| **Supabase Postgres + pgvector** | Application database, KB vector store, file storage, auth | High: complete outage takes the system down. | Supabase Cloud SLA (99.9%); local Postgres dev fallback for development. |
-| **Vercel** | Hosting (frontend + API routes) | Medium: outage takes the deployed app down but does not affect data. | Standard Vercel SLA; Golden Release tag for fast redeploy on alternate region if needed. |
-| **Upstash Redis** | Rate limiter + prompt-prefix cache | Low: failure degrades to direct GLM calls without caching (slower, more expensive, but functional). | Circuit breaker; cache layer treated as best-effort. |
-| **Sentry** | Error tracking | Low: monitoring blind-spot, no user impact. | — |
-| **GitHub** | Version control + CI/CD | Low: development blocked, no production impact. | — |
-| **`pdf-parse` + `tesseract.js` (npm packages)** | Document parsing | Low: bundled with the application. | Pin versions; test fixtures for both. |
+- **Z.AI GLM API** — mandatory per hackathon rules. Mock-mode + auto-fallback hedges against outages.
+- **Supabase Cloud (Postgres + Storage + Auth + Realtime)** — managed hosting. Single-region (Seoul) for now.
+- **Vercel** — Next.js hosting. Pinned to `sin1`.
+- **`pdf-parse`** — server-only PDF text extraction. Marked `serverExternalPackages` in `next.config.ts`.
 
 ---
 
 ## Project Management & Team Contributions
 
-### Project Timeline (10-day Preliminary Sprint)
-
-| Day | Date | Milestone |
-|---|---|---|
-| 1 | Wed 16 Apr | Domain selection received; problem statement reviewed |
-| 2 | Thu 17 Apr | Initial brainstorming, vertical decision (university admin) |
-| 3 | Fri 18 Apr | Research UM procedures (6 procedures documented); FlowNote reference architecture studied; PRD + SAD drafted |
-| 4 | Sat 19 Apr | QATD draft; pitch deck content; code skeleton scaffolded; Z.AI API key acquired |
-| 5 | Sun 20 Apr | KB seeding (SOP indexing); GLM service layer built (planner, intent, decision router) |
-| 6 | Mon 21 Apr | Adaptive step engine, document parsing, ReactFlow canvas integration |
-| 7 | Tue 22 Apr | Coordinator dashboard, structured output generation, end-to-end Scholarship Application flow |
-| 8 | Wed 23 Apr | Postgrad Admission flow (secondary procedure); UI polish; test cases written |
-| 9 | Thu 24 Apr | QA pass, AI output testing, hallucination mitigation hardening |
-| 10 | Fri 25 Apr | Pitch deck finalised, video recording, deployment to production URL, dry-run |
-| Submit | Sat 26 Apr 07:59 | **Final submission** |
+### Project Timeline
+- **Week 1 (Apr 14–18):** v1 architecture (workflow templates + ReactFlow canvas), 3 documents, initial Supabase schema, login + onboarding.
+- **Week 2 (Apr 18–20):** v2 pivot to step-by-step AI emission. 14 migrations. 7 rounds of feature work covering all surfaces.
+- **Apr 20:** Documents synced to actual shipped state (this revision).
+- **Apr 20–25:** Demo polish, rehearsals, video record.
+- **Sat Apr 26 07:59:** Hackathon submission deadline.
 
 ### Team Members & Roles
-
-| Member | Role | Responsibilities |
-|---|---|---|
-| **Jeanette Tan En Jie** | Group Leader | Coordination, mentorship session, submission ownership, stakeholder communication |
-| **Teo Zen Ben** | Technical Lead | Architecture, GLM service layer, workflow engine, schema, code review |
-| **Nyow An Qi** | *role TBD* | *to be confirmed* |
-| **Thevesh A/L Chandran** | *role TBD* | *to be confirmed* |
-
-Suggested role splits for the remaining two members (subject to team confirmation):
-- **Frontend / UX** — Student SPA, ReactFlow canvas styling, step renderers, coordinator dashboard
-- **QA / Pitch** — Test cases, AI output validation, pitch deck, video recording, deployment dry-runs
+- **Jeanette Tan En Jie** — Frontend, design system, copy
+- **Teo Zen Ben** — Backend, GLM integration, infrastructure (Vercel + Supabase)
+- **Nyow An Qi** — Procedure research, SOP indexing, fixture authoring
+- **Thevesh A/L Chandran** — Coordinator UX, briefing prompt engineering, demo seed
 
 ### Recommendations
-
-- **Use GLM prompt caching aggressively.** Procedure SOPs and few-shot examples are static and account for ~70% of input tokens. Cache hit rate ≥ 60% is the difference between "fits in budget" and "blows the budget."
-- **Pre-record the demo.** Even with retries, GLM API has tail latency. A 90-second pre-recorded video as backup means the live demo can fail gracefully without losing presentation time.
-- **Seed mock data realistically.** Use real UM faculty names, real scholarship names (Yayasan UM, MARA, JPA, MyBrainSc, Khazanah), real income brackets (DOSM B40 < RM 4,850), real regulation references (Reg.40, Reg.42). Judges will recognise the authenticity.
-- **Defer multi-tenant.** Tempting to over-engineer. For MVP, single-workspace + role-based access is sufficient and ships faster.
-- **Hard-code the second procedure's KB snippets** if time runs short on Postgrad Admission. The point is to *demonstrate* the engine generalises; full coverage is a stretch goal.
+- **For real production use:** wire SMTP for letter delivery; add OCR for scanned PDFs; harden bucket RLS with per-procedure scoping; cost-monitor GLM with daily quota alerts.
+- **For other Malaysian universities:** the engine is procedure-agnostic — swap the SOP corpus + letter templates and the same UniGuide app guides USM / UKM / UPM / UTM students.
+- **For other Malaysian government procedures:** SSM / LHDN / EPF / Halal cert all have the same shape — UniGuide's pattern (SOP → AI emits steps → coordinator decides) generalises.
 
 ---
 
-**End of SAD v1.0**
+**End of SAD v2.0 — synced with shipped state as of 2026-04-20**
