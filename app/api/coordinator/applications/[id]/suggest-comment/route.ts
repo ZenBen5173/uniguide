@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const [{ data: app }, { data: briefing }] = await Promise.all([
     sb.from("applications")
-      .select("id, procedure_id, student_summary, procedures(name), student_profiles!applications_user_id_fkey(full_name, faculty, programme, year, cgpa)")
+      .select("id, user_id, procedure_id, student_summary, procedures(name)")
       .eq("id", applicationId)
       .single(),
     sb.from("application_briefings")
@@ -64,8 +64,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   if (!app) return apiError("Application not found", 404);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sp = (app as any).student_profiles ?? null;
+  const { data: sp } = await sb
+    .from("student_profiles")
+    .select("full_name, faculty, programme, year, cgpa")
+    .eq("user_id", app.user_id)
+    .maybeSingle();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proc = (app as any).procedures ?? null;
 

@@ -31,8 +31,7 @@ export async function GET(req: NextRequest) {
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at,
       assigned_to, assigned_at,
-      procedures(name),
-      student_profiles!applications_user_id_fkey(full_name, faculty, programme, year, cgpa, citizenship)
+      procedures(name)
     `)
     .order("submitted_at", { ascending: false, nullsFirst: false });
 
@@ -79,8 +78,20 @@ export async function GET(req: NextRequest) {
     : { data: [] };
   const assigneeNameById = new Map((assigneeProfiles ?? []).map((p) => [p.user_id, p.full_name]));
 
+  // Resolve student profiles for each applicant. (Can't use PostgREST embed —
+  // applications.user_id and student_profiles.user_id share a parent in `users`
+  // but there's no direct FK between the two tables.)
+  const studentIds = [...new Set((applications ?? []).map((a) => a.user_id))];
+  const { data: studentProfiles } = studentIds.length
+    ? await sb.from("student_profiles")
+        .select("user_id, full_name, faculty, programme, year, cgpa, citizenship")
+        .in("user_id", studentIds)
+    : { data: [] };
+  const profileByUserId = new Map((studentProfiles ?? []).map((p) => [p.user_id, p]));
+
   const enriched = (applications ?? []).map((a) => ({
     ...a,
+    student_profiles: profileByUserId.get(a.user_id) ?? null,
     flags: flagsByApp.get(a.id) ?? [],
     assignee_name: a.assigned_to ? assigneeNameById.get(a.assigned_to) ?? "Coordinator" : null,
   }));

@@ -21,12 +21,19 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at, updated_at,
       assigned_to, assigned_at,
-      procedures(name, description),
-      student_profiles!applications_user_id_fkey(full_name, faculty, programme, year, cgpa, citizenship, matric_no)
+      procedures(name, description)
     `)
     .eq("id", id)
     .single();
   if (!app) return apiError("Application not found", 404);
+
+  // Student profile lookup (no direct FK between applications and student_profiles)
+  const { data: studentProfile } = await sb
+    .from("student_profiles")
+    .select("full_name, faculty, programme, year, cgpa, citizenship, matric_no")
+    .eq("user_id", app.user_id)
+    .maybeSingle();
+  (app as Record<string, unknown>).student_profiles = studentProfile ?? null;
 
   let assignee_name: string | null = null;
   if (app.assigned_to) {
