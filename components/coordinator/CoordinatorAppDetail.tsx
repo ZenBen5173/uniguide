@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, MessageSquare, X, Paperclip, Undo2 } from "lucide-react";
 import TopBar from "@/components/shared/TopBar";
+import InternalNotes from "@/components/coordinator/InternalNotes";
 
 interface DetailData {
   application: {
@@ -358,12 +359,12 @@ export default function CoordinatorAppDetail({
 
           {/* Decision history */}
           {data.decisions.length > 0 && (
-            <div className="ug-card overflow-hidden">
+            <div className="ug-card overflow-hidden mb-5">
               <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Decision history</div>
               {data.decisions.map((d) => (
                 <div key={d.id} className="px-5 py-3 border-b border-line-2 last:border-b-0 flex items-center gap-3">
-                  <span className={`ug-rec ${d.decision === "approve" ? "approve" : d.decision === "reject" ? "reject" : "review"}`}>
-                    {d.decision === "approve" ? "Approved" : d.decision === "reject" ? "Rejected" : "Requested info"}
+                  <span className={`ug-rec ${d.decision === "approve" ? "approve" : d.decision === "reject" ? "reject" : d.decision === "withdrawn" ? "" : "review"}`} style={d.decision === "withdrawn" ? { background: "var(--line-2)", color: "var(--ink-4)", borderColor: "var(--line)" } : undefined}>
+                    {d.decision === "approve" ? "Approved" : d.decision === "reject" ? "Rejected" : d.decision === "withdrawn" ? "Withdrawn by student" : "Requested info"}
                   </span>
                   {d.comment && <span className="text-[13px] text-ink-3 flex-1">{d.comment}</span>}
                   <span className="text-[12px] text-ink-4 mono">{new Date(d.decided_at).toLocaleString("en-MY")}</span>
@@ -371,6 +372,9 @@ export default function CoordinatorAppDetail({
               ))}
             </div>
           )}
+
+          {/* Internal notes (staff-only) */}
+          <InternalNotes applicationId={id} />
         </section>
 
         {/* Right rail: action panel */}

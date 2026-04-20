@@ -144,6 +144,28 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
   const autoSaveLabel = lastSavedAt ? relativeAge(lastSavedAt) : "not saved yet";
 
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const withdraw = async () => {
+    if (!confirm("Withdraw this application? Your draft + uploaded files stay for audit, but the application stops here. This cannot be undone.")) return;
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`/api/applications/${id}/withdraw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        alert(`Could not withdraw: ${json.error}`);
+        return;
+      }
+      router.push("/student/portal");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   const submitStep = async () => {
     if (!current) return;
     setSubmitting(true);
@@ -174,7 +196,31 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
     return (
       <>
         <TopBar user={user} />
-        <main className="mx-auto max-w-[1320px] px-10 py-12 text-ink-3">Loading your application…</main>
+        <main className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-10 pt-6 lg:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-10">
+          <section>
+            <div className="h-3 w-32 rounded bg-line-2 mb-4 animate-pulse" />
+            <div className="h-8 w-2/3 rounded bg-line-2 mb-3 animate-pulse" />
+            <div className="h-4 w-1/2 rounded bg-line-2 mb-6 animate-pulse" />
+            <div className="ug-card p-5 mb-3.5 animate-pulse">
+              <div className="h-4 w-1/3 rounded bg-line-2 mb-3" />
+              <div className="h-3 w-full rounded bg-line-2 mb-2" />
+              <div className="h-3 w-5/6 rounded bg-line-2" />
+            </div>
+            <div className="ug-card p-5 animate-pulse">
+              <div className="h-4 w-1/4 rounded bg-line-2 mb-3" />
+              <div className="h-3 w-full rounded bg-line-2 mb-2" />
+              <div className="h-3 w-4/5 rounded bg-line-2 mb-2" />
+              <div className="h-3 w-3/5 rounded bg-line-2" />
+            </div>
+          </section>
+          <aside className="hidden lg:block">
+            <div className="ug-card p-4 animate-pulse">
+              <div className="h-3 w-1/2 rounded bg-line-2 mb-3" />
+              <div className="h-3 w-full rounded bg-line-2 mb-2" />
+              <div className="h-3 w-2/3 rounded bg-line-2" />
+            </div>
+          </aside>
+        </main>
       </>
     );
   }
@@ -196,7 +242,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
     if (current && i === completedCount) return "current";
     return "future";
   });
-  const isSubmitted = ["submitted", "under_review", "more_info_requested", "approved", "rejected"].includes(data.application.status);
+  const isSubmitted = ["submitted", "under_review", "more_info_requested", "approved", "rejected", "withdrawn"].includes(data.application.status);
 
   return (
     <>
@@ -382,6 +428,8 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                         ? "Congratulations — your application was approved. Your acceptance letter is in the right rail."
                         : data.application.status === "rejected"
                         ? "Your application was not approved this round. See the letter in the right rail for the reviewer's notes and appeal pathway."
+                        : data.application.status === "withdrawn"
+                        ? "You withdrew this application. Your draft + uploaded files are kept for reference but no further action will be taken."
                         : "More information was requested. Look for a coordinator message in the step list."}
                     </div>
                   </div>
@@ -412,6 +460,15 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
               )}
             </div>
             <div className="flex items-center gap-4">
+              {!isSubmitted && data.application.status !== "withdrawn" && (
+                <button
+                  onClick={withdraw}
+                  disabled={withdrawing}
+                  className="text-ink-4 hover:text-crimson text-[12.5px] disabled:opacity-50"
+                >
+                  {withdrawing ? "Withdrawing…" : "Withdraw application"}
+                </button>
+              )}
               <Link href={`/student/portal`} className="text-ink-3 no-underline hover:text-ink">
                 Save & exit →
               </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
@@ -46,6 +46,8 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -63,6 +65,9 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   };
 
   useEffect(() => { void refresh(); }, [filter]);
+
+  // Reset focus to top whenever the underlying list changes.
+  useEffect(() => { setFocusIdx(0); }, [filter, search, procedureFilter]);
 
   const procedureOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -130,6 +135,45 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const eligibleForBulk = sorted.filter(canBulkApprove);
   const excludedFromBulk = sorted.length - eligibleForBulk.length;
 
+  // Keyboard nav: j/k to move, Enter to open, / to focus search.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName ?? "";
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t?.isContentEditable ?? false);
+
+      if (!inField && e.key === "/") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      if (inField) return;
+      if (sorted.length === 0) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIdx((i) => Math.min(sorted.length - 1, i + 1));
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === "Enter") {
+        const target = sorted[focusIdx];
+        if (target) {
+          e.preventDefault();
+          router.push(`/coordinator/applications/${target.id}`);
+        }
+      } else if (e.key === "g") {
+        e.preventDefault();
+        setFocusIdx(0);
+      } else if (e.key === "G") {
+        e.preventDefault();
+        setFocusIdx(sorted.length - 1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [sorted, focusIdx, router]);
+
   return (
     <>
       <TopBar
@@ -164,10 +208,12 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              ref={searchRef}
               className="flex-1 border-0 outline-none bg-transparent text-sm text-ink"
-              placeholder="Search by student name or procedure…"
+              placeholder="Search by student name or procedure…  (press / to focus)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") { setSearch(""); (e.target as HTMLInputElement).blur(); } }}
             />
             {search && (
               <button
@@ -254,10 +300,30 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
           </div>
         )}
 
+        {/* Keyboard hint */}
+        <div className="hidden lg:flex items-center gap-3 text-[11px] text-ink-4 mb-2 mono">
+          <Kbd>j</Kbd><Kbd>k</Kbd> navigate · <Kbd>Enter</Kbd> open · <Kbd>/</Kbd> search · <Kbd>g</Kbd>/<Kbd>G</Kbd> top/bottom
+        </div>
+
         {/* Table */}
         <div className="ug-card overflow-x-auto">
           {loading ? (
-            <div className="p-12 text-center text-ink-4">Loading inbox…</div>
+            <div className="divide-y divide-line-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="px-4 py-4 flex items-center gap-4 animate-pulse">
+                  <div className="w-[17px] h-[17px] rounded bg-line-2" />
+                  <div className="w-8 h-8 rounded-full bg-line-2" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 rounded bg-line-2 w-1/3" />
+                    <div className="h-2.5 rounded bg-line-2 w-1/4" />
+                  </div>
+                  <div className="w-16 h-5 rounded bg-line-2" />
+                  <div className="w-12 h-5 rounded bg-line-2" />
+                  <div className="w-20 h-5 rounded bg-line-2" />
+                  <div className="w-16 h-5 rounded bg-line-2" />
+                </div>
+              ))}
+            </div>
           ) : sorted.length === 0 ? (
             <div className="flex items-center gap-8 p-12 bg-card">
               <div className="relative w-[180px] h-[110px] flex-shrink-0">
@@ -298,10 +364,11 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((a) => {
+                {sorted.map((a, idx) => {
                   const isSelected = selected.has(a.id);
                   const isUrgent = a.flags?.some(f => f.severity === "block") || (a.ai_confidence !== null && a.ai_confidence < 0.7);
                   const isBulkable = canBulkApprove(a);
+                  const isFocused = idx === focusIdx;
                   const ageHours = a.submitted_at && a.status === "submitted"
                     ? (Date.now() - new Date(a.submitted_at).getTime()) / 3_600_000
                     : null;
@@ -311,8 +378,9 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                   return (
                     <tr
                       key={a.id}
-                      className={`border-b border-line-2 hover:bg-paper-2 transition cursor-pointer ${isSelected ? "bg-[#F1F2F6]" : ""} ${isUrgent ? "[background:linear-gradient(90deg,rgba(161,37,58,.04),transparent_140px)]" : slaTint}`}
+                      className={`border-b border-line-2 hover:bg-paper-2 transition cursor-pointer ${isSelected ? "bg-[#F1F2F6]" : ""} ${isUrgent ? "[background:linear-gradient(90deg,rgba(161,37,58,.04),transparent_140px)]" : slaTint} ${isFocused ? "outline outline-2 outline-ink/60 outline-offset-[-2px]" : ""}`}
                       onClick={() => router.push(`/coordinator/applications/${a.id}`)}
+                      onMouseEnter={() => setFocusIdx(idx)}
                     >
                       <td className="px-3.5 py-3.5 pr-0 w-8" onClick={(e) => { e.stopPropagation(); if (isBulkable) toggleOne(a.id); }}>
                         <CheckBox checked={isSelected} disabled={!isBulkable} />
@@ -406,6 +474,14 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
         </div>
       </main>
     </>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-1.5 py-0.5 rounded border border-line-2 bg-paper-2 text-ink-3 font-medium text-[10.5px]">
+      {children}
+    </span>
   );
 }
 

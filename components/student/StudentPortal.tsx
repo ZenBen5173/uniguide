@@ -139,7 +139,19 @@ export default function StudentPortal({ user }: { user: { name: string; initials
             <span className="text-[12px] text-ink-4 mono">{apps.length} total</span>
           </div>
           {loading ? (
-            <div className="ug-card p-4 text-ink-4 text-sm">Loading…</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="ug-card p-4 animate-pulse">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-9 h-9 rounded-[10px] bg-line-2" />
+                    <div className="w-14 h-5 rounded-md bg-line-2" />
+                  </div>
+                  <div className="h-4 rounded bg-line-2 mb-2 w-2/3" />
+                  <div className="h-3 rounded bg-line-2 w-1/2 mb-3" />
+                  <div className="h-1 rounded-full bg-line-2 w-full" />
+                </div>
+              ))}
+            </div>
           ) : apps.length === 0 ? (
             <div className="rounded-[12px] border border-dashed border-line-2 bg-paper-2 px-5 py-6 flex items-center gap-4">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-card border border-line text-ink-4 flex-shrink-0">
