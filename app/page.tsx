@@ -29,27 +29,21 @@ export default async function LandingPage() {
     role = profile?.role ?? null;
   }
 
-  // Pull live status (which procedures actually have an indexed SOP).
+  // Pull live status (which procedures actually have an indexed SOP) so we
+  // can show accurate Live / Coming-soon badges. Cards are informational
+  // only — the actual "start" flow lives on /login → portal so the demo
+  // experience (role tiles, onboarding, etc.) isn't bypassed.
   const service = getServiceSupabase();
   const { data: chunkRows } = await service.from("procedure_sop_chunks").select("procedure_id");
   const liveSet = new Set((chunkRows ?? []).map((c) => c.procedure_id));
 
-  // Click-through helper: signed-in students go straight to portal with auto-start;
-  // anyone else (signed-out or staff) goes through login.
-  const procHref = (id: string) => {
-    if (user && (role === "student" || role === null)) {
-      return `/student/portal?start=${id}`;
-    }
-    return `/login?next=${encodeURIComponent(`/student/portal?start=${id}`)}`;
-  };
-
-  const portalHref = user
+  const ctaHref = user
     ? (role === "admin" ? "/admin" : role === "staff" ? "/coordinator/inbox" : "/student/portal")
-    : "/login?next=/student/portal";
+    : "/login";
 
-  const portalLabel = user
+  const ctaLabel = user
     ? (role === "admin" ? "Open admin console" : role === "staff" ? "Open my inbox" : "Go to my portal")
-    : "Sign in to start";
+    : "Try the demo";
 
   return (
     <div className="min-h-screen">
@@ -97,13 +91,17 @@ export default async function LandingPage() {
             and Z.AI's GLM filters the right scholarships, walks you through the application, and
             pre-digests your submission for the staff who'll approve it.
           </p>
-          <div className="mt-8 flex justify-center items-center gap-3 flex-wrap">
-            <Link href={portalHref} className="btn-primary">
-              {portalLabel} →
+          <div className="mt-8 flex flex-col items-center gap-2.5">
+            <Link href={ctaHref} className="btn-primary text-base px-6 py-3">
+              {ctaLabel} →
             </Link>
-            <span className="text-sm text-slate-500">or pick a procedure below</span>
+            {!user && (
+              <p className="text-sm text-slate-500">
+                One click — pick a Student / Coordinator / Admin demo account on the next screen.
+              </p>
+            )}
           </div>
-          <div className="mt-3 text-xs text-slate-500">
+          <div className="mt-4 text-xs text-slate-500">
             <Link
               href="https://github.com/ZenBen5173/uniguide"
               className="text-slate-500 hover:text-slate-700"
@@ -115,46 +113,48 @@ export default async function LandingPage() {
 
         <section className="mt-20">
           <h2 className="text-center text-2xl font-semibold">Procedures we support</h2>
-          <p className="text-center text-sm text-slate-500 mt-2">Click a live procedure to start, or sign in to browse.</p>
+          <p className="text-center text-sm text-slate-500 mt-2">
+            Available once you're signed in. Look for the green <span className="font-semibold text-emerald-700">Live</span> badge.
+          </p>
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PROCEDURES.map((p) => {
               const isLive = liveSet.has(p.id);
-              if (!isLive) {
-                return (
-                  <div key={p.id} className="card p-5 opacity-60 cursor-not-allowed" title="SOP not yet indexed by the admin">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="grid place-items-center w-11 h-11 rounded-[12px] bg-paper-2 border border-line-2 text-ink-5">
-                        <ProcedureIcon procedureId={p.id} className="h-[22px] w-[22px]" />
-                      </div>
+              return (
+                <div
+                  key={p.id}
+                  className={`card p-5 ${isLive ? "" : "opacity-60"}`}
+                  title={isLive ? `${p.name} — live, available after sign-in` : "SOP not yet indexed by the admin"}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <div className={`grid place-items-center w-11 h-11 rounded-[12px] border ${isLive ? "bg-paper-2 border-line-2 text-ink-2" : "bg-paper-2 border-line-2 text-ink-5"}`}>
+                      <ProcedureIcon procedureId={p.id} className="h-[22px] w-[22px]" />
+                    </div>
+                    {isLive ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-semibold uppercase tracking-wider bg-moss-soft text-moss border border-[#CFDDCF]">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-moss" />
+                        Live
+                      </span>
+                    ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold uppercase tracking-wider bg-line-2 text-ink-4 border border-line">
                         Coming soon
                       </span>
-                    </div>
-                    <h3 className="mt-2 font-semibold text-ink-3">{p.name}</h3>
-                    <p className="text-sm text-slate-500">{p.scope}</p>
+                    )}
                   </div>
-                );
-              }
-              return (
-                <Link key={p.id} href={procHref(p.id)} className="card p-5 ug-tile-link no-underline block">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="grid place-items-center w-11 h-11 rounded-[12px] bg-paper-2 border border-line-2 text-ink-2">
-                      <ProcedureIcon procedureId={p.id} className="h-[22px] w-[22px]" />
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-semibold uppercase tracking-wider bg-moss-soft text-moss border border-[#CFDDCF]">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-moss" />
-                      Live
-                    </span>
-                  </div>
-                  <h3 className="mt-2 font-semibold">{p.name}</h3>
+                  <h3 className={`mt-2 font-semibold ${isLive ? "text-ink" : "text-ink-3"}`}>{p.name}</h3>
                   <p className="text-sm text-slate-500">{p.scope}</p>
-                  <div className="text-xs font-medium text-crimson mt-3">
-                    {user ? "Start →" : "Sign in to start →"}
-                  </div>
-                </Link>
+                </div>
               );
             })}
           </div>
+
+          {/* Single repeated CTA so the path is obvious */}
+          {!user && (
+            <div className="mt-8 text-center">
+              <Link href="/login" className="btn-primary">
+                Sign in to start →
+              </Link>
+            </div>
+          )}
         </section>
 
         <section className="mt-20 grid grid-cols-1 gap-8 md:grid-cols-3">
