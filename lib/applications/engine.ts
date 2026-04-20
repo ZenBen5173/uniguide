@@ -126,6 +126,13 @@ export async function emitNextStep(args: {
   const sb = getServiceSupabase();
   const nextOrdinal = (history.length || 0) + 1;
 
+  // Embed AI's SOP citations into the step config so the student-facing UI
+  // can show "based on §X of UM SOP" chips next to the step.
+  const configWithCitations = {
+    ...result.next_step.config,
+    ...(result.citations && result.citations.length > 0 ? { citations: result.citations } : {}),
+  };
+
   const { data: inserted, error } = await sb
     .from("application_steps")
     .insert({
@@ -133,7 +140,7 @@ export async function emitNextStep(args: {
       ordinal: nextOrdinal,
       type: result.next_step.type,
       prompt_text: result.next_step.prompt_text,
-      config: result.next_step.config,
+      config: configWithCitations,
       emitted_by: args.coordinatorRequest ? "coordinator" : "ai",
       status: "pending",
     })

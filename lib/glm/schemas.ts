@@ -122,9 +122,11 @@ export type NextStepInput = z.infer<typeof NextStepInputSchema>;
 export const FormFieldSchema = z.object({
   key: z.string(),
   label: z.string(),
-  field_type: z.enum(["text", "number", "email", "date", "textarea"]),
+  field_type: z.enum(["text", "number", "email", "date", "textarea", "file"]),
   required: z.boolean().default(true),
   placeholder: z.string().optional(),
+  /** For file fields only — accepted MIME types. */
+  accepts: z.array(z.string()).optional(),
 });
 
 export const StepConfigSchema = z.object({

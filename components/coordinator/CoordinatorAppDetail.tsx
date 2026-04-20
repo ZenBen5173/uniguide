@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, MessageSquare, X, Paperclip, Undo2 } from "lucide-react";
+import { Check, MessageSquare, X, Paperclip, Undo2, Sparkles } from "lucide-react";
 import TopBar from "@/components/shared/TopBar";
 import InternalNotes from "@/components/coordinator/InternalNotes";
 import MessageThread from "@/components/shared/MessageThread";
@@ -81,6 +81,28 @@ export default function CoordinatorAppDetail({
 
   // Claim/release
   const [claimBusy, setClaimBusy] = useState(false);
+
+  // AI-suggest comment
+  const [suggestBusy, setSuggestBusy] = useState<"request_info" | "approve" | "reject" | null>(null);
+
+  const suggestComment = async (intent: "request_info" | "approve" | "reject") => {
+    setSuggestBusy(intent);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/suggest-comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setComment(json.data.suggested_comment);
+      } else {
+        alert(`Suggest failed: ${json.error}`);
+      }
+    } finally {
+      setSuggestBusy(null);
+    }
+  };
 
   const claim = async () => {
     setClaimBusy(true);
@@ -490,15 +512,34 @@ export default function CoordinatorAppDetail({
             <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Decide on this application</div>
             <div className="p-5 space-y-3">
               <label className="block">
-                <span className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">
-                  Comment to student <span className="font-normal lowercase tracking-normal text-ink-4">(optional for approve, required for reject / request info)</span>
-                </span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">
+                    Comment to student
+                  </span>
+                  <div className="flex items-center gap-1.5 mono">
+                    <span className="text-[10.5px] text-ink-4 hidden sm:inline">AI suggest:</span>
+                    {(["request_info", "approve", "reject"] as const).map((intent) => (
+                      <button
+                        key={intent}
+                        type="button"
+                        onClick={() => suggestComment(intent)}
+                        disabled={suggestBusy !== null}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium border border-ai-line bg-ai-tint text-ai-ink hover:bg-card disabled:opacity-50"
+                        title={`Draft a ${intent.replace("_", " ")} comment based on the AI briefing`}
+                      >
+                        <Sparkles className="h-2.5 w-2.5" strokeWidth={2.25} />
+                        {suggestBusy === intent ? "…" : intent.replace("_", " ")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <textarea
-                  className="ug-textarea mt-1.5 min-h-[140px]"
-                  placeholder="Type your message — this is included in the letter sent to the student."
+                  className="ug-textarea min-h-[140px]"
+                  placeholder="Type your message, or use the AI suggest buttons above to draft one based on the briefing."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 />
+                <span className="block text-[11px] text-ink-4 font-normal mt-1">Optional for approve, required for reject / request info. Goes verbatim into the letter.</span>
               </label>
 
               <button
@@ -695,6 +736,37 @@ function renderResponse(s: { type: string; response_data: Record<string, unknown
   if (typeof r.value === "string") return <span>{r.value}</span>;
   if (r.confirmed) return <span className="text-moss font-medium">Confirmed</span>;
   if (r.acknowledged) return <span className="text-moss font-medium">Acknowledged</span>;
+
+  // Compound form response — { fieldKey: string | { filename, storage_path } }
+  if (s.type === "form") {
+    const entries = Object.entries(r);
+    if (entries.length > 0) {
+      return (
+        <div className="flex flex-col gap-1.5">
+          {entries.map(([k, v]) => {
+            if (v && typeof v === "object" && !Array.isArray(v) && "filename" in v) {
+              const obj = v as { filename: string; storage_path?: string; size?: number };
+              return (
+                <div key={k} className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">{k}</span>
+                  {obj.storage_path
+                    ? <FileViewLink filename={obj.filename} path={obj.storage_path} size={obj.size} />
+                    : <span className="text-ink-3">{obj.filename}</span>}
+                </div>
+              );
+            }
+            return (
+              <div key={k} className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">{k}</span>
+                <span className="text-ink-2 whitespace-pre-wrap">{String(v)}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+  }
+
   return <span className="mono text-[12px]">{JSON.stringify(r)}</span>;
 }
 

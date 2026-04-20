@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Library, X, Search } from "lucide-react";
+
+export interface SopViewerHandle {
+  openWithSection: (section: string) => void;
+}
 
 interface Chunk {
   id: string;
@@ -22,12 +26,19 @@ interface SopData {
   chunks: Chunk[];
 }
 
-export default function SopViewer({ procedureId }: { procedureId: string }) {
+const SopViewer = forwardRef<SopViewerHandle, { procedureId: string }>(function SopViewer({ procedureId }, ref) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SopData | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    openWithSection: (section: string) => {
+      setSearch(section);
+      setOpen(true);
+    },
+  }), []);
 
   useEffect(() => {
     if (!open || data) return;
@@ -199,7 +210,9 @@ export default function SopViewer({ procedureId }: { procedureId: string }) {
       )}
     </>
   );
-}
+});
+
+export default SopViewer;
 
 function highlight(text: string, q: string): React.ReactNode {
   const term = q.trim();

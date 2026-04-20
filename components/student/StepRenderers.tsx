@@ -44,30 +44,176 @@ function PromptCard({ children, footnote }: { children: ReactNode; footnote?: st
 }
 
 /* ─── form ─── */
-export function FormStep({ step, value, onChange }: RendererProps) {
+export function FormStep({ step, value, onChange, applicationId }: RendererProps) {
   const fields = (step.config.fields as Array<{
-    key: string; label: string; field_type: string; required?: boolean; placeholder?: string;
+    key: string; label: string; field_type: string; required?: boolean; placeholder?: string; accepts?: string[];
   }>) ?? [];
+  const hasFile = fields.some((f) => f.field_type === "file");
   return (
     <>
       <PromptCard>{step.prompt_text}</PromptCard>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4 mb-5">
-        {fields.map((f) => (
-          <div key={f.key} className={`flex flex-col gap-1.5 ${fields.length === 1 ? "col-span-2" : ""}`}>
-            <label className="text-[13px] font-semibold text-ink-2">
-              {f.label}
-              {f.required && <span className="text-crimson font-semibold ml-1">*</span>}
-            </label>
-            <input
-              type={f.field_type === "number" ? "number" : f.field_type === "email" ? "email" : "text"}
-              className="ug-input"
-              placeholder={f.placeholder}
-              value={(value[f.key] as string) ?? ""}
-              onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
-            />
-          </div>
-        ))}
+      <div className={`grid grid-cols-${hasFile ? 1 : 2} sm:grid-cols-2 gap-x-4 gap-y-4 mb-5`}>
+        {fields.map((f) => {
+          const wide = fields.length === 1 || f.field_type === "textarea" || f.field_type === "file";
+          if (f.field_type === "file") {
+            return (
+              <div key={f.key} className={wide ? "sm:col-span-2" : ""}>
+                <label className="text-[13px] font-semibold text-ink-2 mb-1.5 block">
+                  {f.label}
+                  {f.required && <span className="text-crimson font-semibold ml-1">*</span>}
+                </label>
+                <FileFieldInput
+                  fieldKey={f.key}
+                  accepts={f.accepts ?? ["application/pdf", "image/*"]}
+                  applicationId={applicationId}
+                  stepId={step.id}
+                  value={(value[f.key] as Record<string, unknown> | undefined) ?? null}
+                  onChange={(v) => onChange({ ...value, [f.key]: v })}
+                />
+              </div>
+            );
+          }
+          if (f.field_type === "textarea") {
+            return (
+              <div key={f.key} className={`flex flex-col gap-1.5 ${wide ? "sm:col-span-2" : ""}`}>
+                <label className="text-[13px] font-semibold text-ink-2">
+                  {f.label}
+                  {f.required && <span className="text-crimson font-semibold ml-1">*</span>}
+                </label>
+                <textarea
+                  className="ug-textarea min-h-[100px]"
+                  placeholder={f.placeholder}
+                  value={(value[f.key] as string) ?? ""}
+                  onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
+                />
+              </div>
+            );
+          }
+          return (
+            <div key={f.key} className={`flex flex-col gap-1.5 ${wide ? "sm:col-span-2" : ""}`}>
+              <label className="text-[13px] font-semibold text-ink-2">
+                {f.label}
+                {f.required && <span className="text-crimson font-semibold ml-1">*</span>}
+              </label>
+              <input
+                type={f.field_type === "number" ? "number" : f.field_type === "email" ? "email" : f.field_type === "date" ? "date" : "text"}
+                className="ug-input"
+                placeholder={f.placeholder}
+                value={(value[f.key] as string) ?? ""}
+                onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
+              />
+            </div>
+          );
+        })}
       </div>
+    </>
+  );
+}
+
+function FileFieldInput({
+  fieldKey, accepts, applicationId, stepId, value, onChange,
+}: {
+  fieldKey: string;
+  accepts: string[];
+  applicationId?: string;
+  stepId: string;
+  value: Record<string, unknown> | null;
+  onChange: (v: Record<string, unknown> | null) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const filename = value?.filename as string | undefined;
+  const storagePath = value?.storage_path as string | undefined;
+
+  const handleFile = async (file: File) => {
+    if (!applicationId) {
+      setError("Internal: missing application context");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const supabase = getBrowserSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in");
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${user.id}/${applicationId}/${stepId}-${fieldKey}-${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("application-files")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      onChange({
+        filename: file.name,
+        storage_path: path,
+        size: file.size,
+        content_type: file.type,
+        uploaded_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async () => {
+    if (storagePath) {
+      try {
+        const supabase = getBrowserSupabase();
+        await supabase.storage.from("application-files").remove([storagePath]);
+      } catch { /* best-effort */ }
+    }
+    onChange(null);
+  };
+
+  if (filename) {
+    return (
+      <div className="ug-file-card">
+        <div className="ug-file-icon">
+          {filename.toUpperCase().endsWith(".PDF") ? "PDF" : "DOC"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13.5px] font-semibold text-ink truncate">{filename}</div>
+          <div className="text-[11.5px] text-ink-4 mt-0.5">
+            <span className="text-moss font-medium">Stored securely</span>
+          </div>
+        </div>
+        <button className="ug-btn ghost sm" onClick={remove}>Replace</button>
+      </div>
+    );
+  }
+  return (
+    <>
+      <label className={`ug-dropzone cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+        <div className="ug-dropzone-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <div className="text-[13.5px] font-semibold text-ink">
+            {uploading ? "Uploading…" : "Click or drop file"}
+          </div>
+          <div className="text-[12px] text-ink-3 leading-snug">{accepts.join(", ")}</div>
+        </div>
+        <input
+          type="file"
+          accept={accepts.join(",")}
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+          }}
+        />
+      </label>
+      {error && (
+        <div className="mt-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12px] text-crimson">
+          {error}
+        </div>
+      )}
     </>
   );
 }

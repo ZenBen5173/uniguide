@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
-import SopViewer from "./SopViewer";
+import SopViewer, { type SopViewerHandle } from "./SopViewer";
 import MessageThread from "@/components/shared/MessageThread";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
@@ -148,6 +148,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
   const [withdrawing, setWithdrawing] = useState(false);
   const [revisingStepId, setRevisingStepId] = useState<string | null>(null);
+  const sopRef = useRef<SopViewerHandle | null>(null);
 
   const reviseStep = async (stepId: string, ordinal: number) => {
     if (!confirm(`Revise Step ${ordinal}? Your answer for this step + all answers after it will be cleared so the AI can replan from your new response.`)) return;
@@ -410,6 +411,26 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                       )}
                     </div>
                     <div className="text-[13px] text-ink-4 mt-0.5">{stepHintForType(current.type)}</div>
+                    {(() => {
+                      const cites = (current.config as Record<string, unknown>)?.citations as string[] | undefined;
+                      if (!cites || cites.length === 0) return null;
+                      return (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <span className="text-[10.5px] uppercase tracking-wider font-semibold text-ai-ink">based on SOP</span>
+                          {cites.slice(0, 3).map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => sopRef.current?.openWithSection(c)}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-ai-tint text-ai-ink border border-ai-line hover:bg-card hover:border-ink-5 mono"
+                              title={`Open the "${c}" section of the source SOP`}
+                            >
+                              §{c}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="ug-step-meta flex items-center gap-1.5 text-[11.5px] text-ink-4">
                     <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-moss">
@@ -568,7 +589,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
           )}
 
           {/* Source SOP viewer */}
-          <SopViewer procedureId={data.application.procedure_id} />
+          <SopViewer ref={sopRef} procedureId={data.application.procedure_id} />
 
           {/* Message thread with coordinator */}
           <MessageThread applicationId={id} variant="rail" />
