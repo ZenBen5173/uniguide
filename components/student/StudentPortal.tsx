@@ -36,6 +36,7 @@ export default function StudentPortal({ user }: { user: { name: string; initials
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [procSearch, setProcSearch] = useState("");
 
   const refreshApps = async () => {
     try {
@@ -170,17 +171,39 @@ export default function StudentPortal({ user }: { user: { name: string; initials
               ))}
             </div>
           ) : apps.length === 0 ? (
-            <div className="rounded-[12px] border border-dashed border-line-2 bg-paper-2 px-5 py-6 flex items-center gap-4">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-card border border-line text-ink-4 flex-shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-[14px] text-ink-2 font-medium">Nothing in flight yet</p>
-                <p className="text-[12.5px] text-ink-4 mt-0.5">Pick a service below to begin your first application.</p>
-              </div>
-            </div>
+            (() => {
+              const firstReady = procedures.find(p => (p.sop_chunks ?? 0) > 0);
+              return (
+                <div className="rounded-[14px] border border-dashed border-line-2 bg-paper-2 px-6 py-8 flex items-center gap-6 flex-wrap">
+                  <div className="relative w-[120px] h-[80px] flex-shrink-0 hidden sm:block">
+                    <div className="absolute inset-0 border-[1.5px] border-ai-line rounded-[16px] opacity-40" />
+                    <div className="absolute inset-3 border-[1.5px] border-ai-line rounded-[12px] opacity-25" />
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center w-12 h-12 rounded-full bg-ai-tint border border-ai-line text-ai-ink">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2l2.35 5.6L20 8l-4 4 1.1 5.9L12 15.5 6.9 17.9 8 12 4 8l5.65-.4z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-[240px]">
+                    <h3 className="text-[18px] font-semibold tracking-tight m-0 mb-1">
+                      Welcome to UniGuide <span className="serif italic font-normal text-ink-2">— let's start your first application</span>
+                    </h3>
+                    <p className="text-[13.5px] text-ink-3 leading-snug">
+                      Pick a service below. UniGuide reads the official UM SOP, asks only what's relevant to your situation, and walks you through it one step at a time.
+                    </p>
+                  </div>
+                  {firstReady && (
+                    <button
+                      className="ug-btn primary"
+                      onClick={() => startApplication(firstReady.id)}
+                      disabled={starting === firstReady.id}
+                    >
+                      {starting === firstReady.id ? "Starting…" : `Start ${firstReady.name} →`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {apps.map((a) => (
@@ -215,15 +238,35 @@ export default function StudentPortal({ user }: { user: { name: string; initials
 
         {/* Available Services — only ready */}
         {(() => {
-          const ready = procedures.filter(p => (p.sop_chunks ?? 0) > 0);
-          const comingSoon = procedures.filter(p => (p.sop_chunks ?? 0) === 0);
+          const q = procSearch.trim().toLowerCase();
+          const matches = (p: Procedure) => {
+            if (!q) return true;
+            const hay = [p.name, p.description, p.faculty_scope, p.id].filter(Boolean).join(" ").toLowerCase();
+            return hay.includes(q);
+          };
+          const ready = procedures.filter(p => (p.sop_chunks ?? 0) > 0).filter(matches);
+          const comingSoon = procedures.filter(p => (p.sop_chunks ?? 0) === 0).filter(matches);
+          const noMatches = q && ready.length === 0 && comingSoon.length === 0;
           return (
             <>
               <section className="mb-10">
-                <div className="flex items-baseline justify-between mb-3">
+                <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
                   <h2 className="text-[15px] font-semibold tracking-[0.08em] uppercase text-ink-4">Available services</h2>
-                  <span className="text-[12px] text-ink-4 mono">{ready.length} ready to apply</span>
+                  <div className="flex items-center gap-2.5 ml-auto flex-1 max-w-[320px]">
+                    <input
+                      className="ug-input text-[12.5px] py-1.5"
+                      placeholder="Search procedures…"
+                      value={procSearch}
+                      onChange={(e) => setProcSearch(e.target.value)}
+                    />
+                  </div>
+                  <span className="text-[12px] text-ink-4 mono">{ready.length} ready</span>
                 </div>
+                {noMatches && (
+                  <div className="rounded-[12px] border border-dashed border-line-2 bg-paper-2 px-4 py-5 text-center text-[13px] text-ink-4">
+                    Nothing matches <span className="mono text-ink-3">"{procSearch}"</span>. Try a faculty (FSKTM), keyword (scholarship), or clear the search.
+                  </div>
+                )}
                 {ready.length === 0 && !loading && (
                   <div className="ug-card p-4 text-ink-4 text-sm">No services published yet — ask your admin to upload an SOP.</div>
                 )}

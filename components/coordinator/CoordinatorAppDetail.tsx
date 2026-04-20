@@ -73,7 +73,7 @@ export default function CoordinatorAppDetail({
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewLetter, setPreviewLetter] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[] } | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[]; issues: Array<{ severity: "warn" | "block"; field: string; message: string }> } | null>(null);
 
   // Undo countdown (re-renders every second when decision is recent)
   const [, setUndoTick] = useState(0);
@@ -156,6 +156,7 @@ export default function CoordinatorAppDetail({
       setPreviewMeta({
         template_name: json.data.template_name,
         unfilled: json.data.unfilled_placeholders ?? [],
+        issues: json.data.hallucination_issues ?? [],
       });
     } catch (err) {
       setPreviewError(err instanceof Error ? err.message : "Network error");
@@ -660,6 +661,30 @@ export default function CoordinatorAppDetail({
                   {previewMeta && previewMeta.unfilled.length > 0 && (
                     <div className="mt-3 px-3 py-2 rounded-lg bg-amber-soft border border-[#E8DBB5] text-[12px] text-amber">
                       The AI couldn't fill: {previewMeta.unfilled.map((p) => `{{${p}}}`).join(", ")}. Edit them in the text above before sending.
+                    </div>
+                  )}
+                  {previewMeta && previewMeta.issues.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="text-[11px] uppercase tracking-wider font-semibold text-crimson flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-crimson" />
+                        Hallucination check · {previewMeta.issues.length} issue{previewMeta.issues.length === 1 ? "" : "s"}
+                      </div>
+                      {previewMeta.issues.map((issue, i) => (
+                        <div
+                          key={i}
+                          className={`px-3 py-2 rounded-lg text-[12px] ${
+                            issue.severity === "block"
+                              ? "bg-crimson-soft border border-[#E8C5CB] text-crimson"
+                              : "bg-amber-soft border border-[#E8DBB5] text-amber"
+                          }`}
+                        >
+                          <span className="font-bold uppercase text-[10.5px] tracking-wider mr-1.5">{issue.severity}</span>
+                          <span className="font-medium">{issue.field}:</span> {issue.message}
+                        </div>
+                      ))}
+                      <div className="text-[11.5px] text-ink-4">
+                        These are flagged so you can fix them in the editable text above before sending.
+                      </div>
                     </div>
                   )}
                 </>
