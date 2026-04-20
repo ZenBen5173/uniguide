@@ -26,6 +26,7 @@ const config: Config = {
           DEFAULT: "#F6F4EE",
           2: "#FBFAF5",
         },
+        card: "#FFFFFF",
         crimson: {
           DEFAULT: "#A1253A",
           soft: "#F5E6E8",
