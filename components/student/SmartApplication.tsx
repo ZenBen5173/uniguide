@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
+import SopViewer from "./SopViewer";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -514,6 +515,9 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
               <div className="text-[13px] text-ai-ink/80 leading-relaxed">{data.application.student_summary}</div>
             </div>
           )}
+
+          {/* Source SOP viewer */}
+          <SopViewer procedureId={data.application.procedure_id} />
 
           {/* Letters delivered */}
           {data.letters.length > 0 && (

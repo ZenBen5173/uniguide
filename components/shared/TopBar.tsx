@@ -39,10 +39,14 @@ export default function TopBar({ roleChip, nav, user }: Props) {
       )}
 
       <div className="flex items-center gap-3 text-[13px] text-ink-3">
-        <div className="hidden sm:flex items-center gap-2.5" title={user.email}>
+        <Link
+          href="/settings/profile"
+          className="hidden sm:flex items-center gap-2.5 no-underline text-ink-3 hover:text-ink rounded-md px-1 py-0.5 hover:bg-paper-2"
+          title={`${user.email} · click to edit profile`}
+        >
           <div className="ug-avatar">{user.initials}</div>
           <span className="font-medium text-ink-2">{user.name}</span>
-        </div>
+        </Link>
         <SignOutButton />
       </div>
     </header>

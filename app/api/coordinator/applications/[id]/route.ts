@@ -20,12 +20,23 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     .select(`
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at, updated_at,
+      assigned_to, assigned_at,
       procedures(name, description),
       student_profiles!applications_user_id_fkey(full_name, faculty, programme, year, cgpa, citizenship, matric_no)
     `)
     .eq("id", id)
     .single();
   if (!app) return apiError("Application not found", 404);
+
+  let assignee_name: string | null = null;
+  if (app.assigned_to) {
+    const { data: assigneeProfile } = await sb
+      .from("staff_profiles")
+      .select("full_name")
+      .eq("user_id", app.assigned_to)
+      .maybeSingle();
+    assignee_name = assigneeProfile?.full_name ?? "Coordinator";
+  }
 
   const [{ data: briefing }, { data: steps }, { data: decisions }, { data: letters }] = await Promise.all([
     sb.from("application_briefings")
@@ -49,10 +60,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   ]);
 
   return apiSuccess({
-    application: app,
+    application: { ...app, assignee_name },
     briefing,
     steps: steps ?? [],
     decisions: decisions ?? [],
     letters: letters ?? [],
+    viewer: { id: user.id },
   });
 }

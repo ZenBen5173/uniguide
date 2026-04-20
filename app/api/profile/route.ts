@@ -1,5 +1,6 @@
 /**
- * POST /api/profile
+ * GET  /api/profile  return current user's role + role-specific profile
+ * POST /api/profile  upsert profile (also used by onboarding + settings page)
  *
  * Body (student):
  *   { role: "student", full_name, faculty?, programme?, year?, cgpa?, citizenship? }
@@ -14,6 +15,39 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getServerSupabase, getServiceSupabase } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+
+export async function GET() {
+  const sb = await getServerSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user || !user.email) return apiError("Not authenticated", 401);
+
+  const service = getServiceSupabase();
+  const { data: userRow } = await service
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const role = userRow?.role ?? null;
+
+  if (role === "student") {
+    const { data: profile } = await service
+      .from("student_profiles")
+      .select("full_name, faculty, programme, year, cgpa, citizenship, matric_no")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return apiSuccess({ role, email: user.email, profile });
+  }
+  if (role === "staff" || role === "admin") {
+    const { data: profile } = await service
+      .from("staff_profiles")
+      .select("full_name, faculty, staff_role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return apiSuccess({ role, email: user.email, profile });
+  }
+  return apiSuccess({ role, email: user.email, profile: null });
+}
 
 const StudentBodySchema = z.object({
   role: z.literal("student"),

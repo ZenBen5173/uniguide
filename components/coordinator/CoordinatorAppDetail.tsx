@@ -17,6 +17,8 @@ interface DetailData {
     ai_confidence: number | null;
     submitted_at: string | null;
     decided_at: string | null;
+    assigned_to: string | null;
+    assignee_name: string | null;
     procedures?: { name: string; description: string | null };
     student_profiles?: {
       full_name: string;
@@ -28,6 +30,7 @@ interface DetailData {
       matric_no: string | null;
     };
   };
+  viewer?: { id: string };
   briefing: {
     id: string;
     extracted_facts: Record<string, unknown>;
@@ -74,6 +77,28 @@ export default function CoordinatorAppDetail({
   // Undo countdown (re-renders every second when decision is recent)
   const [, setUndoTick] = useState(0);
   const [undoBusy, setUndoBusy] = useState(false);
+
+  // Claim/release
+  const [claimBusy, setClaimBusy] = useState(false);
+
+  const claim = async () => {
+    setClaimBusy(true);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/claim`, { method: "POST" });
+      if (res.ok) await refresh();
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+  const release = async () => {
+    setClaimBusy(true);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/claim`, { method: "DELETE" });
+      if (res.ok) await refresh();
+    } finally {
+      setClaimBusy(false);
+    }
+  };
 
   const refresh = async () => {
     try {
@@ -378,7 +403,57 @@ export default function CoordinatorAppDetail({
         </section>
 
         {/* Right rail: action panel */}
-        <aside className="sticky top-[84px] self-start">
+        <aside className="sticky top-[84px] self-start space-y-3">
+          {/* Claim / assignee */}
+          {!decided && (() => {
+            const assignedTo = data.application.assigned_to;
+            const viewerId = data.viewer?.id;
+            const mine = assignedTo && viewerId && assignedTo === viewerId;
+            const someone = assignedTo && !mine;
+            return (
+              <div className={`ug-card p-4 ${someone ? "border-amber" : ""}`}>
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4 mb-2">Assigned to</div>
+                {!assignedTo && (
+                  <>
+                    <p className="text-[13px] text-ink-3 mb-2.5">Nobody yet — claim this so other coordinators know it's in your lane.</p>
+                    <button
+                      className="ug-btn primary sm w-full justify-center"
+                      onClick={claim}
+                      disabled={claimBusy}
+                    >
+                      {claimBusy ? "Claiming…" : "Claim this application"}
+                    </button>
+                  </>
+                )}
+                {mine && (
+                  <>
+                    <p className="text-[13px] text-ink-2 mb-2.5"><span className="font-semibold">You</span> are reviewing this.</p>
+                    <button
+                      className="ug-btn ghost sm w-full justify-center"
+                      onClick={release}
+                      disabled={claimBusy}
+                    >
+                      {claimBusy ? "Releasing…" : "Release claim"}
+                    </button>
+                  </>
+                )}
+                {someone && (
+                  <>
+                    <p className="text-[13px] text-amber font-medium mb-1">{data.application.assignee_name} is reviewing this.</p>
+                    <p className="text-[12px] text-ink-4 mb-2.5">You can still act on it, but check with them first to avoid duplicate work.</p>
+                    <button
+                      className="ug-btn ghost sm w-full justify-center"
+                      onClick={claim}
+                      disabled={claimBusy}
+                    >
+                      {claimBusy ? "Taking over…" : "Take over"}
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
           <div className="ug-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-line-2 text-sm font-semibold">Decide on this application</div>
             <div className="p-5 space-y-3">

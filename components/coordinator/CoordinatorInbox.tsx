@@ -14,6 +14,8 @@ interface InboxApp {
   ai_confidence: number | null;
   student_summary: string | null;
   submitted_at: string | null;
+  assigned_to: string | null;
+  assignee_name: string | null;
   procedures?: { name: string };
   student_profiles?: {
     full_name: string;
@@ -47,6 +49,8 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const [loading, setLoading] = useState(true);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
+  const [coordinatorId, setCoordinatorId] = useState<string | null>(null);
+  const [mineOnly, setMineOnly] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
@@ -58,10 +62,20 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
         setApps(json.data.applications);
         setCounts(json.data.counts);
         setSelected(new Set());
+        if (json.data.coordinator?.id) setCoordinatorId(json.data.coordinator.id);
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const claim = async (id: string) => {
+    await fetch(`/api/coordinator/applications/${id}/claim`, { method: "POST" });
+    await refresh();
+  };
+  const release = async (id: string) => {
+    await fetch(`/api/coordinator/applications/${id}/claim`, { method: "DELETE" });
+    await refresh();
   };
 
   useEffect(() => { void refresh(); }, [filter]);
@@ -84,6 +98,9 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const sorted = useMemo(() => {
     const q = search.trim().toLowerCase();
     let filtered = procedureFilter === "all" ? apps : apps.filter((a) => a.procedure_id === procedureFilter);
+    if (mineOnly && coordinatorId) {
+      filtered = filtered.filter((a) => a.assigned_to === coordinatorId);
+    }
     if (q) {
       filtered = filtered.filter((a) => {
         const hay = [
@@ -101,7 +118,9 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
       if (urgentA !== urgentB) return urgentB - urgentA;
       return (b.submitted_at ?? "").localeCompare(a.submitted_at ?? "");
     });
-  }, [apps, search, procedureFilter]);
+  }, [apps, search, procedureFilter, mineOnly, coordinatorId]);
+
+  const mineCount = coordinatorId ? apps.filter((a) => a.assigned_to === coordinatorId).length : 0;
 
   const toggleAll = () => {
     if (selected.size === sorted.length) setSelected(new Set());
@@ -260,6 +279,18 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
               ))}
             </select>
           )}
+          <button
+            onClick={() => setMineOnly((v) => !v)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-[13px] font-medium ${
+              mineOnly ? "bg-ink text-white border-ink" : "bg-card text-ink-2 border-line hover:border-ink-5"
+            }`}
+            title="Show only applications you've claimed"
+          >
+            Mine
+            <span className={`mono text-[11px] px-1.5 rounded ${mineOnly ? "bg-white/20" : "bg-line-2 text-ink-3"}`}>
+              {mineCount}
+            </span>
+          </button>
           <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ai-line bg-ai-tint text-[13px] font-medium text-ai-ink" title="Applications with low AI confidence or block-flags surface first">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2l2.35 5.6L20 8l-4 4 1.1 5.9L12 15.5 6.9 17.9 8 12 4 8l5.65-.4z" />
@@ -391,8 +422,20 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                             {studentInitials(a.student_profiles?.full_name)}
                           </div>
                           <div>
-                            <div className="font-semibold text-ink text-[13.5px]">
+                            <div className="font-semibold text-ink text-[13.5px] flex items-center gap-2">
                               {a.student_profiles?.full_name ?? "Unknown student"}
+                              {a.assigned_to && (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                    a.assigned_to === coordinatorId
+                                      ? "bg-ai-tint text-ai-ink border border-ai-line"
+                                      : "bg-paper-2 text-ink-3 border border-line-2"
+                                  }`}
+                                  title={`Claimed by ${a.assignee_name}`}
+                                >
+                                  {a.assigned_to === coordinatorId ? "you" : (a.assignee_name?.split(" ")[0] ?? "claimed")}
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11.5px] text-ink-4 mt-0.5 flex items-center gap-1.5">
                               <span className="mono">{a.procedures?.name ?? a.procedure_id}</span>

@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at,
+      assigned_to, assigned_at,
       procedures(name),
       student_profiles!applications_user_id_fkey(full_name, faculty, programme, year, cgpa, citizenship)
     `)
@@ -65,9 +66,19 @@ export async function GET(req: NextRequest) {
     else if (a.status === "more_info_requested") counts.more_info++;
   }
 
+  // Resolve assignee names for the rows that have one.
+  const assignedIds = [...new Set((applications ?? [])
+    .map((a) => a.assigned_to)
+    .filter((x): x is string => typeof x === "string"))];
+  const { data: assigneeProfiles } = assignedIds.length
+    ? await sb.from("staff_profiles").select("user_id, full_name").in("user_id", assignedIds)
+    : { data: [] };
+  const assigneeNameById = new Map((assigneeProfiles ?? []).map((p) => [p.user_id, p.full_name]));
+
   const enriched = (applications ?? []).map((a) => ({
     ...a,
     flags: flagsByApp.get(a.id) ?? [],
+    assignee_name: a.assigned_to ? assigneeNameById.get(a.assigned_to) ?? "Coordinator" : null,
   }));
 
   return apiSuccess({
