@@ -1,25 +1,54 @@
 # UniGuide
 
-**AI-driven workflow assistant for university administrative procedures.**
+**Your AI co-pilot for university paperwork.**
 Built for **UMHackathon 2026**, Domain 1 — AI Systems & Agentic Workflow Automation.
 
-UniGuide reads a student's free-text intent, plans a personalised workflow from the official UM SOP using **Z.AI's GLM**, walks the student through it adaptively, and pre-digests submissions for staff. Pull GLM out and the app collapses to a static form filler — that's the design.
+UniGuide guides Universiti Malaya students through complex multi-step administrative procedures (scholarship applications, FYP, deferment, exam appeal, postgrad admission, EMGS visa renewal). **Z.AI's GLM** emits the next step in each application **at runtime, one at a time**, based on the student's history + the official UM SOP. Coordinators get a pre-digested briefing per submission, can preview/edit/send GLM-generated decision letters, and have a 5-minute undo. Pull GLM out and no application can advance past step 1 — there is no static workflow template.
 
-📚 Hackathon documents:
-- [docs/PRD.md](docs/PRD.md) — Product Requirement Document
-- [docs/SAD.md](docs/SAD.md) — System Analysis Documentation
-- [docs/QATD.md](docs/QATD.md) — QA Testing Documentation
-- [docs/PITCH_DECK.md](docs/PITCH_DECK.md) — Pitch deck outline
+- 🌐 **Live demo:** https://uniguide-blush.vercel.app
+- 📦 **Repo:** https://github.com/ZenBen5173/uniguide
+- 📚 **Hackathon documents:** [PRD](docs/PRD.md) · [SAD](docs/SAD.md) · [QATD](docs/QATD.md) · [PITCH_DECK](docs/PITCH_DECK.md) — all synced to shipped state on 2026-04-20
 
 ---
 
-## ⚡ Quick start (for teammates)
+## ⚡ Try the demo (zero credentials)
+
+The fastest way to see UniGuide is the live deploy:
+
+1. Open https://uniguide-blush.vercel.app → click **"Try the demo →"**
+2. Pick a demo tile (one click, no password):
+   - 🎓 **Student** — `demo-student@uniguide.local`
+   - 💼 **Coordinator** — `demo-coordinator@uniguide.local`
+   - 🛠 **Admin** — `demo-admin@uniguide.local`
+3. As Student, click **"Reset Demo Student & sign in"** at the bottom of the demo tiles area. This wipes + reseeds **5 sample applications** in distinct states (mid-flow draft · high-confidence approve · low-confidence + flagged · approved · rejected) so the inbox / analytics / GLM trace pages have content immediately.
+4. Switch tabs to Coordinator → see the same applications from the staff side. Try **Preview & approve** on the high-confidence one — the modal shows the GLM-generated letter, editable, with hallucination check.
+
+A demo banner is visible at the top of every page when the deploy is in mock mode.
+
+---
+
+## 🎬 90-second demo script
+
+1. *(0:00)* Land on the live URL → **"Try the demo →"** → **Student** tile → **Reset Demo Student**
+2. *(0:15)* Portal shows the 5 seeded applications + KPI strip (Total / In flight / Approved / Needs your reply)
+3. *(0:25)* Click the **draft** application → first-step orientation banner + step stack
+4. *(0:35)* Click a **§citation chip** beneath the step prompt → **SOP viewer** opens scrolled to that section, term highlighted ("the AI isn't making this up — here's the source")
+5. *(0:50)* Sign out → **Coordinator** tile → inbox sorted by AI urgency, SLA aging tints, plain-English confidence labels
+6. *(1:05)* Click the **low-confidence row** (0.42, block flag) → AI Briefing card front-and-centre. Click **"AI suggest: request info"** → comment box auto-drafts from the briefing flags. Click **Request more info**.
+7. *(1:25)* Open the **high-confidence row** (0.92) → **Preview & approve** → modal shows editable letter + **hallucination check** warnings (mismatched CGPA / wrong programme etc.) → Confirm & send
+8. *(1:40)* Switch back to the Student tab — **status flipped to Approved instantly** (Supabase Realtime), letter delivered, **Open / Print →** opens a clean printable letter
+9. *(1:55)* Sign in as **Admin** → `/admin/glm-traces` — every Z.AI call audited with input/output JSON, latency, tokens, confidence
+
+That's the demo. Total runtime ~2 minutes.
+
+---
+
+## 🛠 Local development
 
 ### Prerequisites
 - Node.js 20+ and npm 10+
-- Supabase account (free tier is fine) — for Postgres + auth + storage
-- Z.AI account with GLM API key — get one at https://z.ai → API Platform
-  - **Optional for early dev:** the GLM client has a `mock` mode that returns canned fixtures from `tests/fixtures/glm/` so the app runs without a live key.
+- Supabase project (free tier is fine) — Postgres + Auth + Storage + Realtime
+- Optional: Z.AI account + GLM API key (the app runs in mock mode without one)
 
 ### 1 — Install
 ```bash
@@ -30,88 +59,65 @@ npm install
 ```bash
 cp .env.example .env
 ```
-Open `.env` and fill in:
-- `ZAI_API_KEY` (or leave blank + set `GLM_MOCK_MODE=true` for offline dev)
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (from Supabase dashboard → Project Settings → API)
+Fill in `.env`:
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase dashboard → Project Settings → API)
+- `ZAI_API_KEY` (or leave empty + set `GLM_MOCK_MODE=true` for offline dev)
+- `ZAI_API_BASE_URL=https://api.z.ai/api/paas/v4`
+- `ZAI_MODEL_PRIMARY=glm-4.6`, `ZAI_MODEL_FAST=glm-4.5-flash`
 
-### 3 — Set up the database
-Apply the migrations to your Supabase project. From the Supabase dashboard:
-- SQL Editor → paste the contents of `supabase/migrations/0001_initial_schema.sql` → run.
-- Same for `0002_pgvector_kb.sql`, `0003_rls_policies.sql`, `0004_seed_procedures.sql`.
+### 3 — Apply migrations
+```bash
+# If you have the Supabase CLI linked to your project:
+npx supabase db push
+```
+or paste each `supabase/migrations/0001..0013` SQL file into the Supabase SQL editor in order.
 
-(Or use the Supabase CLI: `npx supabase db push` if you've linked the project.)
-
-### 4 — Seed the knowledge base
+### 4 — Seed the SOP knowledge base
 ```bash
 npm run seed:kb
 ```
-This reads each `lib/kb/seed/*.md` file, splits into chunks, and writes to `procedure_sop_chunks`. Re-run any time you edit the seed markdown.
+This reads each `lib/kb/seed/*.md`, chunks by H2 heading + word count, and writes to `procedure_sop_chunks`.
 
-### 5 — Run the dev server
+### 5 — Run
 ```bash
 npm run dev
+# → http://localhost:3000
 ```
-Open http://localhost:3000.
+
+### Mock mode vs live mode
+- **`GLM_MOCK_MODE=true`** (or no `ZAI_API_KEY`) → every GLM call returns a recorded fixture from `tests/fixtures/glm/*.json`. Lavender demo banner appears at top of every page.
+- **`GLM_MOCK_MODE=false`** + valid `ZAI_API_KEY` → real Z.AI calls. **Auto-fallback:** if a real call errors AND a `mockFixture` is named, returns the fixture with logged error so the demo never collapses (logged to `console.error`, marked `model: …-fallback` in the trace).
 
 ---
 
-## 🎬 Demo flow
-
-1. **Open the landing page** — http://localhost:3000
-2. **Click "Start a workflow"** or **Sign in** → use the Demo Student button on `/login` for instant access
-3. **Type:** *"i need a scholarship for next sem, my family income is around RM3500, my cgpa is 3.10"*
-4. **Click Continue.** GLM extracts the intent (`scholarship_application`), creates a workflow row, and generates a personalised workflow plan. You're redirected to the canvas view.
-5. **Watch the canvas render** — stages, the income-tier decision node, two end nodes (Awarded vs Merit-only Corporate Path).
-6. **Click through the steps** — confirm CGPA + income, choose scholarships, upload (mock) income proof + transcript, write motivation letter.
-7. **At the income-tier decision node**, GLM auto-routes B40/M40 students to the need-based path; T20 students to the merit path.
-8. **Workflow auto-submits** when it reaches the Faculty Endorsement stage. A briefing appears in the coordinator queue.
-9. **Open the coordinator dashboard** — http://localhost:3000/coordinator/dashboard — to see the GLM-prepared briefing with extracted facts, flags, and recommendation.
-10. **Click Approve.** The student's workflow advances to Yayasan UM Committee Review; another approval there marks it Awarded.
-
-> 💡 **Mock mode demo:** the canned fixtures support the Yayasan UM scholarship golden path end-to-end without any real GLM calls. Set `GLM_MOCK_MODE=true` in `.env`.
-
----
-
-## 🏗️ Architecture (TL;DR)
+## 🏗 Architecture (TL;DR)
 
 ```
-Browser (Next.js SPA)
-  ├─ /student/intake          ← chat-style intent input
-  ├─ /student/workflow/[id]   ← canvas + step pane
-  └─ /coordinator/dashboard   ← briefing queue
+Browser (3 role surfaces — student/coordinator/admin)
+   │
+   ├─ Next.js 15 App Router · ~30 API routes
+   │     ├─ Application engine (lib/applications/engine.ts)
+   │     │     • emitNextStep — calls GLM nextStep; persists step
+   │     │     • recordResponseAndAdvance — records → emits next
+   │     │
+   │     └─ GLM Service Layer (lib/glm/)
+   │           • client.ts — single callGlm + auto-fallback + tracing
+   │           • schemas.ts — Zod for every GLM I/O
+   │           • nextStep / generateBriefing / fillLetter
+   │           • estimateProgress / suggestComment (inline)
+   │           • prompts/*.md — versioned system prompts
+   │           → Z.AI GLM (glm-4.6 + glm-4.5-flash, JSON mode)
+   │
+   └─ Supabase
+         • Postgres + pgvector (14 tables, RLS-protected)
+         • Storage (application-files bucket, owner+staff RLS)
+         • Auth (OTP email + demo password tiles)
+         • Realtime (4 published tables for instant client updates)
 
-Next.js API routes (serverless)
-  ├─ /api/intake              ← extractIntent
-  ├─ /api/plan                ← planWorkflow + persistPlan
-  ├─ /api/workflow/[id]       ← read full workflow state
-  ├─ /api/step/[id]           ← record response → tryAdvance
-  ├─ /api/admin/queue         ← list pending briefings
-  └─ /api/admin/decision      ← approve/reject → advance
-
-GLM Service Layer (lib/glm/)
-  ├─ client.ts                ← Z.AI SDK wrapper, mock mode, retry, latency
-  ├─ schemas.ts               ← Zod schemas for every endpoint I/O
-  ├─ trace.ts                 ← writes glm_reasoning_trace
-  ├─ prompts/*.md             ← versioned system prompts
-  ├─ extractIntent / planWorkflow / adaptStep / routeDecision
-  ├─ parseDocument / generateBriefing
-  └─ citationVerifier         ← strips hallucinated regulation refs
-
-Workflow Engine (lib/workflow/)
-  ├─ persistPlan              ← GLM plan JSON → DB rows
-  └─ stageEngine              ← advance, route at decision nodes
-
-Knowledge Base (lib/kb/)
-  ├─ seed/*.md                ← UM procedure SOPs (canonical source for GLM)
-  └─ retrieve.ts              ← fetch SOP chunks for a procedure
-
-Supabase (managed)
-  ├─ Postgres + pgvector      ← workflows, traces, KB embeddings
-  ├─ Storage                  ← uploaded documents (signed URLs)
-  └─ Auth                     ← email + magic link
+Hosted on Vercel (sin1 — Singapore) ↔ Supabase (ap-northeast-2 — Seoul) ≈ 70ms RTT
 ```
 
-See `docs/SAD.md` for full architecture diagrams (component, sequence, ERD, DFD).
+For full diagrams (component, sequence, ERD, DFD) see [docs/SAD.md](docs/SAD.md).
 
 ---
 
@@ -119,14 +125,13 @@ See `docs/SAD.md` for full architecture diagrams (component, sequence, ERD, DFD)
 
 | Endpoint | What GLM does | Without GLM |
 |---|---|---|
-| `extractIntent` | Classifies free-text → procedure_id with confidence | User has to pick from a dropdown |
-| `planWorkflow` | Reads SOP + profile → emits stages/edges/decisions | No workflow exists |
-| `adaptStep` | Rewords each question for the student's context | Robotic generic forms |
-| `routeDecision` | Reasons over actual responses to pick a branch | Regex over form fields, brittle |
-| `parseDocument` | Extracts structured fields from PDF/image | Manual data entry |
-| `generateBriefing` | Pre-digests submission for the staff reviewer | Staff re-reads raw form |
+| **nextStep** | Reads SOP + complete history → emits the next step (type, prompt_text, config, citations) | Application can't advance past step 1 — no static template exists |
+| **generateBriefing** | Pre-digests submission for the coordinator: extracted facts, flags, recommendation, confidence | Coordinator stares at raw form data |
+| **fillLetter** | Fills the procedure's `{{placeholder}}` template against application context | Coordinator hand-writes every letter |
+| **suggestComment** | Drafts a 1-3 sentence coordinator comment from the briefing flags + intent | Blank text box |
+| **estimateProgress** | Returns rough total step count for the progress bar | "Unknown — keep going" |
 
-**Pull GLM out → UniGuide is dead.** This satisfies the hackathon brief.
+**Pull GLM out → UniGuide is unable to plan, advance, brief, or decide on a single application.** This satisfies the hackathon brief by design.
 
 ---
 
@@ -134,112 +139,151 @@ See `docs/SAD.md` for full architecture diagrams (component, sequence, ERD, DFD)
 
 ```
 UniGuide/
-├── app/                    Next.js App Router routes
-│   ├── api/                API endpoints
-│   ├── student/            student-facing pages
-│   ├── coordinator/        staff-facing pages
-│   ├── layout.tsx
-│   ├── page.tsx            landing
-│   └── globals.css
-├── components/             React components
-│   ├── canvas/             ReactFlow nodes + workflow canvas
-│   ├── steps/              step renderer
-│   ├── intake/
-│   └── admin/
+├── app/                            Next.js App Router
+│   ├── api/                        ~30 API route handlers
+│   ├── admin/                      procedures library, analytics, GLM traces
+│   ├── coordinator/                inbox + detail
+│   ├── student/                    portal + smart application
+│   ├── letters/[id]/print/         printable letter page
+│   ├── settings/profile/           profile editor
+│   ├── login/                      3 demo tiles + OTP
+│   ├── onboarding/                 first-time student setup
+│   └── page.tsx                    landing
+│
+├── components/
+│   ├── admin/                      AdminProcedures, LetterTemplateEditor,
+│   │                               DeadlineEditor, GlmTraceList
+│   ├── coordinator/                CoordinatorInbox, CoordinatorAppDetail,
+│   │                               InternalNotes
+│   ├── student/                    StudentPortal, SmartApplication,
+│   │                               StepRenderers, SopViewer
+│   └── shared/                     TopBar, NotificationBell, MessageThread,
+│                                   DemoModeBanner, ProcedureIcon, PrintTrigger
+│
 ├── lib/
-│   ├── glm/                GLM service layer (the heart of the app)
-│   ├── workflow/           stage engine + plan persistence
-│   ├── kb/                 SOP knowledge base
-│   ├── supabase/           browser/server clients
-│   ├── output/             PDF/email/.ics generators (TODO)
-│   └── utils/
-├── supabase/
-│   └── migrations/         versioned SQL migrations
-├── tests/
-│   └── fixtures/
-│       ├── glm/            canned GLM responses for mock mode + tests
-│       └── documents/      sample uploads
-├── scripts/
-│   └── seed-kb.ts          rebuilds procedure_sop_chunks from lib/kb/seed/*.md
-├── docs/                   hackathon deliverables (PRD, SAD, QATD, pitch)
-├── package.json
-├── tsconfig.json
-├── tailwind.config.ts
+│   ├── applications/engine.ts      step emission + advance
+│   ├── auth/guards.ts              requireUser, requireRole
+│   ├── glm/                        GLM service layer (the heart)
+│   │   ├── client.ts               single callGlm + auto-fallback
+│   │   ├── schemas.ts              Zod for every GLM I/O
+│   │   ├── nextStep.ts
+│   │   ├── generateBriefing.ts
+│   │   ├── fillLetter.ts
+│   │   ├── estimateProgress.ts
+│   │   ├── trace.ts                logs every call to glm_reasoning_trace
+│   │   └── prompts/*.md            versioned system prompts
+│   ├── kb/                         SOP knowledge base seed + retrieval
+│   ├── supabase/                   browser + server clients
+│   └── utils/responses.ts          apiSuccess / apiError helpers
+│
+├── supabase/migrations/            14 numbered SQL migrations
+├── tests/fixtures/glm/             recorded GLM responses for mock mode
+├── scripts/                        seed-kb.ts, seed-test.ts
+├── docs/                           PITCH_DECK · PRD · SAD · QATD
+├── next.config.ts                  pdf-parse marked serverExternalPackages
+├── vercel.json                     pinned to sin1 region
 └── README.md (this file)
 ```
 
 ---
 
-## ✅ What's done vs TODO (as of submission prep)
+## ✅ What's done (synced 2026-04-20)
 
-### Done
-- Project scaffold (Next.js 15 + Tailwind + Supabase + ReactFlow)
-- Database schema + RLS + KB tables (4 migrations)
-- GLM service layer with mock mode (extractIntent, planWorkflow, routeDecision, adaptStep, parseDocument, generateBriefing)
-- Versioned prompts in `lib/glm/prompts/`
-- Workflow engine (persistPlan + stageEngine + tryAdvanceWorkflow)
-- API routes for intake, planning, step submission, admin queue, admin decision
-- UI: landing page, intake chat, workflow canvas, step panel, coordinator dashboard
-- KB seed for Scholarship Application (primary demo) and Postgrad Admission
-- Mock fixtures for the demo flow
+**28 shipped features (PRD §F1–F28).** Highlights:
 
-### TODO (for final-round polish)
-- [ ] Submit endpoint that triggers `generateBriefing` → creates pending admin_briefing
-- [ ] Document text extraction (`lib/documents/extractText.ts`) — `pdf-parse` for PDFs, `tesseract.js` for images
-- [ ] Structured output bundle generation (PDF form fill, `.ics` calendar, email drafts)
-- [ ] Embedding generation in `seed-kb.ts` (currently writes `embedding=null`)
-- [ ] Authentication UI (login / signup pages — currently relies on Supabase magic link)
-- [ ] Test fixtures for `intent_unknown`, `route_proceed` (only the most common are in)
-- [ ] Vitest unit tests for `validateGraph`, `verifyCitations`, schema validators
-- [ ] Playwright E2E for the golden path (TC-01 in QATD)
-- [ ] Sentry integration
-- [ ] Upstash rate limiter wired into `lib/glm/client.ts`
-- [ ] Coordinator-side stage view (currently they only see briefings)
+- **Three role surfaces** — Student / Coordinator / Admin, each with a complete primary flow
+- **AI step emission** — turn-by-turn via GLM `nextStep`, with SOP citations persisted into `step.config.citations`
+- **Citation chips** — clickable on every AI step, opens the SOP viewer scrolled to that section
+- **Coordinator briefing** — extracted facts + flags + recommendation + confidence + plain-English label
+- **Preview & edit letter** — modal with editable text + hallucination check (CGPA/name/year/faculty/programme mismatches flagged before send)
+- **Undo decision** — 5-minute window with mm:ss countdown
+- **Coordinator AI-suggest** — three pills draft a comment from briefing + intent
+- **Coordinator claim/assignee** — advisory; "Mine" filter on inbox
+- **Bulk actions** — bulk-approve (auto-excludes flagged) + bulk-request-info
+- **Real file upload** — Supabase Storage `application-files` bucket, RLS-protected, signed URLs
+- **Auto-save** — real localStorage persistence per-step, hydrates on reopen
+- **Realtime** — Supabase Realtime publication on `applications`, `application_steps`, `application_letters`, `application_messages`
+- **Message thread** — student↔coordinator chat, realtime
+- **Internal notes** — staff-only, never visible to student
+- **Step revise** — student can edit a previous answer; AI replans
+- **Application withdraw** — student can cancel from any pre-decision state
+- **Notification bell** — last 14 days of events, unread count via localStorage
+- **Letter print** — clean printable page (UM letterhead) at `/letters/[id]/print`
+- **Admin SOP upload** — paste / URL / **PDF** (real `pdf-parse`)
+- **Admin letter template editor** — list / edit / delete with sensible defaults; placeholders auto-detected
+- **Admin deadline editor** — date + display label per procedure
+- **Admin analytics** — KPIs + by-procedure table + status mix
+- **Admin GLM trace viewer** — every call's input/output JSON
+- **Demo seed variety** — 5 sample applications via `/api/demo/reset`
+- **Mock mode + demo banner + auto-fallback** — demo never collapses
+
+For per-feature traceability to test cases, see [docs/QATD.md](docs/QATD.md).
 
 ---
 
-## 🛠️ Common dev tasks
+## 🗺 Roadmap (out of MVP scope)
 
-### Run type check
-```bash
-npm run typecheck
-```
+- Email delivery via SMTP (currently in-app letter delivery)
+- Server-side PDF generation (currently browser print)
+- OCR for image-only PDFs (currently rejected explicitly)
+- Bahasa Melayu UI (currently English only)
+- Voice intake
+- Real MAYA / SiswaMail / SPeCTRUM / EMGS API integrations
+- Multi-tenant isolation
+- Native mobile apps
+- Push notifications
 
-### Run tests
-```bash
-npm test
-```
+---
 
-### Re-seed KB after editing SOPs
+## 🧰 Common dev tasks
+
 ```bash
-npm run seed:kb
+npm run dev          # local dev server
+npm run build        # production build (Vercel runs this on every push)
+npm run typecheck    # tsc --noEmit (TypeScript strict)
+npm run lint         # next lint
+npm test             # vitest watch
+npm run test:run     # vitest run once
+npm run seed:kb      # rebuild procedure_sop_chunks from lib/kb/seed/*.md
 ```
 
 ### Add a new procedure
-1. Add it to `lib/glm/schemas.ts` `ProcedureIdSchema`.
-2. Add a row to `supabase/migrations/0004_seed_procedures.sql` (or run an INSERT in SQL editor).
-3. Drop a markdown file in `lib/kb/seed/{procedure_id}.md` with the SOP content.
-4. Run `npm run seed:kb`.
-5. Add a mock fixture `tests/fixtures/glm/plan_{procedure_id}.json` for offline testing.
-6. Update the heuristic in `lib/glm/extractIntent.ts:pickIntentFixture()` so mock mode picks the right fixture.
+1. Add the id to `lib/glm/schemas.ts` `ProcedureIdSchema`.
+2. Either `INSERT INTO procedures` directly or use the admin UI (`/admin` → `+ New procedure`).
+3. Drop the SOP markdown file in `lib/kb/seed/{procedure_id}.md` (chunked by `## H2` sections).
+4. Run `npm run seed:kb` (or use the admin SOP upload modal — paste / URL / PDF).
+5. Add letter templates via the admin procedure-detail page.
+6. (Optional, for offline mock-mode demo) Add fixtures `tests/fixtures/glm/next_step_{procedure_id}_*.json`.
 
 ### Add a new GLM endpoint
-1. Define input/output Zod schemas in `lib/glm/schemas.ts`.
-2. Write a system prompt in `lib/glm/prompts/{name}.md`.
-3. Create `lib/glm/{name}.ts` following the pattern of `extractIntent.ts`.
+1. Define I/O schemas in `lib/glm/schemas.ts` with Zod.
+2. Write the system prompt in `lib/glm/prompts/{name}.md`.
+3. Create `lib/glm/{name}.ts` following the pattern of `nextStep.ts`.
 4. Always go through `callGlm()` from `client.ts` — never call the OpenAI SDK directly.
-5. Always write a trace via `writeTrace()`.
+5. `callGlm` writes a trace row automatically; if your endpoint should pass an applicationId for trace correlation, plumb it through.
+6. Add a fixture for mock mode with the matching `mockFixture` name.
+
+### Apply a new schema migration
+1. Number the file `supabase/migrations/0014_*.sql`.
+2. Apply to Supabase (CLI: `npx supabase db push`, or paste in SQL editor).
+3. Commit the migration file so the repo history matches the live DB.
+4. If the migration affects a table that should be realtime, add it to `supabase_realtime` publication.
+5. If RLS-protected, add policies for the relevant roles.
 
 ---
 
 ## 📝 License & IP
 
-This codebase is **submitted to UMHackathon 2026** under the hackathon's terms (Section 9 of the T&Cs: "All rights concerning the code submission and working prototype shall belong to the domain collaborators."). It is built specifically for this hackathon and has not been submitted to any other event.
+This codebase is **submitted to UMHackathon 2026** under the hackathon's terms (Section 9 of the T&Cs: "All rights concerning the code submission and working prototype shall belong to the domain collaborators."). Built specifically for this hackathon and not submitted to any other event.
 
 ---
 
 ## 🙏 Credits
 
-- Built by **Team Breaking Bank** — Jeanette Tan En Jie (Group Leader), Teo Zen Ben (Technical Lead), Nyow An Qi, Thevesh A/L Chandran — for **UMHackathon 2026** — Faculty of Computer Science & Information Technology, Universiti Malaya.
+- Built by **Team Breaking Bank** — Jeanette Tan En Jie (Group Leader) · Teo Zen Ben (Technical Lead) · Nyow An Qi · Thevesh A/L Chandran — for **UMHackathon 2026** at the Faculty of Computer Science & Information Technology, Universiti Malaya.
 - Powered by **Z.AI GLM** (mandatory model per hackathon rules).
 - UM procedure SOPs sourced from official `um.edu.my` PDFs and faculty pages — see `lib/kb/seed/*.md` for individual citations.
+
+---
+
+**README v2.0 — synced with shipped state as of 2026-04-20**
