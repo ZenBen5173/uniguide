@@ -8,6 +8,40 @@ import TopBar from "@/components/shared/TopBar";
 import InternalNotes from "@/components/coordinator/InternalNotes";
 import MessageThread from "@/components/shared/MessageThread";
 
+const FACT_ACRONYMS = new Set([
+  "cgpa", "ug", "epf", "rm", "fyp", "ic", "spm", "stpm",
+  "muet", "ielts", "toefl", "b40", "m40", "t20", "um", "mara", "ai",
+]);
+const FACT_QUALIFIER = /_(inferred|verified|declared|estimated|reported)$/;
+
+function formatFactLabel(key: string): string {
+  let base = key.replace(/_rm$/, "");
+  let qualifier = "";
+  const qm = base.match(FACT_QUALIFIER);
+  if (qm) {
+    qualifier = ` (${qm[1]})`;
+    base = base.slice(0, -qm[0].length);
+  }
+  const words = base.split("_").map((w, i) => {
+    if (FACT_ACRONYMS.has(w.toLowerCase())) return w.toUpperCase();
+    if (i === 0) return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    return w.toLowerCase();
+  });
+  return words.join(" ") + qualifier;
+}
+
+function formatFactValue(key: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") {
+    if (/_rm$/.test(key)) return `RM ${value.toLocaleString("en-MY")}`;
+    if (Number.isInteger(value) && Math.abs(value) >= 1000) return value.toLocaleString("en-MY");
+    return String(value);
+  }
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 interface DetailData {
   application: {
     id: string;
@@ -319,9 +353,9 @@ export default function CoordinatorAppDetail({
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
                   {Object.entries(data.briefing.extracted_facts).map(([k, v]) => (
                     <div key={k}>
-                      <dt className="text-[12px] text-ink-4">{k}</dt>
+                      <dt className="text-[12px] text-ink-4">{formatFactLabel(k)}</dt>
                       <dd className="text-[14px] font-medium text-ink mt-0.5 m-0">
-                        {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                        {formatFactValue(k, v)}
                       </dd>
                     </div>
                   ))}
