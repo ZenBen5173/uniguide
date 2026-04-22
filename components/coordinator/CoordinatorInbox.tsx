@@ -401,8 +401,14 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
         )}
 
         {/* Keyboard hint */}
-        <div className="hidden lg:flex items-center gap-3 text-[11px] text-ink-4 mb-2 mono">
-          <Kbd>j</Kbd><Kbd>k</Kbd> navigate · <Kbd>Enter</Kbd> open · <Kbd>/</Kbd> search · <Kbd>g</Kbd>/<Kbd>G</Kbd> top/bottom
+        <div className="hidden lg:flex items-center gap-2 text-[11.5px] text-ink-4 mb-2">
+          <Kbd>j</Kbd><Kbd>k</Kbd><span className="mr-1">navigate</span>
+          <span className="text-ink-5">·</span>
+          <Kbd>Enter</Kbd><span className="mr-1">open</span>
+          <span className="text-ink-5">·</span>
+          <Kbd>/</Kbd><span className="mr-1">search</span>
+          <span className="text-ink-5">·</span>
+          <Kbd>g</Kbd>/<Kbd>G</Kbd><span>top / bottom</span>
         </div>
 
         {/* Table */}
@@ -506,11 +512,15 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11.5px] text-ink-4 mt-0.5 flex items-center gap-1.5">
-                              <span className="mono">{a.procedures?.name ?? a.procedure_id}</span>
+                            <div className="text-[12px] text-ink-3 mt-0.5 flex items-center gap-1.5">
+                              {a.procedures?.name ? (
+                                <span>{a.procedures.name}</span>
+                              ) : (
+                                <span className="mono text-[11.5px]">{a.procedure_id}</span>
+                              )}
                               {a.student_profiles?.faculty && <>
-                                <span className="w-[3px] h-[3px] rounded-full bg-ink-5" />
-                                <span>{a.student_profiles.faculty}</span>
+                                <span className="w-[3px] h-[3px] rounded-full bg-ink-5 flex-shrink-0" />
+                                <span className="text-ink-4">{a.student_profiles.faculty}</span>
                               </>}
                             </div>
                           </div>
@@ -591,7 +601,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-block px-1.5 py-0.5 rounded border border-line-2 bg-paper-2 text-ink-3 font-medium text-[10.5px]">
+    <span className="mono inline-block px-1.5 py-0.5 rounded border border-line-2 bg-paper-2 text-ink-3 font-medium text-[10.5px]">
       {children}
     </span>
   );
