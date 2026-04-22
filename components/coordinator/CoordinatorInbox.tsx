@@ -536,7 +536,7 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                       </td>
                       <td className="px-3.5 py-3.5">
                         {a.ai_recommendation && (
-                          <div>
+                          <div className="flex flex-col items-start gap-1">
                             <span className={`ug-rec ${a.ai_recommendation === "approve" ? "approve" : a.ai_recommendation === "reject" ? "reject" : "review"}`}>
                               {a.ai_recommendation === "approve" ? "Approve" : a.ai_recommendation === "reject" ? "Reject" : "Review"}
                             </span>
@@ -669,10 +669,9 @@ function canBulkApprove(a: InboxApp): boolean {
 function ConfidenceLabel({ value }: { value: number }) {
   const { label, color } = confidenceTone(value);
   return (
-    <div className="text-[10.5px] mt-1 font-medium inline-flex items-center gap-1.5">
-      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-      <span className="text-ink-3">{label}</span>
-      <span className="text-ink-4 mono">{value.toFixed(2)}</span>
+    <div className="text-[11px] font-medium inline-flex items-baseline gap-1.5">
+      <span style={{ color }}>{label}</span>
+      <span className="text-ink-4 mono text-[10.5px]">{value.toFixed(2)}</span>
     </div>
   );
 }
@@ -681,7 +680,7 @@ function confidenceTone(value: number): { label: string; color: string } {
   if (value >= 0.85) return { label: "Very confident", color: "var(--moss)" };
   if (value >= 0.70) return { label: "Confident", color: "var(--moss)" };
   if (value >= 0.50) return { label: "Borderline", color: "var(--amber)" };
-  return { label: "Review carefully", color: "var(--crimson)" };
+  return { label: "Low confidence", color: "var(--crimson)" };
 }
 
 function relativeTime(iso: string): string {
