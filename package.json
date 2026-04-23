@@ -12,7 +12,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "seed:kb": "tsx scripts/seed-kb.ts",
-    "seed:test": "tsx scripts/seed-test.ts"
+    "seed:test": "tsx scripts/seed-test.ts",
+    "probe:ilmu": "tsx scripts/probe-ilmu.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",
