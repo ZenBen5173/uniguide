@@ -100,7 +100,7 @@ For a 90-second judged demo, these are the things that need to be true:
 - [x] Mock fallback works if Z.AI / ILMU keys aren't configured
 - [x] Admin can add a new procedure end-to-end (PDF upload included)
 - [x] No dev-mode "Demo mode" banner showing on production (controlled by `GLM_MOCK_MODE`)
-- [ ] Pitch-deck taglines / slide content finalised (`docs/PITCH_DECK_SLIDES.docx` generator exists; tagline still TBD)
+- [ ] Pitch-deck slide content finalised (taglines + slides built externally — Canva / Slides / Pitch.app)
 
 ---
 

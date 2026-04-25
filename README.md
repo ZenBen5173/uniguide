@@ -179,7 +179,7 @@ UniGuide/
 ├── supabase/migrations/            15 numbered SQL migrations
 ├── tests/fixtures/glm/             recorded GLM responses for mock mode
 ├── tests/glm-mock.test.ts          smoke test for the mock-mode resilience paths
-├── scripts/                        seed-kb.ts, probe-ilmu.ts, build-pitch-deck-docx.js
+├── scripts/                        seed-kb.ts, probe-ilmu.ts
 ├── docs/                           PITCH_DECK · PRD · SAD · QATD · MVP_STATUS
 ├── next.config.ts                  pdf-parse marked serverExternalPackages
 ├── vercel.json                     pinned to sin1 region

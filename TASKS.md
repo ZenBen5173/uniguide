@@ -47,7 +47,7 @@ Lightweight task tracker for the submission run-up. For grounded "what works / w
 ## 🟡 Outstanding for submission (2026-04-26 07:59)
 
 - [ ] **Pick the deck tagline** — "STOP GUESSING. START GRADUATING." was rejected as off-message; UM-marketing-audience options proposed (e.g. "THE OPERATING SYSTEM FOR UM PROCEDURES.", "FASTER DECISIONS. FAIRER OUTCOMES. FEWER EMAILS.", "A DIGITAL UM — BUILT BY UM, FOR UM."). Decision pending. *(Owner: Jeanette)*
-- [ ] Convert `docs/PITCH_DECK.md` content into actual slides — generator script at `scripts/build-pitch-deck-docx.js` produces `docs/PITCH_DECK_SLIDES.docx`; tagline still placeholder in the script. *(Owner: Jeanette)*
+- [ ] Convert `docs/PITCH_DECK.md` content into actual slides (Canva / Slides / Pitch.app) — tagline still TBD; UM-marketing-audience options drafted. *(Owner: Jeanette)*
 - [ ] Record pitch video (10 minutes max). *(Owner: TBD)*
 - [ ] Final submission via UMHackathon portal. *(Owner: Jeanette)*
 
