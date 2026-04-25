@@ -45,22 +45,6 @@ Live deploy alongside the deliverables: [uniguide-blush.vercel.app](https://unig
 
 ---
 
-## 🎬 90-second demo script
-
-1. *(0:00)* Land on the live URL → **"Try the demo →"** → **Student** tile → **Reset Demo Student**
-2. *(0:15)* Portal shows the 5 seeded applications + KPI strip (Total / In flight / Approved / Needs your reply)
-3. *(0:25)* Click the **draft** application → first-step orientation banner + step stack
-4. *(0:35)* Click a **§citation chip** beneath the step prompt → **SOP viewer** opens scrolled to that section, term highlighted ("the AI isn't making this up — here's the source")
-5. *(0:50)* Sign out → **Coordinator** tile → inbox sorted by AI urgency, SLA aging tints, plain-English confidence labels
-6. *(1:05)* Click the **low-confidence row** (0.42, block flag) → AI Briefing card front-and-centre. Click **"AI suggest: request info"** → comment box auto-drafts from the briefing flags. Click **Request more info**.
-7. *(1:25)* Open the **high-confidence row** (0.92) → **Preview & approve** → modal shows editable letter + **hallucination check** warnings (mismatched CGPA / wrong programme etc.) → Confirm & send
-8. *(1:40)* Switch back to the Student tab — **status flipped to Approved instantly** (Supabase Realtime), letter delivered, **Open / Print →** opens a clean printable letter
-9. *(1:55)* Sign in as **Admin** → `/admin/glm-traces` — every Z.AI call audited with input/output JSON, latency, tokens, confidence
-
-That's the demo. Total runtime ~2 minutes.
-
----
-
 ## 🛠 Local development
 
 ### Prerequisites
