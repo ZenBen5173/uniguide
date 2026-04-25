@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-04-25 · **Current branch:** `main` · **Live:** [uniguide-git-main-zenben5173s-projects.vercel.app](https://uniguide-git-main-zenben5173s-projects.vercel.app)
 
-This document records what works end-to-end on UniGuide today, what's stubbed or partially-wired, and what would need to happen before this is genuinely production-grade. It complements (and supersedes when in conflict) the claims in `PITCH_DECK.md`, `PRD.md`, `SAD.md`, and `QATD.md` — those are forward-looking; this is grounded in the code as of the date above.
+This document records what works end-to-end on UniGuide today, what's stubbed or partially-wired, and what would need to happen before this is genuinely production-grade. It complements (and supersedes when in conflict) the claims in the submitted `PRD.pdf`, `SAD.pdf`, and `QATD.pdf` (plus the slide deck) — those are forward-looking; this is grounded in the code as of the date above.
 
 ---
 

@@ -9,11 +9,15 @@ out/
 .env.local
 .env.*.local
 
-# Hackathon source documents (kept locally for reference; not part of the deployable app)
+# Hackathon source documents
+# .pdf and .docx are ignored everywhere by default, but anything inside docs/
+# (including subfolders like docs/Hackathon Info/) is tracked — that's where
+# the submitted PRD/SAD/QATD PDFs live and where the official UMHackathon
+# briefs are kept for reference.
 *.docx
 *.pdf
-!docs/*.pdf
-!docs/*.docx
+!docs/**/*.pdf
+!docs/**/*.docx
 
 # IDE
 .vscode/

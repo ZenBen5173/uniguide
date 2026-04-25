@@ -7,7 +7,7 @@ UniGuide guides Universiti Malaya students through complex multi-step administra
 
 - 🌐 **Live demo:** https://uniguide-blush.vercel.app
 - 📦 **Repo:** https://github.com/ZenBen5173/uniguide
-- 📚 **Hackathon documents:** [PRD](docs/PRD.md) · [SAD](docs/SAD.md) · [QATD](docs/QATD.md) · [PITCH_DECK](docs/PITCH_DECK.md) — synced to shipped state on 2026-04-20. For the most-current "what works / what doesn't" reference grounded in the code, see [docs/MVP_STATUS.md](docs/MVP_STATUS.md).
+- 📚 **Hackathon documents (submitted as PDFs):** [PRD](docs/PRD.pdf) · [SAD](docs/SAD.pdf) · [QATD](docs/QATD.pdf). Pitch deck is delivered as slides separately. For the current "what works / what doesn't" reference grounded in the code, see [docs/MVP_STATUS.md](docs/MVP_STATUS.md). Original UMHackathon source briefs are under [docs/Hackathon Info/](docs/Hackathon%20Info/).
 
 ---
 
@@ -117,7 +117,7 @@ Browser (3 role surfaces — student/coordinator/admin)
 Hosted on Vercel (sin1 — Singapore) ↔ Supabase (ap-northeast-2 — Seoul) ≈ 70ms RTT
 ```
 
-For full diagrams (component, sequence, ERD, DFD) see [docs/SAD.md](docs/SAD.md).
+For full diagrams (component, sequence, ERD, DFD) see [docs/SAD.pdf](docs/SAD.pdf).
 
 ---
 
@@ -219,7 +219,7 @@ UniGuide/
 - **Mock mode + demo banner + auto-fallback** — demo never collapses; submit / decide endpoints additionally degrade gracefully if a real GLM call fails (fallback briefing or raw-template letter so the application is never left in a half-state)
 - **Dual AI providers** — Z.AI GLM-4.6 / GLM-4.5-flash for all six call-sites by default; coordinator briefing optionally routes through ILMU `ilmu-glm-5.1` (Malaysia's sovereign LLM, YTL AI Labs × UM) when `USE_ILMU_FOR_BRIEFING=true`
 
-For per-feature traceability to test cases, see [docs/QATD.md](docs/QATD.md).
+For per-feature traceability to test cases, see [docs/QATD.pdf](docs/QATD.pdf).
 
 ---
 

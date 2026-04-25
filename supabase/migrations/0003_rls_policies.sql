@@ -1,5 +1,5 @@
 -- Row Level Security: every table on, every policy explicit.
--- See docs/SAD.md "Security" NFR.
+-- See docs/SAD.pdf "Security" NFR.
 
 -- ============================================================================
 -- Enable RLS on all tables

@@ -1,5 +1,5 @@
 -- UniGuide initial schema
--- See docs/SAD.md "Normalized Database Schema" section for the ERD this implements.
+-- See docs/SAD.pdf "Normalized Database Schema" section for the ERD this implements.
 
 -- ============================================================================
 -- Extensions
@@ -146,7 +146,7 @@ create index if not exists attachments_workflow_idx on public.attachments(workfl
 
 -- ============================================================================
 -- GLM reasoning trace (audit log for every model call)
--- See SAD.md "GLM as Service Layer" — every endpoint writes to this table.
+-- See SAD.pdf "GLM as Service Layer" — every endpoint writes to this table.
 -- ============================================================================
 create table if not exists public.glm_reasoning_trace (
   id uuid primary key default gen_random_uuid(),
