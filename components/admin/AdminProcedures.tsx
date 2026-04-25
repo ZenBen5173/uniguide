@@ -197,9 +197,19 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
       {/* New procedure modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-6" onClick={resetModal}>
-          <div className="ug-card w-full max-w-[680px] shadow-ug-lift" onClick={(e) => e.stopPropagation()}>
-            {/* Modal header */}
-            <div className="px-6 py-4 border-b border-line-2 flex items-center justify-between">
+          {/*
+            Card is now a column-flex stack with a viewport-bounded max-height,
+            so on a 100% zoom + average-height browser the body can scroll
+            without the footer (with the "Analyse & make live" CTA) ever
+            getting clipped below the fold. Previously the card grew with
+            content and pushed the footer off-screen on the PDF tab.
+          */}
+          <div
+            className="ug-card w-full max-w-[680px] shadow-ug-lift max-h-[calc(100vh-3rem)] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header (fixed) */}
+            <div className="shrink-0 px-6 py-4 border-b border-line-2 flex items-center justify-between">
               <div>
                 <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">Step {step === "choose" ? "A" : step === "compose" ? "B" : "C"} of 3</div>
                 <div className="text-[18px] font-semibold mt-0.5">
@@ -211,8 +221,8 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               <button className="ug-btn ghost" onClick={resetModal}>Close</button>
             </div>
 
-            {/* Modal body */}
-            <div className="p-6">
+            {/* Modal body (scrolls when tall) */}
+            <div className="flex-1 overflow-y-auto p-6">
               {step === "choose" && (
                 <div className="grid grid-cols-3 gap-3">
                   <ChoiceTile
@@ -364,9 +374,9 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               )}
             </div>
 
-            {/* Modal footer */}
+            {/* Modal footer (fixed) */}
             {step !== "confirm" && (
-              <div className="px-6 py-4 border-t border-line-2 flex items-center justify-between">
+              <div className="shrink-0 px-6 py-4 border-t border-line-2 flex items-center justify-between bg-card">
                 <button
                   className="ug-btn ghost"
                   onClick={() => step === "compose" ? setStep("choose") : resetModal()}

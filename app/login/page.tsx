@@ -35,14 +35,26 @@ function LoginInner() {
 
   const supabase = getBrowserSupabase();
 
+  // Every demo sign-in resets the demo dataset back to canonical first, then
+  // signs in. Keeps judges from inheriting whoever last poked around. The
+  // reset only touches demo-account data (lib/api/demo/reset hard-codes the
+  // demo emails), so OTP-sign-ins for real users are untouched.
+  // Reset failures are logged but don't block the login — better to land on
+  // slightly-stale demo data than a broken sign-in.
   const demoSignIn = async (
     creds: { email: string; password: string },
     redirectTo: string,
-    opts: { reset?: boolean } = {}
+    opts: { skipReset?: boolean } = {}
   ) => {
     setDemoBusy(creds.email);
     setError(null); setInfo(null);
-    if (opts.reset) await fetch("/api/demo/reset", { method: "POST" });
+    if (!opts.skipReset) {
+      try {
+        await fetch("/api/demo/reset", { method: "POST" });
+      } catch (e) {
+        console.warn("[demo] reset failed, continuing with sign-in", e);
+      }
+    }
     const { error: err } = await supabase.auth.signInWithPassword(creds);
     if (err) { setDemoBusy(null); setError(err.message); return; }
     router.push(redirectTo);
@@ -153,15 +165,10 @@ function LoginInner() {
               />
             </div>
 
-            <button
-              className="mt-2.5 w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-[10px] text-[13px] font-medium text-ink-3 hover:text-ink hover:bg-paper-2 border border-dashed border-line"
-              onClick={() => demoSignIn(DEMO_STUDENT, "/student/portal", { reset: true })}
-              disabled={!!demoBusy}
-            >
-              <RotateCcw className="h-3.5 w-3.5" strokeWidth={2} />
-              Reset Demo Student & sign in
-              <span className="text-[11px] text-ink-4 font-normal">— wipes prior applications</span>
-            </button>
+            <p className="mt-2.5 inline-flex items-center justify-center gap-1.5 w-full text-[11.5px] text-ink-4">
+              <RotateCcw className="h-3 w-3" strokeWidth={2} />
+              Demo data resets automatically every time you sign in.
+            </p>
           </div>
 
           {/* Email signin */}
@@ -279,7 +286,7 @@ function DemoTile({ Icon, label, tag, accent, busy, disabled, onClick }: TilePro
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
       </span>
       <span className={`text-[14px] font-semibold ${labelTone}`}>
-        {busy ? "Signing in…" : label}
+        {busy ? "Resetting & signing in…" : label}
       </span>
       <span className="text-[11.5px] text-ink-4">{tag}</span>
     </button>
