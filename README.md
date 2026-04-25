@@ -7,7 +7,8 @@ UniGuide guides Universiti Malaya students through complex multi-step administra
 
 - 🌐 **Live demo:** https://uniguide-blush.vercel.app
 - 📦 **Repo:** https://github.com/ZenBen5173/uniguide
-- 📚 **Hackathon documents (submitted as PDFs):** [PRD](docs/PRD.pdf) · [SAD](docs/SAD.pdf) · [QATD](docs/QATD.pdf). Pitch deck is delivered as slides separately. For the current "what works / what doesn't" reference grounded in the code, see [docs/MVP_STATUS.md](docs/MVP_STATUS.md). Original UMHackathon source briefs are under [docs/Hackathon Info/](docs/Hackathon%20Info/).
+- 📤 **UMHackathon 2026 submission deliverables:** see [the table below](#-umhackathon-2026--submission-deliverables-team-108).
+- 📚 **Internal references:** [docs/MVP_STATUS.md](docs/MVP_STATUS.md) — current "what works / what doesn't" reference grounded in the code. Official UMHackathon source briefs in [docs/Hackathon Info/](docs/Hackathon%20Info/).
 
 ---
 
@@ -24,6 +25,23 @@ The fastest way to see UniGuide is the live deploy:
 4. Switch tabs to Coordinator → see the same applications from the staff side. Try **Preview & approve** on the high-confidence one — the modal shows the GLM-generated letter, editable, with hallucination check.
 
 A demo banner is visible at the top of every page when the deploy is in mock mode.
+
+---
+
+## 📤 UMHackathon 2026 — Submission Deliverables (Team 108)
+
+All six preliminary-round deliverables required by the UMHackathon 2026 official handbook §4.1, submitted via [umhackathon.com](https://umhackathon.com) by Team Leader before the 26 April 2026 07:59:59 cut-off.
+
+| # | Deliverable | Format | Location |
+|---|---|---|---|
+| 1 | Product Requirement Document | PDF | [docs/PRD.pdf](docs/PRD.pdf) |
+| 2 | System Analysis Document | PDF | [docs/SAD.pdf](docs/SAD.pdf) |
+| 3 | Quality Assurance Testing Document | PDF | [docs/QATD.pdf](docs/QATD.pdf) |
+| 4 | Preliminary Round Pitch Deck | PDF | [docs/UniGuide Pitch Deck - Team  108.pdf](docs/UniGuide%20Pitch%20Deck%20-%20Team%20%20108.pdf) |
+| 5 | 10-Minute Pitching Video with Prototype Demo | MP4 (Google Drive) | [drive.google.com/file/d/16L2_T-khNYYDi3OzbGH9d1iuW_delH9G/view](https://drive.google.com/file/d/16L2_T-khNYYDi3OzbGH9d1iuW_delH9G/view?usp=sharing) |
+| 6 | Code Repository | Public GitHub | [github.com/ZenBen5173/uniguide](https://github.com/ZenBen5173/uniguide) |
+
+Live deploy alongside the deliverables: [uniguide-blush.vercel.app](https://uniguide-blush.vercel.app).
 
 ---
 
