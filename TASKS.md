@@ -2,90 +2,83 @@
 
 **Team Breaking Bank · UMHackathon 2026 · Domain 1**
 
-Lightweight task list for the preliminary round. Update by editing this file.
-For test results, defects, and AI output validation, see [`docs/QATD.md`](docs/QATD.md).
+Lightweight task tracker for the submission run-up. For grounded "what works / what doesn't" against the actual code, see [`docs/MVP_STATUS.md`](docs/MVP_STATUS.md). For test cases, see [`docs/QATD.md`](docs/QATD.md).
 
 ---
 
 ## 🟢 Done
 
-- [x] Hackathon problem statement reviewed (Domain 1, AI Workflow Automation)
-- [x] Vertical chosen: university administrative procedures (UM)
-- [x] Six UM procedures researched with stages, branching, forms (see memory + SAD)
-- [x] PRD drafted ([docs/PRD.md](docs/PRD.md))
-- [x] SAD drafted with architecture, ERD, DFD, sequence diagrams ([docs/SAD.md](docs/SAD.md))
-- [x] QATD drafted with risk matrix, 19 test cases, AI tests ([docs/QATD.md](docs/QATD.md))
-- [x] Pitch deck content drafted ([docs/PITCH_DECK.md](docs/PITCH_DECK.md))
-- [x] Code skeleton: Next.js 15 + Supabase + ReactFlow + GLM service layer
-- [x] Database schema (4 migrations + RLS + pgvector + procedure seeds)
-- [x] GLM service layer (6 endpoints + mock mode + versioned prompts + reasoning trace)
-- [x] Workflow engine (persist plan, stage advancement, decision routing)
-- [x] API routes (intake, plan, step, submit, admin queue, admin decision)
-- [x] UI: landing, intake chat, workflow canvas, step panel, coordinator dashboard
-- [x] Knowledge base seed: Scholarship Application (primary demo), Postgrad Admission
-- [x] Mock GLM fixtures for offline demo
-- [x] README with setup instructions
-- [x] GitHub repo created — https://github.com/ZenBen5173/uniguide
-- [x] Supabase project provisioned, 4 migrations applied, 6 procedures + 24 KB chunks seeded
-- [x] Live deployment on Vercel — https://uniguide-blush.vercel.app (mock mode active)
-- [x] End-to-end smoke test passed (landing, intake, dashboard, auth-gated API routes all 200/401 as expected)
+### Build
+- [x] Next.js 15 + Supabase + Z.AI GLM service layer (no ReactFlow — v1 architecture replaced by step-emission engine)
+- [x] 15 numbered SQL migrations + RLS + pgvector + procedure seeds (gap-free; missing `0005` was backfilled on 2026-04-25)
+- [x] 6 GLM endpoints (`nextStep`, `generateBriefing`, `fillLetter`, `estimateProgress`, `extractIntent`, `parseDocument`) + mock-mode fixtures + auto-fallback + reasoning-trace logging
+- [x] ILMU (YTL AI Labs × UM) wired as secondary provider for the coordinator briefing — env-flagged `USE_ILMU_FOR_BRIEFING=true`. `lib/ilmu/client.ts` + probe script `npm run probe:ilmu`
+- [x] Application engine (`lib/applications/engine.ts`) — start, respond-and-advance, coordinator-emitted steps, submit
+- [x] All ~30 API routes (student, coordinator, admin, demo)
+- [x] All UI surfaces (landing, login w/ demo tiles, student portal & SmartApplication, coordinator inbox & decide, admin procedures + analytics + GLM-traces, settings/profile, onboarding, letter print)
+- [x] Knowledge-base seeds for **5 live procedures**: scholarship_application, postgrad_admission, final_year_project, deferment_of_studies, exam_result_appeal (+ emgs_visa_renewal as Coming-soon)
+- [x] Mock GLM fixtures for offline demo (every named `mockFixture` covered)
+- [x] Demo seed: 9 sample applications across 4 procedures via `/api/demo/reset` — auto-fires on every demo-tile sign-in (no separate Reset button needed)
+- [x] Realtime correctness: `REPLICA IDENTITY FULL` on `applications`, `application_steps`, `application_letters`, `application_messages` so filtered UPDATE events deliver
 
-## 🟡 In progress / blocked on inputs
+### Resilience
+- [x] Submit fallback: if `generateBriefing` errors, write placeholder briefing + still flip status to `submitted`
+- [x] Decide fallback: if `fillLetter` errors, write raw template as letter rather than silently emitting nothing
+- [x] `final_submit` step rejected by `/respond` endpoint (must use `/submit`)
+- [x] First smoke test (`tests/glm-mock.test.ts`) — `npm test` passes 4/4
 
-- [ ] **Z.AI GLM API key** — once obtained, drop in `.env` as `ZAI_API_KEY` and set `GLM_MOCK_MODE=false`. *(Owner: Zen Ben)*
-- [ ] **Supabase project** — create new project, add credentials to `.env`, apply 4 migrations from `supabase/migrations/`. *(Owner: Zen Ben)*
-- [ ] **Run `npm install`** on each teammate's machine. *(Owner: each teammate)*
-- [ ] **Confirm role split** for Nyow An Qi and Thevesh A/L Chandran (frontend/UX vs QA/pitch). *(Owner: Jeanette)*
+### Ops
+- [x] GitHub repo: https://github.com/ZenBen5173/uniguide
+- [x] Supabase project provisioned (sin1-adjacent: ap-northeast-2), RLS enabled, all migrations applied
+- [x] Live deploy: https://uniguide-blush.vercel.app (also git-main alias)
+- [x] Vercel env: `ZAI_API_KEY`, `ILMU_API_KEY`, `USE_ILMU_FOR_BRIEFING`, `SUPABASE_*`, optional Upstash + Sentry
+- [x] `.env.example` matches the env vars actually read by code
 
-## 🔴 Outstanding work for submission
-
-### Critical (blocks submission)
-- [x] Push code to GitHub `main` branch — https://github.com/ZenBen5173/uniguide
-- [x] Deploy to Vercel — https://uniguide-blush.vercel.app
-- [ ] Wire real GLM API key + verify end-to-end scholarship application demo
-- [ ] Record pitch video (10 minutes max, see [docs/PITCH_DECK.md](docs/PITCH_DECK.md) for script + timings) *(Owner: TBD)*
-- [ ] Convert `docs/PITCH_DECK.md` content into actual slides (Canva/Slides/Pitch.app) *(Owner: TBD)*
-- [ ] Submit via official UMHackathon website by 2026-04-26 07:59 *(Owner: Jeanette)*
-
-### Important (improves judging score)
-- [ ] Implement the submit → briefing UI flow on the workflow page (button + redirect)
-- [ ] Document text extraction (`lib/documents/extractText.ts`) using `pdf-parse` + `tesseract.js`
-- [ ] Wire `parseDocument` into the upload step in `StepPanel.tsx`
-- [ ] PDF form fill for Yayasan UM application form (use `pdf-lib` or similar)
-- [ ] Embedding generation in `scripts/seed-kb.ts` (currently writes `embedding=null`)
-- [ ] Vitest unit tests for `validateGraph`, `verifyCitations`, schema validators
-- [ ] Playwright golden-path test (TC-01 from QATD)
-- [ ] Populate the `[TBD]` "Actual" columns in QATD test cases after running the suite
-
-### Nice to have (polish)
-- [ ] Authentication UI (login/signup pages — currently relies on Supabase magic link)
-- [ ] Coordinator-side stage view (currently only sees briefings)
-- [ ] Sentry integration (`sentry.client.config.ts` etc.)
-- [ ] Upstash Redis rate limiter wired into `lib/glm/client.ts`
-- [ ] Improved canvas layout (dagre instead of ordinal-based positioning)
-- [ ] Postgrad Admission demo flow polish (currently has KB + fixture but no end-to-end UI run)
-- [ ] Custom branding (currently generic blue brand-600 — pick UM colours?)
+### Docs
+- [x] PRD ([docs/PRD.md](docs/PRD.md)) — synced with shipped state, ILMU dual-provider documented
+- [x] SAD ([docs/SAD.md](docs/SAD.md)) — architecture, ERD, DFD, sequence diagrams; 15 migrations
+- [x] QATD ([docs/QATD.md](docs/QATD.md)) — risk matrix, test cases, AI tests
+- [x] PITCH_DECK content draft ([docs/PITCH_DECK.md](docs/PITCH_DECK.md))
+- [x] MVP_STATUS ([docs/MVP_STATUS.md](docs/MVP_STATUS.md)) — frank "works / doesn't / gaps" reference grounded in code
+- [x] README ([README.md](README.md)) v2.1 (synced 2026-04-25)
 
 ---
 
-## 📅 Timeline
+## 🟡 Outstanding for submission (2026-04-26 07:59)
+
+- [ ] **Pick the deck tagline** — "STOP GUESSING. START GRADUATING." was rejected as off-message; UM-marketing-audience options proposed (e.g. "THE OPERATING SYSTEM FOR UM PROCEDURES.", "FASTER DECISIONS. FAIRER OUTCOMES. FEWER EMAILS.", "A DIGITAL UM — BUILT BY UM, FOR UM."). Decision pending. *(Owner: Jeanette)*
+- [ ] Convert `docs/PITCH_DECK.md` content into actual slides — generator script at `scripts/build-pitch-deck-docx.js` produces `docs/PITCH_DECK_SLIDES.docx`; tagline still placeholder in the script. *(Owner: Jeanette)*
+- [ ] Record pitch video (10 minutes max). *(Owner: TBD)*
+- [ ] Final submission via UMHackathon portal. *(Owner: Jeanette)*
+
+---
+
+## 🔵 Out of MVP scope (post-hackathon)
+
+Documented as known gaps in `docs/MVP_STATUS.md`. None block the demo:
+
+- Email/SMS notifications (currently in-app realtime only)
+- OCR for image-only PDFs (`pdf-parse` rejects them with a friendly message)
+- Server-side PDF generation for letters (currently browser-print)
+- Embeddings on `procedure_sop_chunks` (currently `NULL` — procedure-scoped fetch is fine for 5 procedures)
+- Multi-tenancy (single-UM hardcode)
+- Per-faculty inbox scoping
+- Inbox pagination
+- Bahasa Melayu UI
+- Real MAYA / SiswaMail / EMGS API integrations
+- 7 moderate `npm audit` warnings (all transitive; `--force` fix would touch breaking-change versions)
+
+---
+
+## 📅 Timeline (final stretch)
 
 | Date | Owner | Milestone |
 |---|---|---|
-| Sat 18 Apr | Zen Ben + Claude | Docs + code skeleton built |
-| Sun 19 Apr | — | (Zen Ben unavailable) |
-| Mon 20 Apr | Team review | Read docs, push to GitHub, wire keys |
-| Tue 21 Apr | Team build | Live demo runs end-to-end |
-| Wed 22 Apr | Team test | Test cases pass; QATD updated with actuals |
-| Thu 23 Apr | Pitch team | Slides built from PITCH_DECK.md |
-| Fri 24 Apr | Pitch team | Video recorded |
-| Sat 25 Apr | Team | Final QA + dry-run |
+| Sat 25 Apr | Team | Final code review + cleanup + MVP doc + dry-run |
 | Sun 26 Apr 07:59 | Jeanette | **Final submission** |
 
 ---
 
-## ❓ Open questions to resolve
+## ❓ Open questions
 
-- Pick a brand colour palette (default: generic blue) — UM blue/yellow?
-- Confirm Vercel team account vs. personal account for hosting
-- Decide whether to link to a live demo URL in the pitch deck or use a recorded video only
+- None blocking submission.

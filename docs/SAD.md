@@ -87,7 +87,7 @@ flowchart TB
     end
 
     subgraph "Supabase — ap-northeast-2"
-        DB[(Postgres + pgvector<br/>14 migrations)]
+        DB[(Postgres + pgvector<br/>15 migrations)]
         Store[(Storage<br/>application-files bucket<br/>RLS-protected)]
         Auth[Auth<br/>OTP + demo passwords]
         Realtime[Realtime publication<br/>applications, application_steps,<br/>application_letters, application_messages]

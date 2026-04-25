@@ -7,7 +7,7 @@ UniGuide guides Universiti Malaya students through complex multi-step administra
 
 - 🌐 **Live demo:** https://uniguide-blush.vercel.app
 - 📦 **Repo:** https://github.com/ZenBen5173/uniguide
-- 📚 **Hackathon documents:** [PRD](docs/PRD.md) · [SAD](docs/SAD.md) · [QATD](docs/QATD.md) · [PITCH_DECK](docs/PITCH_DECK.md) — all synced to shipped state on 2026-04-20
+- 📚 **Hackathon documents:** [PRD](docs/PRD.md) · [SAD](docs/SAD.md) · [QATD](docs/QATD.md) · [PITCH_DECK](docs/PITCH_DECK.md) — synced to shipped state on 2026-04-20. For the most-current "what works / what doesn't" reference grounded in the code, see [docs/MVP_STATUS.md](docs/MVP_STATUS.md).
 
 ---
 
@@ -20,7 +20,7 @@ The fastest way to see UniGuide is the live deploy:
    - 🎓 **Student** — `demo-student@uniguide.local`
    - 💼 **Coordinator** — `demo-coordinator@uniguide.local`
    - 🛠 **Admin** — `demo-admin@uniguide.local`
-3. As Student, click **"Reset Demo Student & sign in"** at the bottom of the demo tiles area. This wipes + reseeds **5 sample applications** in distinct states (mid-flow draft · high-confidence approve · low-confidence + flagged · approved · rejected) so the inbox / analytics / GLM trace pages have content immediately.
+3. As of 2026-04-25, **every demo-tile sign-in auto-resets the demo dataset** before logging you in (no separate button needed) — wipes + reseeds **9 sample applications** across 4 procedures in distinct states (mid-flow draft · high-confidence approve · low-confidence + flagged · approved + letter · rejected + letter · FYP submitted · deferment approved · postgrad submitted · exam-appeal more-info-requested). Inbox / analytics / GLM trace pages have content immediately.
 4. Switch tabs to Coordinator → see the same applications from the staff side. Try **Preview & approve** on the high-confidence one — the modal shows the GLM-generated letter, editable, with hallucination check.
 
 A demo banner is visible at the top of every page when the deploy is in mock mode.
@@ -70,7 +70,7 @@ Fill in `.env`:
 # If you have the Supabase CLI linked to your project:
 npx supabase db push
 ```
-or paste each `supabase/migrations/0001..0013` SQL file into the Supabase SQL editor in order.
+or paste each `supabase/migrations/0001..0015` SQL file into the Supabase SQL editor in order.
 
 ### 4 — Seed the SOP knowledge base
 ```bash
@@ -176,10 +176,11 @@ UniGuide/
 │   ├── supabase/                   browser + server clients
 │   └── utils/responses.ts          apiSuccess / apiError helpers
 │
-├── supabase/migrations/            14 numbered SQL migrations
+├── supabase/migrations/            15 numbered SQL migrations
 ├── tests/fixtures/glm/             recorded GLM responses for mock mode
-├── scripts/                        seed-kb.ts, seed-test.ts
-├── docs/                           PITCH_DECK · PRD · SAD · QATD
+├── tests/glm-mock.test.ts          smoke test for the mock-mode resilience paths
+├── scripts/                        seed-kb.ts, probe-ilmu.ts, build-pitch-deck-docx.js
+├── docs/                           PITCH_DECK · PRD · SAD · QATD · MVP_STATUS
 ├── next.config.ts                  pdf-parse marked serverExternalPackages
 ├── vercel.json                     pinned to sin1 region
 └── README.md (this file)
@@ -214,8 +215,9 @@ UniGuide/
 - **Admin deadline editor** — date + display label per procedure
 - **Admin analytics** — KPIs + by-procedure table + status mix
 - **Admin GLM trace viewer** — every call's input/output JSON
-- **Demo seed variety** — 5 sample applications via `/api/demo/reset`
-- **Mock mode + demo banner + auto-fallback** — demo never collapses
+- **Demo seed variety** — 9 sample applications across 4 procedures via `/api/demo/reset`; auto-fires on every demo-tile sign-in so judges always see canonical state
+- **Mock mode + demo banner + auto-fallback** — demo never collapses; submit / decide endpoints additionally degrade gracefully if a real GLM call fails (fallback briefing or raw-template letter so the application is never left in a half-state)
+- **Dual AI providers** — Z.AI GLM-4.6 / GLM-4.5-flash for all six call-sites by default; coordinator briefing optionally routes through ILMU `ilmu-glm-5.1` (Malaysia's sovereign LLM, YTL AI Labs × UM) when `USE_ILMU_FOR_BRIEFING=true`
 
 For per-feature traceability to test cases, see [docs/QATD.md](docs/QATD.md).
 
@@ -245,6 +247,7 @@ npm run lint         # next lint
 npm test             # vitest watch
 npm run test:run     # vitest run once
 npm run seed:kb      # rebuild procedure_sop_chunks from lib/kb/seed/*.md
+npm run probe:ilmu   # one-shot diagnostic — verify ILMU API key + model access
 ```
 
 ### Add a new procedure
@@ -264,10 +267,10 @@ npm run seed:kb      # rebuild procedure_sop_chunks from lib/kb/seed/*.md
 6. Add a fixture for mock mode with the matching `mockFixture` name.
 
 ### Apply a new schema migration
-1. Number the file `supabase/migrations/0014_*.sql`.
+1. Number the file `supabase/migrations/0016_*.sql` (next free slot — `0015_realtime_replica_identity.sql` is the latest).
 2. Apply to Supabase (CLI: `npx supabase db push`, or paste in SQL editor).
 3. Commit the migration file so the repo history matches the live DB.
-4. If the migration affects a table that should be realtime, add it to `supabase_realtime` publication.
+4. If the migration affects a table that should be realtime, add it to `supabase_realtime` publication AND set `replica identity full` on it (per `0015_*` — needed for filtered UPDATE events to fire).
 5. If RLS-protected, add policies for the relevant roles.
 
 ---
@@ -286,4 +289,4 @@ This codebase is **submitted to UMHackathon 2026** under the hackathon's terms (
 
 ---
 
-**README v2.0 — synced with shipped state as of 2026-04-20**
+**README v2.1 — synced with shipped state as of 2026-04-25**

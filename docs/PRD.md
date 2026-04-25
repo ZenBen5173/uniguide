@@ -128,13 +128,16 @@ Admins index SOPs (paste / URL / **upload PDF**), edit **letter templates**, set
 ### 4.3 AI Model & Prompt Design
 
 #### 4.3.1 Model Selection
-**Selected models:** Z.AI GLM-4.6 for reasoning-heavy endpoints (`nextStep`, `generateBriefing`, `fillLetter`); GLM-4.5-flash for high-volume / lower-stakes calls (`estimateProgress`, `suggestComment`).
+**Primary models:** Z.AI GLM-4.6 for reasoning-heavy endpoints (`nextStep`, `generateBriefing`, `fillLetter`); GLM-4.5-flash for high-volume / lower-stakes calls (`estimateProgress`, `suggestComment`).
+
+**Secondary provider — ILMU `ilmu-glm-5.1`** (YTL AI Labs × Universiti Malaya, Malaysia's sovereign multimodal LLM, OpenAI-compatible at `https://api.ilmu.ai/v1`): the coordinator briefing optionally routes through ILMU when `USE_ILMU_FOR_BRIEFING=true`. ILMU is built on a GLM-5.1 backbone localised for Malaysian context, so the briefing — which digests Malay-heavy step history into structured facts + flags + recommendation — is the most direct fit for its headline BM capability. Drop-in same `openai` SDK pattern as Z.AI; identical output schema; mock-fallback to the same shared fixtures so a missing ILMU key never breaks the briefing path. See `lib/ilmu/client.ts`.
 
 Justification:
-- **Mandatory by hackathon rules.**
+- **Z.AI GLM mandatory by hackathon rules.**
 - **Long context window** — fits the full UM procedure SOP (24+ chunks for Scholarship) plus the student's accumulated history in a single call without aggressive chunking.
 - **JSON mode** — every endpoint returns structured JSON validated by Zod schemas (`lib/glm/schemas.ts`).
 - **Model tiering** holds the per-workflow token budget under target.
+- **Sovereign-AI option** (ILMU) — student data digested for the decision stays on Malaysian infrastructure when the flag is on, supporting MyDigital data-residency considerations.
 
 #### 4.3.2 Prompting Strategy
 Each GLM-powered endpoint has a dedicated versioned system prompt in `lib/glm/prompts/*.md`:
@@ -156,6 +159,8 @@ Each GLM-powered endpoint has a dedicated versioned system prompt in `lib/glm/pr
 - **Schema violation:** Zod parse on every GLM output. Failure throws → caller returns 500 with the specific error.
 - **Hallucinated regulation references:** scope is limited to the indexed SOP chunks; the citation chips link to actual indexed sections. Hallucination check on the letter compares mentioned facts against the application context.
 - **GLM API timeout / error:** if a `mockFixture` is named for the call, `callGlm` automatically returns the fixture (with `console.error` log + `model: …-fallback` marker). Demo never collapses.
+- **Submit-side fallback** (`POST /api/applications/[id]/submit`): if `generateBriefing` throws and no fixture is available, the endpoint writes a placeholder briefing flagged for coordinator regeneration *and* still flips status to `submitted`. Avoids leaving a half-submitted application with no recovery path.
+- **Decide-side fallback** (`POST /api/coordinator/applications/[id]/decide`): if `fillLetter` throws on approve / reject, the raw template (placeholders unfilled) is written as the letter rather than silently skipped. The student sees a letter; the coordinator can regenerate via `letter_text_override`.
 - **Mock mode:** `GLM_MOCK_MODE=true` env var (or absent `ZAI_API_KEY`) routes every call to fixtures. Visible demo-mode banner at the top of every page.
 - **Application status guard:** decide endpoint refuses if status is already final; revise endpoint refuses if not draft; undo endpoint refuses past 5-minute window.
 
