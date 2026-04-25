@@ -47,15 +47,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return apiError(`Application is ${app.status} — cannot modify`, 409);
   }
 
-  // Verify the step belongs to this application + is pending.
+  // Verify the step belongs to this application + is pending. Also reject
+  // final_submit steps explicitly: those go through POST /submit, not /respond.
+  // The frontend already enforces this, but a malicious client could otherwise
+  // advance past a final_submit by hitting /respond directly.
   const { data: step } = await sb
     .from("application_steps")
-    .select("id, status")
+    .select("id, status, type")
     .eq("id", parsed.data.step_id)
     .eq("application_id", applicationId)
     .single();
   if (!step) return apiError("Step not found", 404);
   if (step.status !== "pending") return apiError("Step already completed", 409);
+  if (step.type === "final_submit") {
+    return apiError("This is the final submit step — call POST /submit, not /respond.", 409);
+  }
 
   let result;
   try {

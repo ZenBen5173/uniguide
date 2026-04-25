@@ -41,14 +41,12 @@ Things the code clearly knows about but doesn't fully deliver. These are MVP-acc
 
 | Item | Severity | Status | Where |
 |---|---|---|---|
-| **Migrations 0005 & 0006 missing from git** | 🔴 high (rebuild risk) | Tables `applications`, `application_steps`, `application_briefings`, `application_decisions`, `application_letters` exist in production DB but their `CREATE TABLE` migrations were never committed. Anyone running `supabase db reset` from a fresh checkout will get a broken schema. The migration sequence jumps from `0004_seed_procedures.sql` to `0007_application_files_storage.sql`. | `supabase/migrations/` |
 | **Vector embeddings unused** | 🟡 medium | `procedure_sop_chunks.embedding` is `NULL` — the seed script intentionally skips embedding generation. KB retrieval (`lib/kb/retrieve.ts`) falls back to a procedure-scoped fetch, not semantic search. Works fine for the demo's 5 procedures × ~10 chunks each; will degrade as the catalogue grows. | `scripts/seed-kb.ts`, `lib/kb/retrieve.ts` |
 | **No real email / SMS delivery** | 🟡 medium | Letters are written to `application_letters` and pushed to the student via realtime, but nothing actually emails or SMSes anyone. Students see letters by visiting their portal. | (no notification service) |
-| **`final_submit` step type not enforced server-side** | 🟢 low | The `respond` endpoint doesn't reject `final_submit`-typed steps — the frontend routes them to the `/submit` button, but a malicious caller could POST to `/respond` against a `final_submit` step. Low impact (just advances through it). | `app/api/applications/[id]/respond/route.ts` |
 | **`application_decisions` not in realtime publication** | 🟢 low (intentional) | Decisions write to `application_decisions` (audit trail) but aren't published. The student-visible event — status flip + new letter + new step — propagates via the `applications` and `application_letters` publications. The audit row itself doesn't need realtime. | `supabase/migrations/0008` |
 | **Coordinator inbox doesn't paginate** | 🟢 low | Loads all submitted apps in one query. Fine at hackathon scale; won't scale past ~1000 active. | `app/api/coordinator/inbox/route.ts` |
 | **7 moderate npm audit warnings** | 🟢 low | All in transitive deps; no critical or high. `npm audit fix --force` would touch breaking-change versions — left alone for stability. | `package.json` |
-| **No automated tests** | 🟢 low | `vitest` is configured but no test files exist beyond fixtures. Confidence comes from manual demo runs. | (no `tests/*.test.ts` files) |
+| **Limited automated tests** | 🟢 low | One smoke test (`tests/glm-mock.test.ts`) covers the GLM + ILMU mock-mode resilience paths. No integration tests against live DB or full HTTP routes — confidence still comes mostly from manual demo runs. | `tests/` |
 | **No rate limiting on public APIs** | 🟢 low | Upstash Redis is configured but only used incidentally. Auth endpoints (Supabase OTP) are protected by Supabase itself, but our custom `/api/*` routes have no rate limit. | `lib/utils/responses.ts` |
 
 ---
@@ -79,6 +77,9 @@ These were tightened during the MVP review (commit `<this commit>`):
 
 - **`/api/applications/[id]/submit`**: if `generateBriefing` throws (rate limit, transient 5xx, key expired), we now write a fallback briefing flagged for coordinator regeneration *and still flip status to `submitted`*. Previously the endpoint returned 502 and orphaned the application.
 - **`/api/coordinator/applications/[id]/decide`**: if `fillLetter` throws on approve/reject, the raw template (with placeholders unfilled) is now written as the letter rather than silently emitting nothing. The student sees a letter that needs manual cleanup; previously they saw a status-flip with no letter and no recovery path.
+- **`/api/applications/[id]/respond`**: now rejects `final_submit`-typed steps explicitly (`409 — call POST /submit, not /respond`). The frontend already routes correctly; this closes the malicious-direct-call hole.
+- **Migrations 0005 backfilled** (`0005_v2_application_tables.sql`): the entire v2 application data model — `applications`, `application_steps`, `application_briefings`, `application_decisions`, `application_letters`, `procedure_letter_templates`, plus the `owns_application` / extended `is_staff` helpers and matching RLS policies — is now codified in version control. Fully idempotent (`IF NOT EXISTS` / `CREATE OR REPLACE` everywhere) so it composes cleanly with existing 0009/0011 migrations on a fresh install. Verified against production: the live DB matches the migration row-for-row.
+- **Smoke test added** (`tests/glm-mock.test.ts`): exercises GLM + ILMU mock-fallback paths so future contributors can `npm test` and immediately see whether the resilience layer is intact.
 - **Code cleanup**:
   - Removed unused deps `@tisoap/react-flow-smart-edge`, `reactflow`, `tesseract.js` (v1-architecture leftovers).
   - Removed dangling `seed:test` npm script that pointed to a non-existent `scripts/seed-test.ts`.
