@@ -148,8 +148,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         );
         letterText = filled.filled_text;
       } catch (err) {
-        console.error("[decide] letter generation failed:", err);
-        letterText = null;
+        console.error("[decide] letter generation failed — falling back to raw template:", err);
+        // Don't silently emit no letter and still flip the status — the student
+        // would see "approved" with no letter and no path to recovery. Better
+        // to send the raw template (placeholders unfilled) so the letter
+        // exists; a coordinator can regenerate with letter_text_override later.
+        letterText = template.template_text;
       }
     }
 

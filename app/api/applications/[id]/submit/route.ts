@@ -38,7 +38,13 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const history = await buildHistory(applicationId);
 
-  let briefing;
+  // Generate the briefing. If GLM fails (rate-limit, transient 5xx, key
+  // expired), we DON'T abandon the submission — that would leave the student
+  // with a half-submitted application and no clear recovery path. Instead we
+  // write a safe-fallback briefing flagged for coordinator regeneration, and
+  // still flip status to 'submitted'. The application appears in the inbox
+  // with recommendation=review so a coordinator can act on it.
+  let briefing: Awaited<ReturnType<typeof generateBriefing>> | null = null;
   try {
     briefing = await generateBriefing(
       {
@@ -49,17 +55,29 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
       { applicationId }
     );
   } catch (err) {
-    return apiError(`Briefing generation failed: ${err instanceof Error ? err.message : "unknown"}`, 502);
+    console.error("[submit] briefing generation failed — falling back:", err);
   }
+
+  const fallback = {
+    extracted_facts: {},
+    flags: [{
+      severity: "warn" as const,
+      message: "AI briefing failed to generate — coordinator should regenerate or review the raw history.",
+    }],
+    recommendation: "review" as const,
+    reasoning: "Automatic briefing was unavailable at submission time. Please review the application history directly.",
+    ai_confidence: 0.0,
+  };
+  const finalBriefing = briefing ?? fallback;
 
   const { data: insertedBriefing, error: insErr } = await sb
     .from("application_briefings")
     .insert({
       application_id: applicationId,
-      extracted_facts: briefing.extracted_facts,
-      flags: briefing.flags,
-      recommendation: briefing.recommendation,
-      reasoning: briefing.reasoning,
+      extracted_facts: finalBriefing.extracted_facts,
+      flags: finalBriefing.flags,
+      recommendation: finalBriefing.recommendation,
+      reasoning: finalBriefing.reasoning,
       status: "pending",
     })
     .select("id")
@@ -73,14 +91,15 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     .update({
       status: "submitted",
       submitted_at: new Date().toISOString(),
-      ai_recommendation: briefing.recommendation,
-      ai_confidence: briefing.ai_confidence,
+      ai_recommendation: finalBriefing.recommendation,
+      ai_confidence: finalBriefing.ai_confidence,
     })
     .eq("id", applicationId);
 
   return apiSuccess({
     submitted: true,
     briefing_id: insertedBriefing.id,
-    recommendation: briefing.recommendation,
+    recommendation: finalBriefing.recommendation,
+    briefing_fallback: briefing === null,
   });
 }
