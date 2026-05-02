@@ -11,10 +11,10 @@
 | # | Deliverable | Format | Location |
 |---|---|---|---|
 | 1 | **Code Repository** | this repo | [github.com/ZenBen5173/uniguide](https://github.com/ZenBen5173/uniguide) |
-| 2 | **Refined Quality Assurance Testing Document** | PDF | [docs/QATD.pdf](docs/QATD.pdf) *(refining for finals)* |
-| 3 | **Deployment Plan** | PDF | _TBD — drafting in online sub-phase_ |
-| 4 | **Business Proposal** *(for the Developed Product)* | PDF | _TBD — drafting in online sub-phase_ |
-| 5 | **Final Round Presentation Pitch Deck** | PDF | _TBD — drafting in online sub-phase_ |
+| 2 | **Refined Quality Assurance Testing Document** | PDF | [docs/03 Finals/QATD-Refined.pdf](docs/03%20Finals/QATD-Refined.pdf) |
+| 3 | **Deployment Plan** | PDF | [docs/03 Finals/DeploymentPlan.pdf](docs/03%20Finals/DeploymentPlan.pdf) |
+| 4 | **Business Proposal** *(for the Developed Product)* | PDF | [docs/03 Finals/BusinessProposal.pdf](docs/03%20Finals/BusinessProposal.pdf) |
+| 5 | **Final Round Presentation Pitch Deck** | PDF | [docs/03 Finals/FinalPitchDeck.pdf](docs/03%20Finals/FinalPitchDeck.pdf) *(uploading shortly)* |
 
 **Live deploy:** [uniguide-blush.vercel.app](https://uniguide-blush.vercel.app)
 **Final submission deadline:** 3 May 2026 07:59:59 AM (via [umhackathon.com](https://umhackathon.com))
@@ -29,10 +29,10 @@ For reference — the preliminary round submitted these six artefacts before the
 
 | # | Deliverable | Location |
 |---|---|---|
-| 1 | Product Requirement Document | [docs/PRD.pdf](docs/PRD.pdf) |
-| 2 | System Analysis Document | [docs/SAD.pdf](docs/SAD.pdf) |
-| 3 | Quality Assurance Testing Document | [docs/QATD.pdf](docs/QATD.pdf) |
-| 4 | Preliminary Round Pitch Deck | [docs/UniGuide Pitch Deck - Team  108.pdf](docs/UniGuide%20Pitch%20Deck%20-%20Team%20%20108.pdf) |
+| 1 | Product Requirement Document | [docs/02 Pre Finals/PRD.pdf](docs/02%20Pre%20Finals/PRD.pdf) |
+| 2 | System Analysis Document | [docs/02 Pre Finals/SAD.pdf](docs/02%20Pre%20Finals/SAD.pdf) |
+| 3 | Quality Assurance Testing Document | [docs/02 Pre Finals/QATD.pdf](docs/02%20Pre%20Finals/QATD.pdf) |
+| 4 | Preliminary Round Pitch Deck | [docs/02 Pre Finals/UniGuide Pitch Deck - Team  108.pdf](docs/02%20Pre%20Finals/UniGuide%20Pitch%20Deck%20-%20Team%20%20108.pdf) |
 | 5 | 10-Minute Pitching Video with Prototype Demo | [drive.google.com/file/d/16L2_T-khNYYDi3OzbGH9d1iuW_delH9G/view](https://drive.google.com/file/d/16L2_T-khNYYDi3OzbGH9d1iuW_delH9G/view?usp=sharing) |
 | 6 | Code Repository | [github.com/ZenBen5173/uniguide](https://github.com/ZenBen5173/uniguide) |
 
@@ -44,7 +44,7 @@ For reference — the preliminary round submitted these six artefacts before the
 
 **Your AI co-pilot for university paperwork.** UniGuide guides Universiti Malaya students through complex multi-step administrative procedures (scholarship applications, FYP, deferment, exam appeal, postgrad admission, EMGS visa renewal). **Z.AI's GLM** emits the next step in each application **at runtime, one at a time**, based on the student's history + the official UM SOP. Coordinators get a pre-digested briefing per submission, can preview/edit/send GLM-generated decision letters, and have a 5-minute undo. Pull GLM out and no application can advance past step 1 — there is no static workflow template.
 
-- 📚 **Internal references:** [docs/MVP_STATUS.md](docs/MVP_STATUS.md) — current "what works / what doesn't" reference grounded in the code. Official UMHackathon briefs (incl. **Finalist Handbook**) under [docs/Hackathon Info/](docs/Hackathon%20Info/).
+- 📚 **Internal references:** Official UMHackathon briefs (incl. **Finalist Handbook**) under [docs/01 Hackathon Info/](docs/01%20Hackathon%20Info/).
 
 ---
 
