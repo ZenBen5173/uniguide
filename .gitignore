@@ -24,8 +24,9 @@ out/
 .vscode/
 .idea/
 
-# Claude Code per-user permission grants (local-only)
+# Claude Code per-user runtime files (local-only)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # OS
 .DS_Store
