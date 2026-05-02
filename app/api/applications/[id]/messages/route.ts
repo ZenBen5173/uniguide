@@ -29,10 +29,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const isStaff = user.role === "staff" || user.role === "admin";
   if (!isOwner && !isStaff) return apiError("Forbidden", 403);
 
+  // Direct-messages surface only — student↔coordinator. AI turns and
+  // escalation summaries live on the Ask UniGuide panel; mixing them here
+  // would duplicate that channel.
   const { data: rawMessages } = await sb
     .from("application_messages")
     .select("id, body, author_id, author_role, created_at")
     .eq("application_id", applicationId)
+    .in("author_role", ["student", "coordinator"])
     .order("created_at", { ascending: true });
 
   const messages = rawMessages ?? [];

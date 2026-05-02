@@ -320,16 +320,19 @@ export async function recordResponseAndAdvance(args: {
     .eq("application_id", args.applicationId);
   if (respErr) throw new Error(`Failed to record response: ${respErr.message}`);
 
-  // Bump progress counter.
-  const { data: completedCount } = await sb
+  // Bump progress counter. With head:true the count lives on the `count`
+  // property of the response, not `data` — destructuring `data` here
+  // historically left `progress_current_step` stuck at 0 (see Portal's
+  // progress bar). Read both, then pick whichever we got.
+  const { count: completedCount } = await sb
     .from("application_steps")
     .select("id", { count: "exact", head: true })
     .eq("application_id", args.applicationId)
     .eq("status", "completed");
-  if (completedCount !== null) {
+  if (typeof completedCount === "number") {
     await sb
       .from("applications")
-      .update({ progress_current_step: (completedCount as unknown as number) || 0 })
+      .update({ progress_current_step: completedCount })
       .eq("id", args.applicationId);
   }
 

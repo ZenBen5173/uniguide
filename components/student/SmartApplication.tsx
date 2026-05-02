@@ -8,6 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
 import SopViewer, { type SopViewerHandle } from "./SopViewer";
 import AiChatPanel from "@/components/student/AiChatPanel";
+import MessageThread from "@/components/shared/MessageThread";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -614,6 +615,14 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
             applicationId={id}
             escalationPending={!!data.application.escalation_pending}
           />
+
+          {/* Direct messages with the coordinator — separate from the AI chat
+              above so the student can write to a human directly without
+              triggering an escalation. The two surfaces show different
+              author roles: Messages is student↔coordinator only; Ask UniGuide
+              is AI-led with coordinator replies appearing during an open
+              escalation. */}
+          <MessageThread applicationId={id} variant="rail" />
 
           {/* Letters delivered */}
           {data.letters.length > 0 && (
