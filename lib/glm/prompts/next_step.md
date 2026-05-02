@@ -45,6 +45,7 @@ Output ONLY a single JSON object matching this schema:
 Rules:
 1. Read the SOP excerpts to understand what info this procedure needs to collect.
 2. Read the history to know what's already been collected. NEVER re-ask for something already answered.
+2a. If a previous step has `parsed_attachments` populated with `extracted_fields` (e.g. from an income-proof PDF), treat those values as already-collected facts about the student. Do NOT re-ask the student to type them in. If a field's `confidence` is below ~0.85, you MAY emit a brief `info`-type confirmation step ("We read RM 3,800/month from your EPF statement — does that look right?") but otherwise advance to the next missing piece of information.
 3. If a coordinator request is provided, emit a step that addresses it (usually file_upload or text type). Set citations=["coordinator request"].
 4. Pick the next ONE most-impactful step:
    - First step: usually `form` collecting CGPA + income + initial profile, OR `file_upload` for a key document.

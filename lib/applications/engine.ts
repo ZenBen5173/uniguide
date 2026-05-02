@@ -77,14 +77,26 @@ export async function buildHistory(applicationId: string): Promise<HistoryStep[]
     .eq("status", "completed")
     .order("ordinal");
 
-  // Could also enrich with parsed_attachments via attachments table; deferred.
-  return (steps ?? []).map((s) => ({
-    ordinal: s.ordinal,
-    type: s.type as StepType,
-    prompt_text: s.prompt_text,
-    emitted_by: (s.emitted_by as "ai" | "coordinator") ?? "ai",
-    response_data: s.response_data,
-  }));
+  return (steps ?? []).map((s) => {
+    const rd = (s.response_data ?? {}) as Record<string, unknown>;
+    // If the /respond pipeline ran parseDocument inline on this step's upload,
+    // surface the structured fields as parsed_attachments so the AI can rely on
+    // them and avoid re-asking the student for facts already in the document.
+    const filename = rd.filename as string | undefined;
+    const extracted = rd.extracted_fields as Record<string, unknown> | undefined;
+    const parsed_attachments =
+      filename && extracted
+        ? [{ filename, extracted_fields: extracted }]
+        : undefined;
+    return {
+      ordinal: s.ordinal,
+      type: s.type as StepType,
+      prompt_text: s.prompt_text,
+      emitted_by: (s.emitted_by as "ai" | "coordinator") ?? "ai",
+      response_data: s.response_data,
+      ...(parsed_attachments ? { parsed_attachments } : {}),
+    };
+  });
 }
 
 /**

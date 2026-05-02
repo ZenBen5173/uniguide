@@ -11,7 +11,12 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { recordResponseAndAdvance } from "@/lib/applications/engine";
+import { extractTextFromStorage } from "@/lib/documents/extractText";
+import { parseDocument } from "@/lib/glm/parseDocument";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 const Body = z.object({
   step_id: z.string().uuid(),
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // advance past a final_submit by hitting /respond directly.
   const { data: step } = await sb
     .from("application_steps")
-    .select("id, status, type")
+    .select("id, status, type, config")
     .eq("id", parsed.data.step_id)
     .eq("application_id", applicationId)
     .single();
@@ -63,12 +68,53 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return apiError("This is the final submit step — call POST /submit, not /respond.", 409);
   }
 
+  // If this is a file_upload step and the AI emitted an extraction_schema,
+  // pull the file out of storage, run it through pdf-parse, and call
+  // parseDocument so the next nextStep call sees structured fields instead
+  // of just a filename. Failures here NEVER block the student — they degrade
+  // gracefully to the raw responseData, mirroring the resilience pattern used
+  // in /submit when the briefing call fails.
+  let enrichedResponse = parsed.data.response_data as Record<string, unknown>;
+  const stepConfig = (step.config ?? {}) as Record<string, unknown>;
+  const extractionSchema = stepConfig.extraction_schema as
+    | Record<string, string>
+    | undefined;
+  const storagePath = enrichedResponse.storage_path as string | undefined;
+  const contentType = enrichedResponse.content_type as string | null | undefined;
+  if (
+    step.type === "file_upload" &&
+    extractionSchema &&
+    Object.keys(extractionSchema).length > 0 &&
+    storagePath
+  ) {
+    try {
+      const extracted = await extractTextFromStorage(storagePath, contentType);
+      if (extracted) {
+        const parseResult = await parseDocument(
+          {
+            documentText: extracted.text,
+            extractionSchema,
+          },
+          { workflowId: applicationId }
+        );
+        enrichedResponse = {
+          ...enrichedResponse,
+          extracted_fields: parseResult.fields,
+          extracted_source_excerpt: parseResult.source_excerpt,
+          extracted_pages: extracted.numpages,
+        };
+      }
+    } catch (err) {
+      console.warn("[respond] document extraction failed; proceeding without enrichment:", err);
+    }
+  }
+
   let result;
   try {
     result = await recordResponseAndAdvance({
       applicationId,
       stepId: parsed.data.step_id,
-      responseData: parsed.data.response_data,
+      responseData: enrichedResponse,
     });
   } catch (err) {
     return apiError(`Advance failed: ${err instanceof Error ? err.message : "unknown"}`, 500);
