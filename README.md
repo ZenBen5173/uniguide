@@ -57,8 +57,8 @@ The fastest way to see UniGuide is the live deploy:
    - 🎓 **Student** — `demo-student@uniguide.local`
    - 💼 **Coordinator** — `demo-coordinator@uniguide.local`
    - 🛠 **Admin** — `demo-admin@uniguide.local`
-3. **The "Reset demo data" chip** at the top of the login page wipes everything back to canonical state — wipes ALL applications + non-canonical procedures + reseeds **7 sample applications** spread across 5 procedures in distinct states (Scholarship: mid-flow draft, low-conf + block flag, approved+letter · FYP submitted · Deferment approved+letter · Postgrad submitted · Exam Appeal needs-more-info). Inbox / analytics / GLM trace pages have content immediately.
-4. Switch tabs to Coordinator → see the same applications from the staff side. Try **Preview & approve** on the high-confidence one — the modal shows the GLM-generated letter, editable, with hallucination check.
+3. **The "Reset demo data" chip** at the top of the login page wipes everything back to canonical state — wipes ALL applications + non-canonical procedures + reseeds **5 sample applications, one per procedure**, each in a distinct lifecycle state (Scholarship: low-conf + BLOCK flag · FYP: near-complete draft ready for upload-and-submit · Deferment: approved + letter delivered · Postgrad: submitted high-conf · Exam Appeal: more_info_requested). Inbox / analytics / GLM trace pages have content immediately.
+4. Switch tabs to Coordinator → see the same applications from the staff side. Try **Preview & approve** on the Postgrad submission — the modal shows the GLM-generated letter, editable, with hallucination check.
 
 A demo banner is visible at the top of every page when the deploy is in mock mode.
 
@@ -236,7 +236,7 @@ UniGuide/
 - **Admin deadline editor** — date + display label per procedure
 - **Admin analytics** — KPIs + by-procedure table + status mix
 - **Admin GLM trace viewer** — every call's input/output JSON
-- **Demo seed variety** — 7 sample applications across 5 procedures via `/api/demo/reset`; manual reset chip on the login page so judges always see canonical state
+- **Demo seed variety** — 5 sample applications, one per procedure, via `/api/demo/reset` (no visual duplicates on the portal — each card is a different procedure name in a different lifecycle state); manual reset chip on the login page so judges always see canonical state
 - **Mock mode + demo banner + auto-fallback** — demo never collapses; submit / decide endpoints additionally degrade gracefully if a real GLM call fails (fallback briefing or raw-template letter so the application is never left in a half-state)
 - **Dual AI providers** — Z.AI GLM-4.6 / GLM-4.5-flash for all six call-sites by default; coordinator briefing optionally routes through ILMU `ilmu-glm-5.1` (Malaysia's sovereign LLM, YTL AI Labs × UM) when `USE_ILMU_FOR_BRIEFING=true`
 

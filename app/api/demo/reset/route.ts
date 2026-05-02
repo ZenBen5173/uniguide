@@ -12,20 +12,19 @@
  *
  * Then reseeds:
  *  - Canonical letter templates for each Live procedure
- *  - 8 sample applications spread across 5 procedures in distinct states:
- *      Scholarship: 3 (mid-flow draft, low-conf+flagged submitted, approved+letter)
- *      FYP:         2 (submitted with high-conf approve briefing; near-complete draft for the upload-and-submit demo)
- *      Deferment:   1 (approved with letter)
- *      Postgrad:    1 (submitted, high-confidence)
- *      Exam Appeal: 1 (more_info_requested)
- *  - Sample chat messages on the FYP submission for richness
+ *  - 5 sample applications, ONE per procedure, each chosen so its lifecycle
+ *    state demonstrates a distinct piece of the system in the live demo:
+ *      Scholarship: low-conf + BLOCK flag (submitted) → coordinator inbox centerpiece
+ *      FYP:         near-complete draft (1 file_upload + final_submit remaining) → upload-and-submit demo
+ *      Deferment:   approved + letter delivered → letter delivery / "decided" state
+ *      Postgrad:    submitted, high-confidence → clean inbox row + letter generation target
+ *      Exam Appeal: more_info_requested → non-approve outcome / "needs your reply" state
  *
- * Why 3 scholarships (not 5): earlier the seed had 5 scholarships covering
- * draft / high-conf-approve / low-conf+block / approved+letter / rejected+letter.
- * The 5 cards on the student portal looked like duplicates because the procedure
- * name was the same. Trimmed to 3 distinct lifecycle states; the high-conf and
- * rejected examples were redundant given FYP/Postgrad submitted (high-conf) and
- * Exam Appeal (non-approve outcome).
+ * Why one per procedure: earlier seeds had 3 Scholarship cards and 2 FYP cards,
+ * which on the student portal looked like duplicates because the procedure name
+ * was the same. Trimmed to one app per procedure — the lifecycle states are now
+ * spread across DIFFERENT procedures, so each card on the portal looks distinct
+ * and each demonstrates a different lever of the system.
  *
  * Canonical procedures + their procedure_sop_chunks are preserved (those are
  * config maintained via supabase/migrations and lib/kb/seed/). Only NEW
@@ -179,32 +178,20 @@ export async function POST() {
   const now = new Date();
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000).toISOString();
   const seeded: { id: string; procedure: string; status: string; label: string }[] = [];
-  const insertedAppIds: { scholarship_draft?: string; deferment?: string; fyp?: string } = {};
+  // Deferment id is captured in case any post-seed row needs to reference it
+  // (e.g. internal notes in earlier seed shapes). Other apps are referenced by
+  // the local `app` const inside their own block, no top-level handle needed.
+  const insertedAppIds: { deferment?: string } = {};
 
-  // ---------- App 1: scholarship — mid-flow draft ----------
-  {
-    const { data: app } = await sb.from("applications").insert({
-      user_id: studentId, procedure_id: "scholarship_application", status: "draft",
-      progress_estimated_total: 6,
-      student_summary: "B40 student, CGPA 3.10, just declared monthly income RM 3,500. Awaiting income proof upload.",
-      created_at: hoursAgo(2), updated_at: hoursAgo(0.25),
-    }).select("id").single();
-    if (app) {
-      insertedAppIds.scholarship_draft = app.id;
-      await sb.from("application_steps").insert([
-        { application_id: app.id, ordinal: 1, type: "form", prompt_text: "Tell us a bit about your situation.", config: { fields: [{ key: "monthly_income", label: "Monthly family income (RM)", field_type: "number", required: true }, { key: "dependants", label: "Number of dependants", field_type: "number", required: true }] }, emitted_by: "ai", status: "completed", response_data: { monthly_income: "3500", dependants: "4" }, completed_at: hoursAgo(1.5) },
-        { application_id: app.id, ordinal: 2, type: "select", prompt_text: "Which scholarship pathway fits you best?", config: { options: [{ value: "yayasan_um", label: "Yayasan UM (B40)" }, { value: "jpa", label: "JPA" }, { value: "mybrainsc", label: "MyBrainSc" }] }, emitted_by: "ai", status: "completed", response_data: { value: "yayasan_um" }, completed_at: hoursAgo(1) },
-        { application_id: app.id, ordinal: 3, type: "file_upload", prompt_text: "Please upload your most recent income proof (EPF statement or 3-month payslip).", config: { accepts: ["application/pdf", "image/*"], max_files: 1, citations: ["Document Checklist", "Yayasan UM Pathway"] }, emitted_by: "ai", status: "pending", response_data: null },
-      ]);
-      seeded.push({ id: app.id, procedure: "scholarship", status: "draft", label: "Mid-flow draft (2 of ~6 steps)" });
-    }
-  }
+  // (Previous App 1 — Scholarship mid-flow draft — removed 2026-05-02 in
+  //  the second dedup pass. The "in-progress upload" demo state is now
+  //  carried by App 10, the FYP near-complete draft, which gives the demo
+  //  variety (different procedure name in the portal). Cutting this app
+  //  reduces Scholarship's portal footprint to 1 card.)
 
   // (Previous App 2 — Scholarship high-conf approve — removed 2026-05-02:
-  //  redundant with FYP-submitted (App 6) and Postgrad-submitted (App 8) which
-  //  also demonstrate the high-confidence-approve state in the coordinator
-  //  inbox, just on different procedures. Cuts the seed from 5 scholarships
-  //  to 3, killing the visual-duplicate problem in the student portal.)
+  //  redundant with the Postgrad-submitted card which demonstrates the
+  //  same high-confidence-approve state in the coordinator inbox.)
 
   // ---------- App 3: scholarship — submitted, low-conf + block flag ----------
   {
@@ -236,64 +223,19 @@ export async function POST() {
     }
   }
 
-  // ---------- App 4: scholarship — approved + letter ----------
-  {
-    const { data: tpl } = await sb.from("procedure_letter_templates").select("id").eq("procedure_id", "scholarship_application").eq("template_type", "acceptance").maybeSingle();
-    const { data: app } = await sb.from("applications").insert({
-      user_id: studentId, procedure_id: "scholarship_application", status: "approved",
-      progress_estimated_total: 5,
-      student_summary: "Approved B40 student. Yayasan UM full coverage offered.",
-      ai_recommendation: "approve", ai_confidence: 0.88,
-      created_at: hoursAgo(168), submitted_at: hoursAgo(72), decided_at: hoursAgo(24), updated_at: hoursAgo(24),
-    }).select("id").single();
-    if (app) {
-      await sb.from("application_steps").insert({ application_id: app.id, ordinal: 1, type: "final_submit", prompt_text: "Reviewed.", config: {}, emitted_by: "ai", status: "completed", response_data: { confirmed: true }, completed_at: hoursAgo(72) });
-      await sb.from("application_decisions").insert({ application_id: app.id, decided_by: coordId, decision: "approve", comment: "Strong candidate. All documents verified.", decided_at: hoursAgo(24) });
-      await sb.from("application_letters").insert({
-        application_id: app.id, template_id: tpl?.id ?? null, letter_type: "acceptance",
-        generated_text: acceptanceLetterText.replace("{{full_name}}", "Aishah binti Razak"),
-        delivered_to_student_at: hoursAgo(24),
-      });
-      seeded.push({ id: app.id, procedure: "scholarship", status: "approved", label: "Decided 24h ago + acceptance letter" });
-    }
-  }
+  // (Previous App 4 — Scholarship approved+letter — removed 2026-05-02 in
+  //  the second dedup pass. The "decided with letter delivered" state is
+  //  now carried by App 7 (Deferment approved+letter), so Scholarship
+  //  appears once in the portal as the low-conf+flagged centerpiece.)
 
   // (Previous App 5 — Scholarship rejected+letter — removed 2026-05-02 to
-  //  cut the visual-duplicate scholarship cluster. Exam Appeal (App 9) still
-  //  demonstrates a non-approve outcome via the more-info-requested status,
-  //  and App 4 still shows the "decided + letter" state for scholarship.)
+  //  cut the visual-duplicate scholarship cluster.)
 
-  // ---------- App 6: FYP — submitted, high-confidence ----------
-  {
-    const { data: app } = await sb.from("applications").insert({
-      user_id: studentId, procedure_id: "final_year_project", status: "submitted",
-      progress_estimated_total: 5,
-      student_summary: "Year 3 FSKTM student, AD category, supervisor Dr. Aida Ali confirmed. Project: ML-driven patient triage system. Ethics: medium-risk (interviews planned).",
-      ai_recommendation: "approve", ai_confidence: 0.86,
-      created_at: hoursAgo(36), submitted_at: hoursAgo(8), updated_at: hoursAgo(8),
-    }).select("id").single();
-    if (app) {
-      insertedAppIds.fyp = app.id;
-      await sb.from("application_steps").insert([
-        { application_id: app.id, ordinal: 1, type: "select", prompt_text: "Project category", config: {}, emitted_by: "ai", status: "completed", response_data: { value: "app_dev" }, completed_at: hoursAgo(35) },
-        { application_id: app.id, ordinal: 2, type: "form", prompt_text: "Supervisor + signed FYP-1 + proposal", config: {}, emitted_by: "ai", status: "completed", response_data: { supervisor_name: "Dr. Aida Ali", project_title: "ML-driven patient triage system", proposal: { filename: "fyp_proposal.pdf", size: 412000 }, signed_form: { filename: "fyp_1_signed.pdf", size: 88000 } }, completed_at: hoursAgo(28) },
-        { application_id: app.id, ordinal: 3, type: "select", prompt_text: "Ethics tier", config: {}, emitted_by: "ai", status: "completed", response_data: { value: "medium_risk" }, completed_at: hoursAgo(20) },
-        { application_id: app.id, ordinal: 4, type: "final_submit", prompt_text: "Review", config: {}, emitted_by: "ai", status: "completed", response_data: { confirmed: true }, completed_at: hoursAgo(8) },
-      ]);
-      await sb.from("application_briefings").insert({
-        application_id: app.id,
-        extracted_facts: { category: "Application Development", supervisor: "Dr. Aida Ali", title: "ML-driven patient triage system", ethics_tier: "medium_risk" },
-        flags: [
-          { severity: "info", message: "Supervisor capacity verified — Dr. Aida Ali at 3/5 FYP students, accepting." },
-          { severity: "warn", message: "Medium-risk ethics review — student should submit Ethics Declaration form within 4 weeks (standard 4-week turnaround)." },
-        ],
-        recommendation: "approve",
-        reasoning: "All documents present, supervisor confirmed, project scope is clear and realistic for AD category. Ethics tier acknowledged — coordinator should remind student of the 4-week submission deadline.",
-        status: "pending",
-      });
-      seeded.push({ id: app.id, procedure: "final_year_project", status: "submitted", label: "FYP I, AD category, high-conf approve" });
-    }
-  }
+  // (Previous App 6 — FYP submitted high-conf — removed 2026-05-02 in the
+  //  second dedup pass. FYP is now represented once on the portal as the
+  //  near-complete draft (App 10), which serves the upload-and-submit demo
+  //  better. The high-conf-approve coordinator-inbox state is covered by
+  //  the Postgrad-submitted card (App 8).)
 
   // ---------- App 7: Deferment — approved with letter ----------
   {
@@ -450,14 +392,10 @@ export async function POST() {
     }
   }
 
-  // ---------- Sample messages on the FYP submitted app ----------
-  if (insertedAppIds.fyp) {
-    await sb.from("application_messages").insert([
-      { application_id: insertedAppIds.fyp, author_id: studentId, author_role: "student", body: "Hi! Is there a specific format for the ethics declaration form, or do I just write a paragraph?", created_at: hoursAgo(7) },
-      { application_id: insertedAppIds.fyp, author_id: coordId, author_role: "coordinator", body: "Use the Faculty Ethics Committee template (FEC/02 form), available on the FSKTM intranet. One paragraph isn't enough — they want the structured form with risk-tier checkboxes.", created_at: hoursAgo(6) },
-      { application_id: insertedAppIds.fyp, author_id: studentId, author_role: "student", body: "Thanks! Will submit it within the week.", created_at: hoursAgo(5.5) },
-    ]);
-  }
+  // (Previous sample-messages seed targeted the now-removed App 6 (FYP submitted).
+  //  The chat / messaging UX is still exercisable on any of the seeded apps
+  //  during the live demo — not worth re-seeding canned messages on a
+  //  different row, which would only re-introduce a "this is fake" feel.)
 
   // (Previous internal-note seed targeted insertedAppIds.scholarship_high which
   //  belonged to the now-removed App 2 — internal-notes UX still demonstrable
