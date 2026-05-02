@@ -12,13 +12,20 @@
  *
  * Then reseeds:
  *  - Canonical letter templates for each Live procedure
- *  - 9 sample applications across 4 procedures in distinct states:
- *      Scholarship: 5 (mid-flow draft, high-conf approve, low-conf+flagged, approved, rejected)
+ *  - 7 sample applications spread across 5 procedures in distinct states:
+ *      Scholarship: 3 (mid-flow draft, low-conf+flagged submitted, approved+letter)
  *      FYP:         1 (submitted, awaiting briefing)
  *      Deferment:   1 (approved with letter)
  *      Postgrad:    1 (submitted, high-confidence)
  *      Exam Appeal: 1 (more_info_requested)
- *  - Sample messages + 1 internal note for richness
+ *  - Sample chat messages on the FYP submission for richness
+ *
+ * Why 3 scholarships (not 5): earlier the seed had 5 scholarships covering
+ * draft / high-conf-approve / low-conf+block / approved+letter / rejected+letter.
+ * The 5 cards on the student portal looked like duplicates because the procedure
+ * name was the same. Trimmed to 3 distinct lifecycle states; the high-conf and
+ * rejected examples were redundant given FYP/Postgrad submitted (high-conf) and
+ * Exam Appeal (non-approve outcome).
  *
  * Canonical procedures + their procedure_sop_chunks are preserved (those are
  * config maintained via supabase/migrations and lib/kb/seed/). Only NEW
@@ -172,7 +179,7 @@ export async function POST() {
   const now = new Date();
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000).toISOString();
   const seeded: { id: string; procedure: string; status: string; label: string }[] = [];
-  const insertedAppIds: { scholarship_high?: string; scholarship_draft?: string; deferment?: string; fyp?: string } = {};
+  const insertedAppIds: { scholarship_draft?: string; deferment?: string; fyp?: string } = {};
 
   // ---------- App 1: scholarship — mid-flow draft ----------
   {
@@ -193,34 +200,11 @@ export async function POST() {
     }
   }
 
-  // ---------- App 2: scholarship — submitted, high-conf approve ----------
-  {
-    const { data: app } = await sb.from("applications").insert({
-      user_id: studentId, procedure_id: "scholarship_application", status: "submitted",
-      progress_estimated_total: 5,
-      student_summary: "B40 student, CGPA 3.45, household income RM 2,800 (verified via EPF). Eligible for full Yayasan UM coverage.",
-      ai_recommendation: "approve", ai_confidence: 0.92,
-      created_at: hoursAgo(48), submitted_at: hoursAgo(20), updated_at: hoursAgo(20),
-    }).select("id").single();
-    if (app) {
-      insertedAppIds.scholarship_high = app.id;
-      await sb.from("application_steps").insert([
-        { application_id: app.id, ordinal: 1, type: "form", prompt_text: "Quick details", config: {}, emitted_by: "ai", status: "completed", response_data: { monthly_income: "2800" }, completed_at: hoursAgo(47) },
-        { application_id: app.id, ordinal: 2, type: "file_upload", prompt_text: "Income proof", config: {}, emitted_by: "ai", status: "completed", response_data: { filename: "epf_statement.pdf", size: 184000 }, completed_at: hoursAgo(45) },
-        { application_id: app.id, ordinal: 3, type: "text", prompt_text: "Why this scholarship?", config: { max_length: 1000 }, emitted_by: "ai", status: "completed", response_data: { text: "I am the eldest of four children. My father drives an e-hailing car part-time and my mother is a homemaker. This scholarship would let me focus on my SE coursework instead of taking on more part-time work." }, completed_at: hoursAgo(44) },
-        { application_id: app.id, ordinal: 4, type: "final_submit", prompt_text: "Review and submit", config: {}, emitted_by: "ai", status: "completed", response_data: { confirmed: true }, completed_at: hoursAgo(20) },
-      ]);
-      await sb.from("application_briefings").insert({
-        application_id: app.id,
-        extracted_facts: { household_income_rm: 2800, income_tier: "B40", cgpa: 3.45, dependants: 4 },
-        flags: [{ severity: "info", message: "All required documents present and verified." }],
-        recommendation: "approve",
-        reasoning: "Strong B40 candidate with CGPA above the 3.30 threshold. Income proof verified, motivation letter is specific and grounded. No red flags.",
-        status: "pending",
-      });
-      seeded.push({ id: app.id, procedure: "scholarship", status: "submitted", label: "High-confidence approve (0.92)" });
-    }
-  }
+  // (Previous App 2 — Scholarship high-conf approve — removed 2026-05-02:
+  //  redundant with FYP-submitted (App 6) and Postgrad-submitted (App 8) which
+  //  also demonstrate the high-confidence-approve state in the coordinator
+  //  inbox, just on different procedures. Cuts the seed from 5 scholarships
+  //  to 3, killing the visual-duplicate problem in the student portal.)
 
   // ---------- App 3: scholarship — submitted, low-conf + block flag ----------
   {
@@ -274,27 +258,10 @@ export async function POST() {
     }
   }
 
-  // ---------- App 5: scholarship — rejected + letter ----------
-  {
-    const { data: tpl } = await sb.from("procedure_letter_templates").select("id").eq("procedure_id", "scholarship_application").eq("template_type", "rejection").maybeSingle();
-    const { data: app } = await sb.from("applications").insert({
-      user_id: studentId, procedure_id: "scholarship_application", status: "rejected",
-      progress_estimated_total: 5,
-      student_summary: "CGPA below threshold (3.05).",
-      ai_recommendation: "reject", ai_confidence: 0.78,
-      created_at: hoursAgo(336), submitted_at: hoursAgo(96), decided_at: hoursAgo(48), updated_at: hoursAgo(48),
-    }).select("id").single();
-    if (app) {
-      await sb.from("application_steps").insert({ application_id: app.id, ordinal: 1, type: "final_submit", prompt_text: "Reviewed.", config: {}, emitted_by: "ai", status: "completed", response_data: { confirmed: true }, completed_at: hoursAgo(96) });
-      await sb.from("application_decisions").insert({ application_id: app.id, decided_by: coordId, decision: "reject", comment: "CGPA below 3.30 threshold.", decided_at: hoursAgo(48) });
-      await sb.from("application_letters").insert({
-        application_id: app.id, template_id: tpl?.id ?? null, letter_type: "rejection",
-        generated_text: rejectionLetterText.replace("{{full_name}}", "Lim Wei Han"),
-        delivered_to_student_at: hoursAgo(48),
-      });
-      seeded.push({ id: app.id, procedure: "scholarship", status: "rejected", label: "Decided 48h ago + rejection letter" });
-    }
-  }
+  // (Previous App 5 — Scholarship rejected+letter — removed 2026-05-02 to
+  //  cut the visual-duplicate scholarship cluster. Exam Appeal (App 9) still
+  //  demonstrates a non-approve outcome via the more-info-requested status,
+  //  and App 4 still shows the "decided + letter" state for scholarship.)
 
   // ---------- App 6: FYP — submitted, high-confidence ----------
   {
@@ -430,13 +397,10 @@ export async function POST() {
     ]);
   }
 
-  // ---------- Sample internal note on the high-conf scholarship app ----------
-  if (insertedAppIds.scholarship_high) {
-    await sb.from("application_coordinator_notes").insert({
-      application_id: insertedAppIds.scholarship_high, author_id: coordId,
-      body: "Called student to verify household composition — confirmed eldest of 4, parent's e-hailing income is part-time / variable. B40 status is solid. OK to fast-track.",
-    });
-  }
+  // (Previous internal-note seed targeted insertedAppIds.scholarship_high which
+  //  belonged to the now-removed App 2 — internal-notes UX still demonstrable
+  //  on any submitted app via the coordinator detail page; not worth re-seeding
+  //  on a different row.)
 
   return apiSuccess({
     reset: true,

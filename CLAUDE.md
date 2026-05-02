@@ -82,7 +82,7 @@ Notice the two new categories carry the heaviest weight (40% combined). Effort a
 - 6 GLM call-sites in `lib/glm/`: `nextStep`, `generateBriefing`, `fillLetter`, `estimateProgress`, `extractIntent`, `parseDocument`. ILMU mirror at `lib/ilmu/client.ts`.
 - 5 live procedures: scholarship_application, postgrad_admission, final_year_project, deferment_of_studies, exam_result_appeal (+ emgs_visa_renewal as Coming-soon)
 - 15 numbered SQL migrations (`supabase/migrations/`); `0005_v2_application_tables.sql` was backfilled, `0015_realtime_replica_identity.sql` is latest
-- Demo data auto-resets on every demo-tile sign-in (`/api/demo/reset`); 9 sample applications across 4 procedures
+- Demo data resets via the "Reset demo data" chip on the login page (`/api/demo/reset`); 7 sample applications spread across 5 procedures (3 Scholarship lifecycle states + 1 each of FYP, Deferment, Postgrad, Exam Appeal). Auto-reset on every sign-in was removed because it wiped cross-role state mid-demo.
 
 ---
 
