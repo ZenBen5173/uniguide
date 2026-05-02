@@ -37,6 +37,7 @@ export default async function AdminProcedureDetailPage({
         nav={[
           { href: "/admin", label: "Procedures" },
           { href: "/admin/analytics", label: "Analytics" },
+          { href: "/admin/cost", label: "Cost" },
           { href: "/admin/glm-traces", label: "GLM traces" },
         ]}
       />

@@ -46,6 +46,7 @@ export default async function GlmTracesPage() {
         nav={[
           { href: "/admin", label: "Procedures" },
           { href: "/admin/analytics", label: "Analytics" },
+          { href: "/admin/cost", label: "Cost" },
           { href: "/admin/glm-traces", label: "GLM traces", active: true },
         ]}
       />
