@@ -1,8 +1,16 @@
 /**
  * POST /api/demo/reset
  *
- * Full canonical-state restore for the demo. Wipes all demo applications +
- * non-canonical letter templates, then reseeds:
+ * Full canonical-state restore for the demo. Wipes everything that can drift
+ * during testing and reseeds the canonical baseline:
+ *  - ALL applications (not just demo-student's) — catches apps created by
+ *    OTP-signup users during testing
+ *  - ALL letter templates (re-upserted from canonical below)
+ *  - Non-canonical procedures (any procedure not in CANONICAL_PROCEDURES;
+ *    catches admin-created test procedures like "asfasd")
+ *  - Orphan GLM reasoning traces
+ *
+ * Then reseeds:
  *  - Canonical letter templates for each Live procedure
  *  - 9 sample applications across 4 procedures in distinct states:
  *      Scholarship: 5 (mid-flow draft, high-conf approve, low-conf+flagged, approved, rejected)
@@ -12,11 +20,21 @@
  *      Exam Appeal: 1 (more_info_requested)
  *  - Sample messages + 1 internal note for richness
  *
- * Procedures + procedure_sop_chunks themselves are NOT touched (they're
- * canonical config maintained via supabase/migrations and lib/kb/seed/).
+ * Canonical procedures + their procedure_sop_chunks are preserved (those are
+ * config maintained via supabase/migrations and lib/kb/seed/). Only NEW
+ * procedures created via the admin UI get nuked.
  *
- * Anyone can call this — only touches the demo accounts.
+ * Anyone can call this — only touches data, not user accounts.
  */
+
+const CANONICAL_PROCEDURE_IDS = [
+  "scholarship_application",
+  "postgrad_admission",
+  "final_year_project",
+  "deferment_of_studies",
+  "exam_result_appeal",
+  "emgs_visa_renewal",
+];
 
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
@@ -106,12 +124,35 @@ export async function POST() {
   if (!coordId) return apiError("Demo coordinator not found", 404);
 
   // ---------- Wipe ----------
-  const { error: wipeAppErr } = await sb.from("applications").delete().eq("user_id", studentId);
+  // Wipe ALL applications (not just demo-student's). FKs from
+  // application_steps, application_briefings, application_decisions,
+  // application_letters, application_messages, application_coordinator_notes
+  // all cascade ON DELETE so this single delete clears the whole tree.
+  // .neq with a nil-uuid is the supabase-js idiom for "where 1=1" since
+  // the client requires a filter.
+  const { error: wipeAppErr } = await sb
+    .from("applications")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
   if (wipeAppErr) return apiError(`Wipe applications failed: ${wipeAppErr.message}`, 500);
 
   // Wipe ALL letter templates (they'll be re-upserted) — this catches anything
   // a tester added during exploration.
   await sb.from("procedure_letter_templates").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+  // Wipe non-canonical procedures (admin-created test procedures). The FKs
+  // on procedure_sop_chunks and procedure_letter_templates cascade. The FK
+  // on applications doesn't, but we already wiped applications above so
+  // nothing references these procedures any more. Without this delete,
+  // junk procedures like "asfasd" survived every reset.
+  await sb
+    .from("procedures")
+    .delete()
+    .not(
+      "id",
+      "in",
+      `(${CANONICAL_PROCEDURE_IDS.map((p) => `"${p}"`).join(",")})`
+    );
 
   // Wipe orphan reasoning traces from previous demo applications.
   await sb.from("glm_reasoning_trace").delete().is("workflow_id", null);
