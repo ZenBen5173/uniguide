@@ -21,6 +21,7 @@ interface SopData {
     name: string;
     description: string | null;
     source_url: string | null;
+    source_pdf_path?: string | null;
     indexed_at: string;
   };
   chunks: Chunk[];
@@ -130,7 +131,19 @@ const SopViewer = forwardRef<SopViewerHandle, { procedureId: string }>(function 
                     {data.procedure.source_url && <>
                       <span>·</span>
                       <a href={data.procedure.source_url} target="_blank" rel="noreferrer" className="text-crimson hover:underline">
-                        original ↗
+                        source URL ↗
+                      </a>
+                    </>}
+                    {data.procedure.source_pdf_path && <>
+                      <span>·</span>
+                      <a
+                        href={`/api/procedures/${data.procedure.id}/source-pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-crimson hover:underline"
+                        title="Open the original SOP PDF in a new tab"
+                      >
+                        original PDF ↗
                       </a>
                     </>}
                   </div>

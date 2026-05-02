@@ -62,7 +62,19 @@ export default async function AdminProcedureDetailPage({
               {procedure.source_url && <>
                 <span className="w-1 h-1 rounded-full bg-ink-5" />
                 <a href={procedure.source_url} target="_blank" rel="noreferrer" className="text-crimson hover:underline">
-                  Source ↗
+                  Source URL ↗
+                </a>
+              </>}
+              {procedure.source_pdf_path && <>
+                <span className="w-1 h-1 rounded-full bg-ink-5" />
+                <a
+                  href={`/api/procedures/${id}/source-pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-crimson hover:underline"
+                  title="Open the original SOP PDF in a new tab"
+                >
+                  Original PDF ↗
                 </a>
               </>}
             </div>

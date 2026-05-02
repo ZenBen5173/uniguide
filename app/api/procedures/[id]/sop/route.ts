@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const sb = getServiceSupabase();
 
   const [{ data: procedure }, { data: chunks }] = await Promise.all([
-    sb.from("procedures").select("id, name, description, source_url, indexed_at").eq("id", procedureId).maybeSingle(),
+    sb.from("procedures").select("id, name, description, source_url, source_pdf_path, indexed_at").eq("id", procedureId).maybeSingle(),
     sb.from("procedure_sop_chunks").select("id, chunk_order, section, content, source_url").eq("procedure_id", procedureId).order("chunk_order"),
   ]);
 

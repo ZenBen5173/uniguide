@@ -32,7 +32,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
   const [procDesc, setProcDesc] = useState("");
   const [sopText, setSopText] = useState("");
   const [sopUrl, setSopUrl] = useState("");
-  const [pdfMeta, setPdfMeta] = useState<{ filename: string; pages: number; bytes: number } | null>(null);
+  const [pdfMeta, setPdfMeta] = useState<{ filename: string; pages: number; bytes: number; source_pdf_path: string | null } | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,12 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
         return;
       }
       setSopText(j.data.text);
-      setPdfMeta({ filename: j.data.filename, pages: j.data.pages, bytes: j.data.bytes });
+      setPdfMeta({
+        filename: j.data.filename,
+        pages: j.data.pages,
+        bytes: j.data.bytes,
+        source_pdf_path: j.data.source_pdf_path ?? null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF parse failed");
     } finally {
@@ -94,6 +99,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
             id: procId, name: procName,
             description: procDesc || undefined,
             source_url: sopUrl || undefined,
+            source_pdf_path: pdfMeta?.source_pdf_path ?? undefined,
             faculty_scope: null,
           }),
         });

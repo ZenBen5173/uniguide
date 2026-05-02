@@ -633,17 +633,26 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
               <div className="py-1.5">
                 {data.letters.map((l) => (
                   <div key={l.id} className="px-4 py-3 border-b border-line-2 last:border-0">
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-1 gap-2">
                       <div className="text-[12.5px] uppercase tracking-wider font-semibold text-ink-4">
                         {l.letter_type.replace(/_/g, " ")}
                       </div>
-                      <Link
-                        href={`/letters/${l.id}/print`}
-                        target="_blank"
-                        className="text-[11px] text-crimson hover:underline no-underline font-medium"
-                      >
-                        Open / Print →
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={`/api/letters/${l.id}/pdf`}
+                          className="text-[11px] text-crimson hover:underline no-underline font-medium"
+                          title="Download as PDF"
+                        >
+                          ↓ PDF
+                        </a>
+                        <Link
+                          href={`/letters/${l.id}/print`}
+                          target="_blank"
+                          className="text-[11px] text-ink-3 hover:text-ink hover:underline no-underline font-medium"
+                        >
+                          Open / Print →
+                        </Link>
+                      </div>
                     </div>
                     <pre className="text-[12px] text-ink-2 whitespace-pre-wrap font-sans leading-snug max-h-48 overflow-auto">
                       {l.generated_text}

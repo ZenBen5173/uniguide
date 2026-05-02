@@ -47,11 +47,20 @@ export default async function LetterPrintPage({ params }: { params: Promise<{ id
         }
       `}</style>
       <main className="min-h-screen bg-paper-2 px-4 py-8 print:bg-white print:px-0 print:py-0">
-        <div className="no-print mx-auto max-w-[820px] mb-4 flex items-center justify-between">
+        <div className="no-print mx-auto max-w-[820px] mb-4 flex items-center justify-between gap-3">
           <a href={isStaff ? `/coordinator/applications/${app.id}` : `/student/applications/${app.id}`} className="text-[13px] text-ink-3 hover:text-ink no-underline">
             ← Back to application
           </a>
-          <PrintTrigger />
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/letters/${letter.id}/pdf`}
+              className="ug-btn ghost inline-flex items-center gap-2"
+              title="Download a PDF version of this letter"
+            >
+              ↓ Download PDF
+            </a>
+            <PrintTrigger />
+          </div>
         </div>
 
         <article className="print-body mx-auto max-w-[820px] bg-white border border-line-2 rounded-[6px] shadow-ug-card px-12 py-14 print:max-w-none print:shadow-none print:border-0 print:px-0 print:py-0">

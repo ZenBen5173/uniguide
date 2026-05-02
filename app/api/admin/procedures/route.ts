@@ -15,6 +15,8 @@ const CreateBody = z.object({
   description: z.string().max(1000).optional(),
   source_url: z.string().url().optional(),
   faculty_scope: z.string().max(40).nullable().optional(),
+  /** Storage path returned by parse-pdf — moved into the procedure folder. */
+  source_pdf_path: z.string().max(400).optional(),
 });
 
 export async function GET() {
@@ -24,7 +26,7 @@ export async function GET() {
   const sb = getServiceSupabase();
   const { data: procedures } = await sb
     .from("procedures")
-    .select("id, name, description, source_url, faculty_scope, indexed_at")
+    .select("id, name, description, source_url, source_pdf_path, faculty_scope, indexed_at")
     .order("name");
 
   // Per-procedure meta: chunk count, active application count, letter template count
@@ -69,6 +71,30 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return apiError(parsed.error.message, 400);
 
   const sb = getServiceSupabase();
+
+  // If a pending PDF was uploaded by parse-pdf, move it into the procedure's
+  // own folder so it stays with the row. We use copy + delete because the
+  // Supabase JS client doesn't expose a `move()` for storage objects.
+  let finalPdfPath: string | null = null;
+  if (parsed.data.source_pdf_path && parsed.data.source_pdf_path.startsWith("pending/")) {
+    const newPath = `${parsed.data.id}/${parsed.data.source_pdf_path.replace(/^pending\//, "")}`;
+    const { error: copyErr } = await sb.storage
+      .from("sop-sources")
+      .copy(parsed.data.source_pdf_path, newPath);
+    if (!copyErr) {
+      finalPdfPath = newPath;
+      // Best-effort cleanup of the pending blob — don't fail the request if
+      // the delete fails. The orphan is harmless and can be swept later.
+      await sb.storage.from("sop-sources").remove([parsed.data.source_pdf_path]).catch(() => {});
+    } else {
+      console.warn("[admin/procedures] storage move failed, keeping pending path:", copyErr.message);
+      finalPdfPath = parsed.data.source_pdf_path;
+    }
+  } else if (parsed.data.source_pdf_path) {
+    // Path is already non-pending — admin recreating? Just store it.
+    finalPdfPath = parsed.data.source_pdf_path;
+  }
+
   const { data, error } = await sb
     .from("procedures")
     .insert({
@@ -76,6 +102,7 @@ export async function POST(req: NextRequest) {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       source_url: parsed.data.source_url ?? null,
+      source_pdf_path: finalPdfPath,
       faculty_scope: parsed.data.faculty_scope ?? null,
     })
     .select()
