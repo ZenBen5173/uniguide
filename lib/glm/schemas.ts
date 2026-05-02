@@ -310,3 +310,58 @@ export const StudentChatOutputSchema = z.object({
   escalation_summary: z.string().max(1500).nullable(),
 });
 export type StudentChatOutput = z.infer<typeof StudentChatOutputSchema>;
+
+// ============================================================================
+// judgeLetter — second-layer hallucination check.
+//
+// The regex check (in preview-letter / coassist routes) catches structural
+// mismatches: wrong CGPA digit, wrong year number, unfilled placeholders.
+// It can't catch *semantic* problems: the letter inventing a policy, citing
+// a SOP rule that doesn't exist, contradicting the briefing's reasoning,
+// or fabricating a deadline / committee name.
+//
+// judgeLetter runs the filled letter through GLM as an independent reviewer,
+// with the briefing reasoning + SOP excerpts as ground truth. It returns a
+// list of issues alongside the regex layer's. Coordinator sees both.
+// ============================================================================
+
+export const JudgeIssueSchema = z.object({
+  severity: z.enum(["info", "warn", "block"]),
+  /** Short tag the UI groups by — e.g. "policy", "deadline", "committee_name",
+   *  "tone", "contradiction", "fabrication", "unsupported_claim". */
+  category: z.string().min(1).max(40),
+  /** One-sentence description of the problem the judge found. */
+  message: z.string().min(1).max(400),
+  /** The exact letter excerpt that triggered the issue (if any). Helps the
+   *  coordinator locate it. Null when the issue is structural / non-quotable. */
+  excerpt: z.string().max(400).nullable(),
+});
+export type JudgeIssue = z.infer<typeof JudgeIssueSchema>;
+
+export const JudgeLetterInputSchema = z.object({
+  /** The filled letter the coordinator is about to send. */
+  letterText: z.string().min(1).max(20000),
+  /** Type of letter — judge applies different policies to each. */
+  templateType: z.enum(["acceptance", "rejection", "request_info", "custom"]),
+  procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  /** The briefing's reasoning text — the AI's view of the case so the
+   *  judge can spot contradictions ("recommended approve but letter rejects"). */
+  briefingReasoning: z.string().nullable().default(null),
+  /** SOP excerpts so the judge can spot fabricated policy / deadlines. */
+  sopChunks: z.array(z.string()).default([]),
+  /** Optional coordinator comment that may explain a non-standard decision. */
+  coordinatorComment: z.string().nullable().default(null),
+});
+
+export const JudgeLetterOutputSchema = z.object({
+  /** All findings the judge has. Empty array == letter passes. */
+  issues: z.array(JudgeIssueSchema).default([]),
+  /** One-sentence overall read on the letter so the coordinator can scan
+   *  the result without expanding details. */
+  overall_assessment: z.string().min(1).max(400),
+  /** Judge's confidence that the letter is faithful to the case (0..1).
+   *  Used by the modal to colour the AI-Judge banner. */
+  confidence: z.number().min(0).max(1),
+});
+export type JudgeLetterOutput = z.infer<typeof JudgeLetterOutputSchema>;

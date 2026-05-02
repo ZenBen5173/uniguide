@@ -13,7 +13,9 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { fillLetter } from "@/lib/glm/fillLetter";
+import { judgeLetter } from "@/lib/glm/judgeLetter";
 import { loadApplicationContext } from "@/lib/applications/engine";
+import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
 const Body = z.object({
@@ -98,10 +100,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  // Hallucination check: scan the letter for facts and verify against the
-  // application context. Catches things like a wrong CGPA or a different
-  // student name that would otherwise embarrass the office.
-  const issues = checkForHallucinations(filled.filled_text, {
+  // Two-layer hallucination check on the filled letter:
+  //   1. Regex layer  — fast, structural. Wrong CGPA digit, wrong year, foreign
+  //                     faculty code, unfilled {{placeholders}}.
+  //   2. Judge layer  — GLM reads the letter against the briefing + SOP.
+  //                     Catches semantic problems regex can't see: invented
+  //                     policy, fabricated committee names, contradiction with
+  //                     the briefing's recommendation, unauthorised promises.
+  // Both run in parallel — the judge call adds ~1.5s on top of the fill,
+  // overlapping with no work the coordinator is waiting on.
+  const regexIssues = checkForHallucinations(filled.filled_text, {
     full_name: appCtx?.studentProfile?.full_name ?? null,
     faculty: appCtx?.studentProfile?.faculty ?? null,
     programme: appCtx?.studentProfile?.programme ?? null,
@@ -110,12 +118,41 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     procedure_name: appCtx?.procedure.name ?? null,
   });
 
+  // Judge runs against the briefing's reasoning + SOP excerpts as ground
+  // truth. If GLM is unreachable / errors, we degrade to regex-only — never
+  // block the preview.
+  const sopChunks = appCtx ? await retrieveProcedureSop(appCtx.procedure.id) : [];
+  let judge: Awaited<ReturnType<typeof judgeLetter>> | null = null;
+  try {
+    judge = await judgeLetter(
+      {
+        letterText: filled.filled_text,
+        templateType,
+        procedureName: appCtx?.procedure.name ?? "UM Procedure",
+        studentProfile: appCtx?.studentProfile ?? {
+          full_name: null, faculty: null, programme: null,
+          year: null, cgpa: null, citizenship: "MY",
+        },
+        briefingReasoning: briefing?.reasoning ?? null,
+        sopChunks,
+        coordinatorComment: parsed.data.comment ?? null,
+      },
+      { applicationId }
+    );
+  } catch (err) {
+    console.error("[preview-letter] judge failed — degrading to regex-only:", err);
+  }
+
   return apiSuccess({
     letter_text: filled.filled_text,
     unfilled_placeholders: filled.unfilled_placeholders,
     template_name: template.name,
     template_type: templateType,
-    hallucination_issues: issues,
+    hallucination_issues: regexIssues,
+    judge_issues: judge?.issues ?? [],
+    judge_assessment: judge?.overall_assessment ?? null,
+    judge_confidence: judge?.confidence ?? null,
+    judge_available: judge !== null,
   });
 }
 

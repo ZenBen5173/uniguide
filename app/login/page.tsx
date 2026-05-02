@@ -35,20 +35,21 @@ function LoginInner() {
 
   const supabase = getBrowserSupabase();
 
-  // Every demo sign-in resets the demo dataset back to canonical first, then
-  // signs in. Keeps judges from inheriting whoever last poked around. The
-  // reset only touches demo-account data (lib/api/demo/reset hard-codes the
-  // demo emails), so OTP-sign-ins for real users are untouched.
-  // Reset failures are logged but don't block the login — better to land on
-  // slightly-stale demo data than a broken sign-in.
+  // Demo sign-in does NOT reset by default any more. Earlier we reset on every
+  // sign-in to keep judges from inheriting whoever last poked around — but
+  // that wipes cross-role state too: a message a coordinator sent to a
+  // student vanishes the next time the student signs in. The reset is now an
+  // explicit chip below the tiles ("Reset demo data") so judges can wipe the
+  // sandbox when they want a clean slate, but day-to-day flows persist.
+  // `forceReset: true` is still honoured for the explicit Reset chip.
   const demoSignIn = async (
     creds: { email: string; password: string },
     redirectTo: string,
-    opts: { skipReset?: boolean } = {}
+    opts: { forceReset?: boolean } = {}
   ) => {
     setDemoBusy(creds.email);
     setError(null); setInfo(null);
-    if (!opts.skipReset) {
+    if (opts.forceReset) {
       try {
         await fetch("/api/demo/reset", { method: "POST" });
       } catch (e) {
@@ -59,6 +60,29 @@ function LoginInner() {
     if (err) { setDemoBusy(null); setError(err.message); return; }
     router.push(redirectTo);
     router.refresh();
+  };
+
+  // Explicit "Reset demo data" chip — wipes accounts back to canonical state
+  // without signing in. Used by judges who want a fresh slate before a demo
+  // run, or to recover after testing destructively.
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const resetDemoData = async () => {
+    setResetBusy(true);
+    setError(null); setInfo(null); setResetDone(false);
+    try {
+      const res = await fetch("/api/demo/reset", { method: "POST" });
+      if (!res.ok) {
+        setError(`Reset failed: ${res.status}`);
+        return;
+      }
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 4000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setResetBusy(false);
+    }
   };
 
   const sendCode = async () => {
@@ -165,10 +189,19 @@ function LoginInner() {
               />
             </div>
 
-            <p className="mt-2.5 inline-flex items-center justify-center gap-1.5 w-full text-[11.5px] text-ink-4">
-              <RotateCcw className="h-3 w-3" strokeWidth={2} />
-              Demo data resets automatically every time you sign in.
-            </p>
+            <div className="mt-2.5 flex items-center justify-center gap-2 w-full text-[11.5px] text-ink-4">
+              <span>Cross-role state (messages, decisions) persists between sign-ins.</span>
+              <span className="text-ink-4/60">·</span>
+              <button
+                type="button"
+                onClick={resetDemoData}
+                disabled={resetBusy || !!demoBusy}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-line bg-card hover:bg-paper-2 disabled:opacity-50 text-ink-3 hover:text-ink"
+              >
+                <RotateCcw className={`h-3 w-3 ${resetBusy ? "animate-spin" : ""}`} strokeWidth={2} />
+                {resetBusy ? "Resetting…" : resetDone ? "Reset done" : "Reset demo data"}
+              </button>
+            </div>
           </div>
 
           {/* Email signin */}
@@ -286,7 +319,7 @@ function DemoTile({ Icon, label, tag, accent, busy, disabled, onClick }: TilePro
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
       </span>
       <span className={`text-[14px] font-semibold ${labelTone}`}>
-        {busy ? "Resetting & signing in…" : label}
+        {busy ? "Signing in…" : label}
       </span>
       <span className="text-[11.5px] text-ink-4">{tag}</span>
     </button>

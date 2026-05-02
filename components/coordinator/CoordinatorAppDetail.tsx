@@ -111,7 +111,21 @@ export default function CoordinatorAppDetail({
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewLetter, setPreviewLetter] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[]; issues: Array<{ severity: "warn" | "block"; field: string; message: string }> } | null>(null);
+  type JudgeIssue = {
+    severity: "info" | "warn" | "block";
+    category: string;
+    message: string;
+    excerpt: string | null;
+  };
+  const [previewMeta, setPreviewMeta] = useState<{
+    template_name: string;
+    unfilled: string[];
+    issues: Array<{ severity: "warn" | "block"; field: string; message: string }>;
+    judge_issues: JudgeIssue[];
+    judge_assessment: string | null;
+    judge_confidence: number | null;
+    judge_available: boolean;
+  } | null>(null);
 
   // Step-preview modal state (Request More Info flow — plan-mode confirmation)
   const [stepPreviewOpen, setStepPreviewOpen] = useState(false);
@@ -184,7 +198,18 @@ export default function CoordinatorAppDetail({
   const runCoassist = async (
     artifact: CoassistArtifact,
     currentText: string,
-    onRevised: ((newText: string, hallucinationIssues?: Array<{ severity: "warn" | "block"; field: string; message: string }>) => void) | null,
+    onRevised:
+      | ((
+          newText: string,
+          hallucinationIssues?: Array<{ severity: "warn" | "block"; field: string; message: string }>,
+          judgeMeta?: {
+            judge_issues: JudgeIssue[];
+            judge_assessment: string | null;
+            judge_confidence: number | null;
+            judge_available: boolean;
+          }
+        ) => void)
+      | null,
     decisionKind?: "approve" | "reject" | "request_info"
   ) => {
     const instruction = coassistInstruction[artifact].trim();
@@ -222,7 +247,13 @@ export default function CoordinatorAppDetail({
         [artifact]: json.data.brief_explanation,
       });
       setCoassistInstruction({ ...coassistInstruction, [artifact]: "" });
-      if (onRevised) onRevised(json.data.revised_text, json.data.hallucination_issues);
+      if (onRevised)
+        onRevised(json.data.revised_text, json.data.hallucination_issues, {
+          judge_issues: json.data.judge_issues ?? [],
+          judge_assessment: json.data.judge_assessment ?? null,
+          judge_confidence: json.data.judge_confidence ?? null,
+          judge_available: !!json.data.judge_available,
+        });
     } catch (err) {
       setCoassistError({
         ...coassistError,
@@ -315,6 +346,10 @@ export default function CoordinatorAppDetail({
         template_name: json.data.template_name,
         unfilled: json.data.unfilled_placeholders ?? [],
         issues: json.data.hallucination_issues ?? [],
+        judge_issues: json.data.judge_issues ?? [],
+        judge_assessment: json.data.judge_assessment ?? null,
+        judge_confidence: json.data.judge_confidence ?? null,
+        judge_available: !!json.data.judge_available,
       });
     } catch (err) {
       setPreviewError(err instanceof Error ? err.message : "Network error");
@@ -953,7 +988,7 @@ export default function CoordinatorAppDetail({
                     <div className="mt-3 space-y-1.5">
                       <div className="text-[11px] uppercase tracking-wider font-semibold text-crimson flex items-center gap-1.5">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-crimson" />
-                        Hallucination check · {previewMeta.issues.length} issue{previewMeta.issues.length === 1 ? "" : "s"}
+                        Hallucination check (regex) · {previewMeta.issues.length} issue{previewMeta.issues.length === 1 ? "" : "s"}
                       </div>
                       {previewMeta.issues.map((issue, i) => (
                         <div
@@ -970,6 +1005,57 @@ export default function CoordinatorAppDetail({
                       ))}
                       <div className="text-[11.5px] text-ink-4">
                         These are flagged so you can fix them in the editable text above before sending.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Judge — second-layer hallucination check by GLM. Reads
+                       the letter against the briefing + SOP. Catches semantic
+                       problems regex can't see (fabricated policy, contradicted
+                       briefing, invented committee names). */}
+                  {previewMeta && previewMeta.judge_available && (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="text-[11px] uppercase tracking-wider font-semibold text-ai-ink flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                        AI Judge {previewMeta.judge_issues.length > 0
+                          ? `· ${previewMeta.judge_issues.length} finding${previewMeta.judge_issues.length === 1 ? "" : "s"}`
+                          : "· no issues found"}
+                        {previewMeta.judge_confidence !== null && (
+                          <span className="ml-auto font-mono text-[10.5px] text-ink-4 normal-case tracking-normal">
+                            confidence {(previewMeta.judge_confidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+
+                      {previewMeta.judge_assessment && (
+                        <div className="px-3 py-2 rounded-lg text-[12px] bg-ai-tint border border-ai-line text-ink-2">
+                          {previewMeta.judge_assessment}
+                        </div>
+                      )}
+
+                      {previewMeta.judge_issues.map((issue, i) => (
+                        <div
+                          key={i}
+                          className={`px-3 py-2 rounded-lg text-[12px] ${
+                            issue.severity === "block"
+                              ? "bg-crimson-soft border border-[#E8C5CB] text-crimson"
+                              : issue.severity === "warn"
+                                ? "bg-amber-soft border border-[#E8DBB5] text-amber"
+                                : "bg-card-2 border border-line text-ink-3"
+                          }`}
+                        >
+                          <span className="font-bold uppercase text-[10.5px] tracking-wider mr-1.5">{issue.severity}</span>
+                          <span className="font-medium">{issue.category}:</span> {issue.message}
+                          {issue.excerpt && (
+                            <div className="mt-1 pl-2 border-l-2 border-current opacity-80 italic">
+                              &ldquo;{issue.excerpt}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <div className="text-[11.5px] text-ink-4">
+                        Independent GLM read of the letter against the briefing + SOP. Acts as a second pair of eyes alongside the regex layer above.
                       </div>
                     </div>
                   )}
@@ -1026,10 +1112,20 @@ export default function CoordinatorAppDetail({
                             void runCoassist(
                               "letter",
                               previewLetter,
-                              (text, issues) => {
+                              (text, issues, judgeMeta) => {
                                 setPreviewLetter(text);
-                                if (previewMeta && issues) {
-                                  setPreviewMeta({ ...previewMeta, issues });
+                                if (previewMeta) {
+                                  setPreviewMeta({
+                                    ...previewMeta,
+                                    issues: issues ?? previewMeta.issues,
+                                    judge_issues: judgeMeta?.judge_issues ?? previewMeta.judge_issues,
+                                    judge_assessment:
+                                      judgeMeta?.judge_assessment ?? previewMeta.judge_assessment,
+                                    judge_confidence:
+                                      judgeMeta?.judge_confidence ?? previewMeta.judge_confidence,
+                                    judge_available:
+                                      judgeMeta?.judge_available ?? previewMeta.judge_available,
+                                  });
                                 }
                               },
                               previewKind ?? undefined
@@ -1048,10 +1144,21 @@ export default function CoordinatorAppDetail({
                           runCoassist(
                             "letter",
                             previewLetter,
-                            (text, issues) => {
+                            (text, issues, judgeMeta) => {
                               setPreviewLetter(text);
-                              if (previewMeta && issues) {
-                                setPreviewMeta({ ...previewMeta, issues });
+                              if (previewMeta) {
+                                setPreviewMeta({
+                                  ...previewMeta,
+                                  issues: issues ?? previewMeta.issues,
+                                  judge_issues:
+                                    judgeMeta?.judge_issues ?? previewMeta.judge_issues,
+                                  judge_assessment:
+                                    judgeMeta?.judge_assessment ?? previewMeta.judge_assessment,
+                                  judge_confidence:
+                                    judgeMeta?.judge_confidence ?? previewMeta.judge_confidence,
+                                  judge_available:
+                                    judgeMeta?.judge_available ?? previewMeta.judge_available,
+                                });
                               }
                             },
                             previewKind ?? undefined

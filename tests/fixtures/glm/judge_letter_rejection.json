@@ -1,0 +1,3 @@
+{
+  "text": "{\"issues\": [{\"severity\": \"warn\", \"category\": \"deadline\", \"message\": \"Letter mentions a 14-day appeal window but the SOP excerpts do not specify the exact deadline; verify against the procedure handbook before sending.\", \"excerpt\": \"You may submit a written appeal within 14 days of this notice\"}], \"overall_assessment\": \"Letter aligns with the briefing's reject recommendation; one unverifiable deadline claim worth checking.\", \"confidence\": 0.78}"
+}

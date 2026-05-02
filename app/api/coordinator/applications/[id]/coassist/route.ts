@@ -29,6 +29,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { coassist } from "@/lib/glm/coassist";
+import { judgeLetter } from "@/lib/glm/judgeLetter";
 import { loadApplicationContext } from "@/lib/applications/engine";
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
@@ -101,13 +102,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  // For letter revisions, run the regex hallucination check on the new text
-  // so the modal can re-render warnings inline without a follow-up call.
+  // For letter revisions, run BOTH hallucination layers on the new text so
+  // the modal can re-render both banners inline without follow-up calls:
+  //   1. Regex layer — structural mismatches (CGPA digits, year, faculty).
+  //   2. Judge layer — GLM faithfulness check against briefing + SOP.
+  // Step / briefing revisions don't need the letter judge.
   let hallucination_issues: Array<{
     severity: "warn" | "block";
     field: string;
     message: string;
   }> = [];
+  let judge_issues: Awaited<ReturnType<typeof judgeLetter>>["issues"] = [];
+  let judge_assessment: string | null = null;
+  let judge_confidence: number | null = null;
+  let judge_available = false;
+
   if (parsed.data.artifact === "letter") {
     hallucination_issues = checkForHallucinations(revised.revised_text, {
       full_name: appCtx.studentProfile.full_name ?? null,
@@ -117,12 +126,52 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       cgpa: appCtx.studentProfile.cgpa ?? null,
       procedure_name: appCtx.procedure.name ?? null,
     });
+
+    // Pull the briefing reasoning so the judge has the case's ground truth.
+    const { data: briefing } = await sb
+      .from("application_briefings")
+      .select("reasoning")
+      .eq("application_id", applicationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    try {
+      const judged = await judgeLetter(
+        {
+          letterText: revised.revised_text,
+          templateType: parsed.data.decision_kind === "approve"
+            ? "acceptance"
+            : parsed.data.decision_kind === "reject"
+              ? "rejection"
+              : parsed.data.decision_kind === "request_info"
+                ? "request_info"
+                : "custom",
+          procedureName: appCtx.procedure.name,
+          studentProfile: appCtx.studentProfile,
+          briefingReasoning: briefing?.reasoning ?? null,
+          sopChunks,
+          coordinatorComment: null,
+        },
+        { applicationId }
+      );
+      judge_issues = judged.issues;
+      judge_assessment = judged.overall_assessment;
+      judge_confidence = judged.confidence;
+      judge_available = true;
+    } catch (err) {
+      console.error("[coassist] judge failed — degrading to regex-only:", err);
+    }
   }
 
   return apiSuccess({
     revised_text: revised.revised_text,
     brief_explanation: revised.brief_explanation,
     hallucination_issues,
+    judge_issues,
+    judge_assessment,
+    judge_confidence,
+    judge_available,
   });
 }
 
