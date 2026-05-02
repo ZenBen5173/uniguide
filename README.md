@@ -14,7 +14,7 @@
 | 2 | **Refined Quality Assurance Testing Document** | PDF | [docs/03 Finals/QATD-Refined.pdf](docs/03%20Finals/QATD-Refined.pdf) |
 | 3 | **Deployment Plan** | PDF | [docs/03 Finals/DeploymentPlan.pdf](docs/03%20Finals/DeploymentPlan.pdf) |
 | 4 | **Business Proposal** *(for the Developed Product)* | PDF | [docs/03 Finals/BusinessProposal.pdf](docs/03%20Finals/BusinessProposal.pdf) |
-| 5 | **Final Round Presentation Pitch Deck** | PDF | [docs/03 Finals/FinalPitchDeck.pdf](docs/03%20Finals/FinalPitchDeck.pdf) *(uploading shortly)* |
+| 5 | **Final Round Presentation Pitch Deck** | PDF | [docs/03 Finals/Breaking Bank Pitch Deck No. 108.pdf](docs/03%20Finals/Breaking%20Bank%20Pitch%20Deck%20No.%20108.pdf) |
 
 **Live deploy:** [uniguide-blush.vercel.app](https://uniguide-blush.vercel.app)
 **Final submission deadline:** 3 May 2026 07:59:59 AM (via [umhackathon.com](https://umhackathon.com))
