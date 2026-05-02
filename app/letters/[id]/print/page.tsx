@@ -9,14 +9,20 @@ export default async function LetterPrintPage({ params }: { params: Promise<{ id
   if (!user) redirect(`/login?next=/letters/${id}/print`);
 
   const sb = getServiceSupabase();
+  // Note: previously this embedded `student_profiles!applications_user_id_fkey`
+  // but that FK hint doesn't exist — applications.user_id references users,
+  // not student_profiles. PostgREST returned an error, the row came back
+  // null, and notFound() fired → the page 404'd for every user. Same bug
+  // pattern fixed in commit 21d0f3f for the coordinator inbox endpoints.
+  // Now: fetch the letter + application without the bad embed, then resolve
+  // the student profile in a separate query.
   const { data: letter } = await sb
     .from("application_letters")
     .select(`
       id, letter_type, generated_text, created_at, delivered_to_student_at,
       applications!inner (
         id, user_id, procedure_id,
-        procedures (name),
-        student_profiles!applications_user_id_fkey (full_name, matric_no, faculty)
+        procedures (name)
       )
     `)
     .eq("id", id)
@@ -30,7 +36,11 @@ export default async function LetterPrintPage({ params }: { params: Promise<{ id
   const isStaff = user.role === "staff" || user.role === "admin";
   if (!isOwner && !isStaff) notFound();
 
-  const sp = app.student_profiles;
+  const { data: sp } = await sb
+    .from("student_profiles")
+    .select("full_name, matric_no, faculty")
+    .eq("user_id", app.user_id)
+    .maybeSingle();
   const procName = app.procedures?.name ?? app.procedure_id;
   const dateLabel = new Date(letter.delivered_to_student_at ?? letter.created_at).toLocaleDateString("en-MY", {
     day: "numeric", month: "long", year: "numeric",
