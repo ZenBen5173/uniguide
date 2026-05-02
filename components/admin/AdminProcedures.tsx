@@ -395,13 +395,17 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                   )}
                   {inputMode === "pdf" && (
                     <div>
-                      <label className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">PDF source</label>
+                      <label className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">Document source</label>
                       {pdfMeta ? (
                         <div className="mt-1.5 flex items-center gap-3 rounded-[10px] border border-line-2 bg-paper-2 px-3.5 py-2.5">
-                          <div className="grid place-items-center w-9 h-9 rounded-md bg-card border border-line text-crimson font-semibold text-[11px]">PDF</div>
+                          <div className={`grid place-items-center w-9 h-9 rounded-md bg-card border border-line font-semibold text-[11px] ${pdfMeta.filename.toLowerCase().endsWith(".docx") ? "text-ai-ink" : "text-crimson"}`}>
+                            {pdfMeta.filename.toLowerCase().endsWith(".docx") ? "DOCX" : "PDF"}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[13.5px] font-semibold text-ink truncate">{pdfMeta.filename}</div>
-                            <div className="text-[11.5px] text-ink-4 mono mt-0.5">{pdfMeta.pages} pages · {(pdfMeta.bytes / 1024).toFixed(0)} KB · text extracted below</div>
+                            <div className="text-[11.5px] text-ink-4 mono mt-0.5">
+                              {pdfMeta.pages > 0 ? `${pdfMeta.pages} pages · ` : ""}{(pdfMeta.bytes / 1024).toFixed(0)} KB · text extracted below
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -414,7 +418,7 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                       ) : (
                         <label className={`mt-1.5 block cursor-pointer rounded-[10px] border-[1.5px] border-dashed border-line bg-card px-4 py-5 text-center transition hover:border-ink-5 ${pdfBusy ? "opacity-60 pointer-events-none" : ""}`}>
                           <div className="text-[13.5px] font-semibold text-ink-2">
-                            {pdfBusy ? "Parsing PDF…" : "Click to choose a PDF (max 10 MB)"}
+                            {pdfBusy ? "Parsing document…" : "Click to choose a PDF or DOCX (max 10 MB)"}
                           </div>
                           <div className="text-[12px] text-ink-4 mt-1">
                             We extract the text, then AI structures it into sections. Scanned/image PDFs will need manual paste.

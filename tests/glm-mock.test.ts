@@ -80,3 +80,42 @@ describe("ILMU mock-mode", () => {
     expect(() => JSON.parse(result.text)).not.toThrow();
   });
 });
+
+// Admin SOP / template structurers — added 2026-05-02 for the admin
+// "create new procedure" flow. The endpoints route through GLM in live mode
+// and fall back to the admin's raw text on failure; these mock-mode tests
+// confirm the wrappers wire cleanly through callGlm + the canned fixtures.
+describe("Admin AI structurers (mock-mode)", () => {
+  beforeEach(() => {
+    process.env.GLM_MOCK_MODE = "true";
+    process.env.ZAI_API_KEY = "";
+  });
+
+  it("structureSop returns markdown with H2 sections", async () => {
+    const { structureSop } = await import("../lib/glm/structureSop");
+    const result = await structureSop({
+      rawText:
+        "Sample raw extracted text from a UM procedure SOP. " +
+        "It would normally be a wall of text with no markdown structure.",
+    });
+
+    expect(result.markdown.length).toBeGreaterThan(50);
+    // Must produce at least one ## H2 section so the chunker has something
+    // to split on.
+    expect(result.markdown).toMatch(/^## /m);
+  });
+
+  it("structureTemplate returns templated text + detected placeholders", async () => {
+    const { structureTemplate } = await import("../lib/glm/structureTemplate");
+    const result = await structureTemplate({
+      rawText:
+        "Dear Aishah binti Razak, your scholarship application has been approved on 23 April 2026. Yours sincerely, FSKTM",
+      templateType: "acceptance",
+    });
+
+    expect(result.template_text.length).toBeGreaterThan(20);
+    // The fixture has at least one canonical placeholder.
+    expect(result.template_text).toMatch(/\{\{\w+\}\}/);
+    expect(result.detected_placeholders.length).toBeGreaterThan(0);
+  });
+});

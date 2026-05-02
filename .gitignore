@@ -24,6 +24,9 @@ out/
 .vscode/
 .idea/
 
+# Claude Code per-user permission grants (local-only)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
