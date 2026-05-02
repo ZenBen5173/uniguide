@@ -177,6 +177,34 @@ export default function CoordinatorAppDetail({
   // Briefing-coassist drawer visibility
   const [briefingCoassistOpen, setBriefingCoassistOpen] = useState(false);
 
+  // Briefing regeneration. Submit-time generateBriefing can fail when Z.AI
+  // is slow — the submit route writes a fallback briefing so the student
+  // isn't blocked, but the coordinator gets a confidence-0 fallback that
+  // says "AI briefing failed to generate". This button re-runs the GLM
+  // call now, when load may have eased, and inserts a fresh briefing row.
+  const [regeneratingBriefing, setRegeneratingBriefing] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  const regenerateBriefing = async () => {
+    setRegeneratingBriefing(true);
+    setRegenerateError(null);
+    try {
+      const res = await fetch(
+        `/api/coordinator/applications/${id}/regenerate-briefing`,
+        { method: "POST" }
+      );
+      const json = await res.json();
+      if (!json.ok) {
+        setRegenerateError(json.error ?? "Could not regenerate briefing.");
+        return;
+      }
+      await refresh();
+    } catch (err) {
+      setRegenerateError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setRegeneratingBriefing(false);
+    }
+  };
+
   // Escalation resolution
   const [resolvingEscalation, setResolvingEscalation] = useState(false);
   const resolveEscalation = async () => {
@@ -639,6 +667,20 @@ export default function CoordinatorAppDetail({
                 </div>
                 <div className="flex items-center gap-3">
                   <button
+                    className="text-[11px] inline-flex items-center gap-1 text-ai-ink hover:underline disabled:opacity-50"
+                    onClick={regenerateBriefing}
+                    disabled={regeneratingBriefing}
+                    title="Re-run the AI briefing now (useful when the submit-time briefing fell back due to slow Z.AI)"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className={regeneratingBriefing ? "animate-spin" : ""}>
+                      <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8" />
+                      <path d="M21 3v5h-5" />
+                      <path d="M21 12a9 9 0 0 1-15.5 6.36L3 16" />
+                      <path d="M3 21v-5h5" />
+                    </svg>
+                    {regeneratingBriefing ? "Regenerating…" : "Regenerate"}
+                  </button>
+                  <button
                     className="text-[11px] inline-flex items-center gap-1 text-ai-ink hover:underline"
                     onClick={() => setBriefingCoassistOpen(true)}
                     title="Ask the AI about this briefing"
@@ -656,6 +698,26 @@ export default function CoordinatorAppDetail({
                   </div>
                 </div>
               </div>
+
+              {regeneratingBriefing && (
+                <div className="px-5 py-3 border-b border-line-2 bg-ai-tint">
+                  <AiProgressBar
+                    expectedMs={25_000}
+                    compact
+                    stages={[
+                      { at: 0, label: "Re-reading the application history…" },
+                      { at: 8, label: "Cross-referencing with the SOP…" },
+                      { at: 18, label: "Drafting the briefing…" },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {regenerateError && (
+                <div className="px-5 py-3 border-b border-line-2 bg-crimson-soft text-[12.5px] text-crimson">
+                  {regenerateError}
+                </div>
+              )}
 
               {/* Reasoning */}
               <div className="px-5 py-4 border-b border-line-2">
