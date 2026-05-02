@@ -10,6 +10,7 @@ import SopViewer, { type SopViewerHandle } from "./SopViewer";
 import AiChatPanel from "@/components/student/AiChatPanel";
 import MessageThread from "@/components/shared/MessageThread";
 import AiProgressBar from "@/components/shared/AiProgressBar";
+import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -51,7 +52,7 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
   const [savedTick, setSavedTick] = useState(0);
   const hydratedRef = useRef<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = async ({ silent = false }: { silent?: boolean } = {}) => {
     try {
       const res = await fetch(`/api/applications/${id}`);
       if (res.status === 401) {
@@ -60,21 +61,34 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
       }
       const json = await res.json();
       if (!json.ok) {
-        setError(json.error);
+        if (!silent) setError(json.error);
         return;
       }
       setData(json.data);
-      setDraftValue({});
-      hydratedRef.current = null;
-      setLastSavedAt(null);
+      // The non-silent refresh wipes draft state so a fresh app load doesn't
+      // inherit a half-typed answer from a different step. Silent re-fetches
+      // (polling / focus) MUST preserve the student's in-flight draft —
+      // wiping it mid-typing is exactly the data-loss UX we'd be trying to
+      // avoid by adding silent refresh in the first place.
+      if (!silent) {
+        setDraftValue({});
+        hydratedRef.current = null;
+        setLastSavedAt(null);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      if (!silent) setError(err instanceof Error ? err.message : "Network error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => { void refresh(); }, [id]);
+
+  // Silent re-fetch every 20s + on tab focus / visibility. Backstop for
+  // realtime: even with REPLICA IDENTITY FULL on applications/_steps/_letters,
+  // some events (briefing regenerations, decisions on application_decisions
+  // which isn't published) only land via this poll. Preserves draft state.
+  useSilentRefresh(() => refresh({ silent: true }), 20_000);
 
   // Realtime: refetch whenever this application's row, its steps, or its
   // letters change server-side. Lets the student see the coordinator decision

@@ -8,6 +8,7 @@ import TopBar from "@/components/shared/TopBar";
 import InternalNotes from "@/components/coordinator/InternalNotes";
 import MessageThread from "@/components/shared/MessageThread";
 import AiProgressBar from "@/components/shared/AiProgressBar";
+import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
 
 const FACT_ACRONYMS = new Set([
   "cgpa", "ug", "epf", "rm", "fyp", "ic", "spm", "stpm",
@@ -357,6 +358,12 @@ export default function CoordinatorAppDetail({
   };
 
   useEffect(() => { void refresh(); }, [id]);
+
+  // Silent re-fetch every 20s + on tab focus / visibility. Catches the case
+  // where the student responds to a request_info or sends a chat message
+  // while the coordinator has the detail page open — without this, briefings
+  // / new steps / message threads stay stale until manual refresh.
+  useSilentRefresh(refresh, 20_000);
 
   const openPreview = async (kind: "approve" | "reject") => {
     setPreviewKind(kind);

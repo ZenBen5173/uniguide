@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
 import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
 
 interface MyApplication {
   id: string;
@@ -68,6 +69,11 @@ export default function StudentPortal({ user }: { user: { name: string; initials
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Silent re-fetch every 30s + on tab focus / visibility. Backstop for
+  // realtime — even when REPLICA IDENTITY / publication coverage misses an
+  // event, the user's portal won't sit on stale status badges for long.
+  useSilentRefresh(refreshApps, 30_000);
 
   // Realtime: when any of this user's applications flips status, refetch list
   // so the portal badge updates without a manual reload.

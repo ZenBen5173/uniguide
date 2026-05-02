@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/shared/TopBar";
+import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
 
 interface InboxApp {
   id: string;
@@ -57,21 +58,29 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
   const [mineOnly, setMineOnly] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const refresh = async () => {
-    setLoading(true);
+  const refresh = async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/coordinator/inbox?status=${filter}`);
       const json = await res.json();
       if (json.ok) {
         setApps(json.data.applications);
         setCounts(json.data.counts);
-        setSelected(new Set());
+        // Don't blow away the coordinator's selection on a silent re-fetch —
+        // they might be mid-bulk-action.
+        if (!silent) setSelected(new Set());
         if (json.data.coordinator?.id) setCoordinatorId(json.data.coordinator.id);
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  // Silent re-fetch every 20s + on tab focus / visibility — covers the case
+  // where another coordinator decides on a row, or a student submits, while
+  // this inbox is open. Without it, the row's status / counts go stale until
+  // the user clicks a tab or refreshes manually.
+  useSilentRefresh(() => refresh({ silent: true }), 20_000);
 
   const claim = async (id: string) => {
     await fetch(`/api/coordinator/applications/${id}/claim`, { method: "POST" });

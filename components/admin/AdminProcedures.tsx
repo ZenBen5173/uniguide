@@ -5,6 +5,7 @@ import Link from "next/link";
 import TopBar from "@/components/shared/TopBar";
 import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 import { FileText, Link2, Paperclip, Check } from "lucide-react";
+import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
 
 interface Procedure {
   id: string;
@@ -106,6 +107,11 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  // Silent re-fetch every 30s + on tab focus / visibility. Picks up new
+  // procedures (created in another tab) and KPI changes (active applications,
+  // letter template counts) without requiring a manual reload.
+  useSilentRefresh(refresh, 30_000);
 
   const resetModal = () => {
     setModalOpen(false);
