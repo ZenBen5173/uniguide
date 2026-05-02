@@ -474,3 +474,10 @@
   .btn-ghost:hover { background: rgba(11,37,69,.05); }
   .card { @apply rounded-[14px]; border: 1px solid var(--line); background: var(--card); }
 }
+
+/* Global print rule: hide chrome (sponsor footer, demo banner, top bar) so
+   print/Save-as-PDF flows on letter / receipt pages produce clean output.
+   Page-specific overrides can extend this via additional @media print rules. */
+@media print {
+  .no-print { display: none !important; }
+}

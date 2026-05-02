@@ -15,7 +15,7 @@ interface Props {
 
 export default function TopBar({ roleChip, nav, user }: Props) {
   return (
-    <header className="ug-topbar">
+    <header className="ug-topbar no-print">
       <div className="flex items-center">
         <Link href="/" className="ug-brand no-underline">
           <div className="ug-brand-mark">U</div>

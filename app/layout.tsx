@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import DemoModeBanner from "@/components/shared/DemoModeBanner";
+import SponsorFooter from "@/components/shared/SponsorFooter";
 
 export const metadata: Metadata = {
   title: "UniGuide — your AI co-pilot for university paperwork",
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans antialiased">
         <DemoModeBanner />
-        {children}
+        <div className="flex-1 flex flex-col">{children}</div>
+        <SponsorFooter />
       </body>
     </html>
   );

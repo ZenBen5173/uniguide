@@ -133,8 +133,26 @@ function LoginInner() {
           </p>
         </div>
 
-        <div className="relative text-[12px] text-white/50">
-          Powered by <span className="font-semibold text-white/70">Z.AI GLM</span> · Built by Team Breaking Bank
+        <div className="relative space-y-3">
+          {/* Combined Z.AI + YTL AI Labs sponsor logo. Inverted so it
+               reads on the dark hero panel; the source PNG has dark
+               artwork on transparent so we apply CSS invert + slight
+               opacity for legibility. */}
+          <div className="text-[10.5px] uppercase tracking-[0.18em] font-semibold text-white/55">
+            Powered by
+          </div>
+          <img
+            src="/sponsor-logo.png"
+            alt="Z.AI and YTL AI Labs"
+            className="h-[34px] w-auto"
+            style={{ filter: "invert(1) brightness(1.2)" }}
+          />
+          <div className="text-[12px] text-white/50">
+            <span className="font-semibold text-white/70">Z.AI GLM</span>{" "}
+            mandatory model · co-developed with{" "}
+            <span className="font-semibold text-white/70">YTL AI Labs</span> ·
+            Built by Team Breaking Bank
+          </div>
         </div>
       </aside>
 

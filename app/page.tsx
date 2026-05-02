@@ -192,8 +192,20 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <footer className="mt-24 border-t border-slate-200 pt-8 text-center text-sm text-slate-500">
-          UniGuide — UMHackathon 2026 · Domain 1: AI Systems & Agentic Workflow Automation · Powered by Z.AI GLM
+        <footer className="mt-24 border-t border-slate-200 pt-8 pb-4 text-center text-sm text-slate-500 space-y-3">
+          <div>
+            UniGuide · UMHackathon 2026 · Domain 1: AI Systems &amp; Agentic Workflow Automation
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-slate-400">
+              Powered by
+            </span>
+            <img
+              src="/sponsor-logo.png"
+              alt="Z.AI and YTL AI Labs"
+              className="h-[28px] w-auto"
+            />
+          </div>
         </footer>
       </main>
     </div>
