@@ -296,15 +296,24 @@ export async function emitNextStep(args: {
 
 /**
  * Record a step response and trigger the next step.
- * Returns the next step OR signals completion.
+ *
+ * Returns the next step OR signals completion OR (if the AI's nextStep call
+ * fails / times out) signals `stuck: true` so the caller knows the response
+ * was saved but no follow-up step was emitted. The student can then click
+ * "Resume" to retry — see /api/applications/[id]/emit-next.
+ *
+ * Historically this threw when emitNextStep failed, leaving the application
+ * in a half-saved state with the step marked completed but no pending step.
+ * Thevesh's scholarship app got stuck in exactly this state on 2 May 2026.
  */
 export async function recordResponseAndAdvance(args: {
   applicationId: string;
   stepId: string;
   responseData: Record<string, unknown>;
 }): Promise<
-  | { complete: true; step: null }
-  | { complete: false; step: { id: string; ordinal: number; type: StepType; prompt_text: string; config: Record<string, unknown> } }
+  | { complete: true; step: null; stuck?: false }
+  | { complete: false; step: { id: string; ordinal: number; type: StepType; prompt_text: string; config: Record<string, unknown> }; stuck?: false }
+  | { complete: false; step: null; stuck: true; error: string }
 > {
   const sb = getServiceSupabase();
 
@@ -336,5 +345,11 @@ export async function recordResponseAndAdvance(args: {
       .eq("id", args.applicationId);
   }
 
-  return emitNextStep({ applicationId: args.applicationId });
+  try {
+    return await emitNextStep({ applicationId: args.applicationId });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown";
+    console.error("[engine] emitNextStep failed after step recorded:", msg);
+    return { complete: false, step: null, stuck: true, error: msg };
+  }
 }

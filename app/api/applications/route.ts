@@ -15,6 +15,12 @@ import { estimateProgress } from "@/lib/glm/estimateProgress";
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// POST creates an application, then fires emitNextStep (GLM) AND
+// estimateProgress (GLM) in series. Two GLM calls + a Storage write.
+// Z.AI under load can take 30-60s per call, so we need the full ceiling.
+export const maxDuration = 60;
+
 const CreateBody = z.object({ procedure_id: ProcedureIdSchema });
 
 export async function GET() {

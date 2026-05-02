@@ -14,9 +14,21 @@ import { recordResponseAndAdvance } from "@/lib/applications/engine";
 import { extractTextFromStorage } from "@/lib/documents/extractText";
 import { parseDocument } from "@/lib/glm/parseDocument";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+import { withTimeout } from "@/lib/utils/timeout";
+
+// PDF extraction is "nice to have" — if it doesn't return inside this
+// window, we proceed without enrichment so the route's main job
+// (advance the application) still has time inside maxDuration to call
+// nextStep. Z.AI under load has been observed at 30-60s per call.
+const PARSE_DOCUMENT_TIMEOUT_MS = 12_000;
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+// Live GLM calls observed at 30-60s on Z.AI under load. The respond path
+// fires up to 2 GLM calls (parseDocument + nextStep) plus a Storage download
+// + pdf-parse, so we need the full 60s ceiling. The inline timeout wrappers
+// below cap each GLM call independently so a slow one degrades gracefully
+// rather than burning the whole budget.
+export const maxDuration = 60;
 
 const Body = z.object({
   step_id: z.string().uuid(),
@@ -90,12 +102,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     try {
       const extracted = await extractTextFromStorage(storagePath, contentType);
       if (extracted) {
-        const parseResult = await parseDocument(
-          {
-            documentText: extracted.text,
-            extractionSchema,
-          },
-          { workflowId: applicationId }
+        const parseResult = await withTimeout(
+          parseDocument(
+            {
+              documentText: extracted.text,
+              extractionSchema,
+            },
+            { workflowId: applicationId }
+          ),
+          PARSE_DOCUMENT_TIMEOUT_MS,
+          "parseDocument"
         );
         enrichedResponse = {
           ...enrichedResponse,
@@ -105,7 +121,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         };
       }
     } catch (err) {
-      console.warn("[respond] document extraction failed; proceeding without enrichment:", err);
+      console.warn("[respond] document extraction failed/timed out; proceeding without enrichment:", err);
     }
   }
 
@@ -118,6 +134,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
   } catch (err) {
     return apiError(`Advance failed: ${err instanceof Error ? err.message : "unknown"}`, 500);
+  }
+
+  // If emitNextStep failed but the step was recorded, surface a `stuck`
+  // flag so the UI can offer a Resume button instead of leaving the
+  // application in a "no current step" dead end.
+  if ("stuck" in result && result.stuck) {
+    return apiSuccess({
+      is_complete: false,
+      next_step: null,
+      stuck: true,
+      error: result.error,
+    });
   }
 
   return apiSuccess({

@@ -33,6 +33,14 @@ import { judgeLetter } from "@/lib/glm/judgeLetter";
 import { loadApplicationContext } from "@/lib/applications/engine";
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+import { withTimeout } from "@/lib/utils/timeout";
+
+const JUDGE_TIMEOUT_MS = 15_000;
+
+export const runtime = "nodejs";
+// coassist + (for letter revisions) judgeLetter — up to 2 GLM calls in
+// series. Vercel default timeout would kill us; bump to the ceiling.
+export const maxDuration = 60;
 
 const Body = z.object({
   artifact: z.enum(["letter", "step_prompt", "briefing_reasoning"]),
@@ -137,23 +145,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .maybeSingle();
 
     try {
-      const judged = await judgeLetter(
-        {
-          letterText: revised.revised_text,
-          templateType: parsed.data.decision_kind === "approve"
-            ? "acceptance"
-            : parsed.data.decision_kind === "reject"
-              ? "rejection"
-              : parsed.data.decision_kind === "request_info"
-                ? "request_info"
-                : "custom",
-          procedureName: appCtx.procedure.name,
-          studentProfile: appCtx.studentProfile,
-          briefingReasoning: briefing?.reasoning ?? null,
-          sopChunks,
-          coordinatorComment: null,
-        },
-        { applicationId }
+      const judged = await withTimeout(
+        judgeLetter(
+          {
+            letterText: revised.revised_text,
+            templateType: parsed.data.decision_kind === "approve"
+              ? "acceptance"
+              : parsed.data.decision_kind === "reject"
+                ? "rejection"
+                : parsed.data.decision_kind === "request_info"
+                  ? "request_info"
+                  : "custom",
+            procedureName: appCtx.procedure.name,
+            studentProfile: appCtx.studentProfile,
+            briefingReasoning: briefing?.reasoning ?? null,
+            sopChunks,
+            coordinatorComment: null,
+          },
+          { applicationId }
+        ),
+        JUDGE_TIMEOUT_MS,
+        "judgeLetter (coassist)"
       );
       judge_issues = judged.issues;
       judge_assessment = judged.overall_assessment;

@@ -18,6 +18,12 @@ import { fillLetter } from "@/lib/glm/fillLetter";
 import { emitNextStep, loadApplicationContext, buildHistory } from "@/lib/applications/engine";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// Approve/Reject path runs fillLetter (up to 60s on Z.AI under load).
+// Request-info path runs emitNextStep (another 60s ceiling). Need the
+// full Vercel-allowed window.
+export const maxDuration = 60;
+
 const StepOverrideSchema = z.object({
   type: z.enum([
     "form",

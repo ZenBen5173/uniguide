@@ -109,6 +109,11 @@ export default function CoordinatorAppDetail({
   // Letter preview modal state
   const [previewKind, setPreviewKind] = useState<"approve" | "reject" | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  // What the spinner banner says — stages give the coordinator something
+  // useful to read instead of a silent "Generating preview…".
+  const [previewStage, setPreviewStage] = useState<
+    "idle" | "drafting" | "judging" | "done"
+  >("idle");
   const [previewLetter, setPreviewLetter] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
   type JudgeIssue = {
@@ -330,11 +335,27 @@ export default function CoordinatorAppDetail({
     setPreviewError(null);
     setPreviewLetter("");
     setPreviewMeta(null);
+    setPreviewStage("drafting");
+
+    // Stage advance: ~12 s after kicking off the call, swap the banner
+    // copy to "judging" so the coordinator knows the second pass is
+    // running. The server enforces a 15 s judge timeout and the route's
+    // own 60 s ceiling, so this is purely a UI hint.
+    const stageTimer = setTimeout(() => setPreviewStage("judging"), 12_000);
+
+    // Client-side timeout — kill the fetch at 55 s so the modal returns
+    // an error instead of spinning forever if the server hits its 60 s
+    // ceiling without responding. AbortController also cancels the
+    // network request rather than just stopping the await.
+    const controller = new AbortController();
+    const fetchTimer = setTimeout(() => controller.abort(), 55_000);
+
     try {
       const res = await fetch(`/api/coordinator/applications/${id}/preview-letter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision: kind, comment: comment.trim() || undefined }),
+        signal: controller.signal,
       });
       const json = await res.json();
       if (!json.ok) {
@@ -351,9 +372,18 @@ export default function CoordinatorAppDetail({
         judge_confidence: json.data.judge_confidence ?? null,
         judge_available: !!json.data.judge_available,
       });
+      setPreviewStage("done");
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : "Network error");
+      if (err instanceof Error && err.name === "AbortError") {
+        setPreviewError(
+          "Generating the preview is taking longer than usual. Z.AI may be slow right now — please wait a moment and try again."
+        );
+      } else {
+        setPreviewError(err instanceof Error ? err.message : "Network error");
+      }
     } finally {
+      clearTimeout(stageTimer);
+      clearTimeout(fetchTimer);
       setPreviewBusy(false);
     }
   };
@@ -961,10 +991,36 @@ export default function CoordinatorAppDetail({
 
             <div className="p-6 overflow-y-auto flex-1">
               {previewBusy ? (
-                <div className="text-center py-8 text-ink-4">Generating preview…</div>
+                <div className="py-10 px-6 flex flex-col items-center gap-4">
+                  {/* Animated dot row + stage copy. Z.AI calls take 30 to 60 s
+                       under load, so we surface what's actually happening
+                       behind the spinner instead of an opaque "Generating preview…". */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "200ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "400ms" }} />
+                  </div>
+                  <div className="text-[13px] font-semibold text-ink-2">
+                    {previewStage === "judging"
+                      ? "Running the AI faithfulness check on the draft…"
+                      : "Drafting the letter from the template + briefing…"}
+                  </div>
+                  <div className="text-[12px] text-ink-4 text-center max-w-md leading-snug">
+                    Z.AI calls usually take 10 to 30 seconds. If it&apos;s longer than a minute the modal will stop waiting and surface an error you can retry.
+                  </div>
+                </div>
               ) : previewError ? (
-                <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
-                  {previewError}
+                <div className="space-y-3">
+                  <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
+                    {previewError}
+                  </div>
+                  <button
+                    type="button"
+                    className="ug-btn primary"
+                    onClick={() => previewKind && openPreview(previewKind)}
+                  >
+                    Try again
+                  </button>
                 </div>
               ) : (
                 <>

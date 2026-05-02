@@ -19,6 +19,11 @@ import { buildHistory, loadApplicationContext } from "@/lib/applications/engine"
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// Live GLM calls observed at 30-60s on Z.AI under load — a single
+// student_chat call can take that long even on a warm connection.
+export const maxDuration = 60;
+
 const Body = z.object({
   message: z.string().min(1).max(4000),
 });

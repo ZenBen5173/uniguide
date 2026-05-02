@@ -154,6 +154,30 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
   const [revisingStepId, setRevisingStepId] = useState<string | null>(null);
   const sopRef = useRef<SopViewerHandle | null>(null);
 
+  // Stuck-state recovery. When /respond returns stuck:true (the student's
+  // last answer was saved but the AI couldn't plan the next step in time),
+  // we surface a banner with a Resume button that hits /emit-next to
+  // retry the planning step without resubmitting the previous answer.
+  const [stuck, setStuck] = useState<{ message: string } | null>(null);
+  const [resuming, setResuming] = useState(false);
+  const resume = async () => {
+    setResuming(true);
+    try {
+      const res = await fetch(`/api/applications/${id}/emit-next`, { method: "POST" });
+      const json = await res.json();
+      if (!json.ok) {
+        setError(json.error ?? "Could not resume — please try again in a moment.");
+        return;
+      }
+      setStuck(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setResuming(false);
+    }
+  };
+
   const reviseStep = async (stepId: string, ordinal: number) => {
     if (!confirm(`Revise Step ${ordinal}? Your answer for this step + all answers after it will be cleared so the AI can replan from your new response.`)) return;
     setRevisingStepId(stepId);
@@ -210,6 +234,17 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
       const json = await res.json();
       if (!json.ok) { setError(json.error); return; }
       if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(id, current.id));
+      // If the AI's next-step planning failed/timed out but the student's
+      // answer was saved, surface the stuck banner. The student keeps
+      // their progress — they just need to click Resume to retry the AI.
+      if (json.data?.stuck) {
+        setStuck({
+          message:
+            "Your answer was saved, but the AI is taking longer than usual to plan the next step. Click Resume to try again.",
+        });
+      } else {
+        setStuck(null);
+      }
       await refresh();
     } finally {
       setSubmitting(false);
@@ -372,6 +407,36 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
           {/* Step stack */}
           <div className="flex flex-col gap-3.5">
+
+            {/* Stuck-state banner — shown when /respond returned stuck:true,
+                OR when we're in draft with completed steps but no current
+                pending step (recovered from a prior crash). Either way the
+                Resume button hits /emit-next to retry the AI. */}
+            {(stuck || (!isSubmitted && !current && completed.length > 0)) && (
+              <div className="rounded-[12px] border border-amber-soft bg-amber-soft/40 px-4 py-3 flex items-start gap-2.5">
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                  strokeLinejoin="round" className="mt-0.5 flex-shrink-0 text-amber"
+                >
+                  <path d="M12 9v4" /><path d="M12 17h.01" />
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-amber leading-snug">
+                    {stuck?.message ??
+                      "Your answer was saved, but the next step hasn't appeared yet. The AI may still be planning — click Resume to retry."}
+                  </div>
+                </div>
+                <button
+                  className="ug-btn primary text-[12.5px]"
+                  onClick={resume}
+                  disabled={resuming}
+                >
+                  {resuming ? "Resuming…" : "Resume"}
+                </button>
+              </div>
+            )}
 
             {/* Completed steps */}
             {completed.map((s) => (

@@ -16,6 +16,12 @@ import { buildHistory, loadApplicationContext } from "@/lib/applications/engine"
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// Briefing generation is a single GLM call but Z.AI latency under load
+// has been observed at 30-60s. Default Vercel timeout (10s Hobby / 15s Pro)
+// would kill it mid-call.
+export const maxDuration = 60;
+
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   if (!user) return apiError("Not authenticated", 401);

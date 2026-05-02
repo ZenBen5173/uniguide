@@ -17,6 +17,18 @@ import { judgeLetter } from "@/lib/glm/judgeLetter";
 import { loadApplicationContext } from "@/lib/applications/engine";
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+import { withTimeout } from "@/lib/utils/timeout";
+
+// Hard cap on the judge call. The judge is "nice to have" — if it doesn't
+// come back in 15s the regex layer still surfaces structural issues and
+// the coordinator can ship the letter without waiting.
+const JUDGE_TIMEOUT_MS = 15_000;
+
+export const runtime = "nodejs";
+// Two sequential GLM calls (fillLetter + judgeLetter), each up to 60s on
+// Z.AI under load. The judge is wrapped in a 12s timeout below so it
+// degrades to "no judge" rather than blocking the preview when slow.
+export const maxDuration = 60;
 
 const Body = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -119,25 +131,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
 
   // Judge runs against the briefing's reasoning + SOP excerpts as ground
-  // truth. If GLM is unreachable / errors, we degrade to regex-only — never
-  // block the preview.
+  // truth. Wrapped in a 15s timeout so a slow Z.AI doesn't block the
+  // coordinator behind a spinner — regex layer above already covers the
+  // critical structural checks. If GLM is unreachable / errors / times out,
+  // we degrade to regex-only.
   const sopChunks = appCtx ? await retrieveProcedureSop(appCtx.procedure.id) : [];
   let judge: Awaited<ReturnType<typeof judgeLetter>> | null = null;
   try {
-    judge = await judgeLetter(
-      {
-        letterText: filled.filled_text,
-        templateType,
-        procedureName: appCtx?.procedure.name ?? "UM Procedure",
-        studentProfile: appCtx?.studentProfile ?? {
-          full_name: null, faculty: null, programme: null,
-          year: null, cgpa: null, citizenship: "MY",
+    judge = await withTimeout(
+      judgeLetter(
+        {
+          letterText: filled.filled_text,
+          templateType,
+          procedureName: appCtx?.procedure.name ?? "UM Procedure",
+          studentProfile: appCtx?.studentProfile ?? {
+            full_name: null, faculty: null, programme: null,
+            year: null, cgpa: null, citizenship: "MY",
+          },
+          briefingReasoning: briefing?.reasoning ?? null,
+          sopChunks,
+          coordinatorComment: parsed.data.comment ?? null,
         },
-        briefingReasoning: briefing?.reasoning ?? null,
-        sopChunks,
-        coordinatorComment: parsed.data.comment ?? null,
-      },
-      { applicationId }
+        { applicationId }
+      ),
+      JUDGE_TIMEOUT_MS,
+      "judgeLetter"
     );
   } catch (err) {
     console.error("[preview-letter] judge failed — degrading to regex-only:", err);

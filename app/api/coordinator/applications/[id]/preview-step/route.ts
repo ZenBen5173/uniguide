@@ -19,6 +19,10 @@ import { getServiceSupabase } from "@/lib/supabase/server";
 import { previewNextStep } from "@/lib/applications/engine";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// One next_step GLM call. Z.AI latency under load can hit 60s.
+export const maxDuration = 60;
+
 const Body = z.object({
   comment: z.string().min(1).max(2000),
 });

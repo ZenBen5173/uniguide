@@ -15,6 +15,11 @@ import { getServiceSupabase } from "@/lib/supabase/server";
 import { callGlm } from "@/lib/glm/client";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+export const runtime = "nodejs";
+// One callGlm for the comment draft. Single call but Z.AI latency
+// under load runs up to 60s.
+export const maxDuration = 60;
+
 const Body = z.object({
   intent: z.enum(["request_info", "approve", "reject"]),
 });
