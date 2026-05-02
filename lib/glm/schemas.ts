@@ -230,3 +230,46 @@ export const FillLetterOutputSchema = z.object({
   unfilled_placeholders: z.array(z.string()).default([]),
 });
 export type FillLetterOutput = z.infer<typeof FillLetterOutputSchema>;
+
+// ============================================================================
+// coassist — natural-language "tweak this" for an artifact the coordinator
+// is already looking at (letter / proposed step / briefing reasoning).
+// ============================================================================
+
+export const CoassistArtifactSchema = z.enum([
+  "letter",
+  "step_prompt",
+  "briefing_reasoning",
+]);
+export type CoassistArtifact = z.infer<typeof CoassistArtifactSchema>;
+
+export const CoassistTurnSchema = z.object({
+  role: z.enum(["coordinator", "ai"]),
+  text: z.string(),
+});
+
+export const CoassistInputSchema = z.object({
+  artifact: CoassistArtifactSchema,
+  /** The artifact's current text — for letter/step, the editable draft; for
+   *  briefing_reasoning, the reasoning string from application_briefings. */
+  currentText: z.string().min(1),
+  /** What the coordinator wants done — natural language. */
+  instruction: z.string().min(1).max(2000),
+  /** Application context — name, profile, optional SOP. */
+  procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  sopChunks: z.array(z.string()).default([]),
+  /** Optional prior coordinator-AI turns inside the same modal session,
+   *  so the AI can build on its own previous revisions. */
+  priorTurns: z.array(CoassistTurnSchema).default([]),
+});
+
+export const CoassistOutputSchema = z.object({
+  /** For letter/step: the revised draft. For briefing_reasoning: the AI's
+   *  answer to the coordinator's question (no in-place rewrite of the
+   *  briefing record). */
+  revised_text: z.string().min(1),
+  /** One-sentence note on what changed and why — shown to the coordinator. */
+  brief_explanation: z.string().min(1).max(400),
+});
+export type CoassistOutput = z.infer<typeof CoassistOutputSchema>;

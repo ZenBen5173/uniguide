@@ -121,6 +121,93 @@ export default function CoordinatorAppDetail({
     citations: string[];
   } | null>(null);
 
+  // Coassist state — natural-language "tweak this" for letter / step / briefing.
+  // Per-artifact instruction draft and turn history so each modal/panel keeps
+  // its own thread independently.
+  type CoassistArtifact = "letter" | "step_prompt" | "briefing_reasoning";
+  const [coassistInstruction, setCoassistInstruction] = useState<Record<CoassistArtifact, string>>({
+    letter: "",
+    step_prompt: "",
+    briefing_reasoning: "",
+  });
+  const [coassistTurns, setCoassistTurns] = useState<
+    Record<CoassistArtifact, Array<{ role: "coordinator" | "ai"; text: string }>>
+  >({
+    letter: [],
+    step_prompt: [],
+    briefing_reasoning: [],
+  });
+  const [coassistBusy, setCoassistBusy] = useState<CoassistArtifact | null>(null);
+  const [coassistError, setCoassistError] = useState<Record<CoassistArtifact, string | null>>({
+    letter: null,
+    step_prompt: null,
+    briefing_reasoning: null,
+  });
+  const [coassistExplanation, setCoassistExplanation] = useState<
+    Record<CoassistArtifact, string | null>
+  >({
+    letter: null,
+    step_prompt: null,
+    briefing_reasoning: null,
+  });
+  // Briefing-coassist drawer visibility
+  const [briefingCoassistOpen, setBriefingCoassistOpen] = useState(false);
+
+  /** Run coassist on the given artifact. onRevised gets the new text so the
+   *  caller can update its local state (e.g. setPreviewLetter). For
+   *  briefing_reasoning the call is Q&A-only; we don't update any record. */
+  const runCoassist = async (
+    artifact: CoassistArtifact,
+    currentText: string,
+    onRevised: ((newText: string, hallucinationIssues?: Array<{ severity: "warn" | "block"; field: string; message: string }>) => void) | null,
+    decisionKind?: "approve" | "reject" | "request_info"
+  ) => {
+    const instruction = coassistInstruction[artifact].trim();
+    if (!instruction) return;
+    setCoassistBusy(artifact);
+    setCoassistError({ ...coassistError, [artifact]: null });
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/coassist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artifact,
+          current_text: currentText,
+          instruction,
+          prior_turns: coassistTurns[artifact],
+          decision_kind: decisionKind,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        setCoassistError({ ...coassistError, [artifact]: json.error ?? "Could not revise." });
+        return;
+      }
+      // Push the turn pair into the history.
+      setCoassistTurns({
+        ...coassistTurns,
+        [artifact]: [
+          ...coassistTurns[artifact],
+          { role: "coordinator", text: instruction },
+          { role: "ai", text: json.data.brief_explanation },
+        ],
+      });
+      setCoassistExplanation({
+        ...coassistExplanation,
+        [artifact]: json.data.brief_explanation,
+      });
+      setCoassistInstruction({ ...coassistInstruction, [artifact]: "" });
+      if (onRevised) onRevised(json.data.revised_text, json.data.hallucination_issues);
+    } catch (err) {
+      setCoassistError({
+        ...coassistError,
+        [artifact]: err instanceof Error ? err.message : "Network error",
+      });
+    } finally {
+      setCoassistBusy(null);
+    }
+  };
+
   // Undo countdown (re-renders every second when decision is recent)
   const [, setUndoTick] = useState(0);
   const [undoBusy, setUndoBusy] = useState(false);
@@ -420,13 +507,23 @@ export default function CoordinatorAppDetail({
                   </svg>
                   AI Briefing
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className={`ug-rec ${data.briefing.recommendation === "approve" ? "approve" : data.briefing.recommendation === "reject" ? "reject" : "review"}`}>
-                    Recommends: {data.briefing.recommendation === "approve" ? "Approve" : data.briefing.recommendation === "reject" ? "Reject" : "Request Info"}
-                  </span>
-                  {typeof data.application.ai_confidence === "number" && (
-                    <ConfidenceTag value={data.application.ai_confidence} />
-                  )}
+                <div className="flex items-center gap-3">
+                  <button
+                    className="text-[11px] inline-flex items-center gap-1 text-ai-ink hover:underline"
+                    onClick={() => setBriefingCoassistOpen(true)}
+                    title="Ask the AI about this briefing"
+                  >
+                    <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                    Ask the AI
+                  </button>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`ug-rec ${data.briefing.recommendation === "approve" ? "approve" : data.briefing.recommendation === "reject" ? "reject" : "review"}`}>
+                      Recommends: {data.briefing.recommendation === "approve" ? "Approve" : data.briefing.recommendation === "reject" ? "Reject" : "Request Info"}
+                    </span>
+                    {typeof data.application.ai_confidence === "number" && (
+                      <ConfidenceTag value={data.application.ai_confidence} />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -812,6 +909,100 @@ export default function CoordinatorAppDetail({
                       </div>
                     </div>
                   )}
+
+                  {/* Coassist — "tweak this" via natural-language instruction */}
+                  <div className="mt-5 pt-4 border-t border-line-2">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-ai-ink mb-2 flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                      Revise with AI
+                    </div>
+
+                    {coassistTurns.letter.length > 0 && (
+                      <div className="mb-2.5 space-y-1.5">
+                        {coassistTurns.letter.map((t, i) => (
+                          <div
+                            key={i}
+                            className={`text-[12px] px-3 py-1.5 rounded-lg ${
+                              t.role === "coordinator"
+                                ? "bg-card-2 text-ink-2 border border-line"
+                                : "bg-ai-tint text-ink-2 border border-ai-line"
+                            }`}
+                          >
+                            <span className="font-semibold mr-1.5">
+                              {t.role === "coordinator" ? "You:" : "AI:"}
+                            </span>
+                            {t.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {coassistError.letter && (
+                      <div className="mb-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12px] text-crimson">
+                        {coassistError.letter}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="ug-input flex-1 text-[13px]"
+                        placeholder="e.g. Make this softer · Add the appeal info · Shorten the second paragraph"
+                        value={coassistInstruction.letter}
+                        onChange={(e) =>
+                          setCoassistInstruction({
+                            ...coassistInstruction,
+                            letter: e.target.value,
+                          })
+                        }
+                        disabled={coassistBusy === "letter" || busy !== null}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void runCoassist(
+                              "letter",
+                              previewLetter,
+                              (text, issues) => {
+                                setPreviewLetter(text);
+                                if (previewMeta && issues) {
+                                  setPreviewMeta({ ...previewMeta, issues });
+                                }
+                              },
+                              previewKind ?? undefined
+                            );
+                          }
+                        }}
+                      />
+                      <button
+                        className="ug-btn gap-1.5"
+                        style={{
+                          background: "var(--ai-tint)",
+                          color: "var(--ai-ink)",
+                          borderColor: "var(--ai-line)",
+                        }}
+                        onClick={() =>
+                          runCoassist(
+                            "letter",
+                            previewLetter,
+                            (text, issues) => {
+                              setPreviewLetter(text);
+                              if (previewMeta && issues) {
+                                setPreviewMeta({ ...previewMeta, issues });
+                              }
+                            },
+                            previewKind ?? undefined
+                          )
+                        }
+                        disabled={
+                          coassistBusy === "letter" ||
+                          busy !== null ||
+                          !coassistInstruction.letter.trim()
+                        }
+                      >
+                        {coassistBusy === "letter" ? "Revising…" : "Revise"}
+                      </button>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -956,6 +1147,84 @@ export default function CoordinatorAppDetail({
                       ))}
                     </div>
                   )}
+
+                  {/* Coassist — revise the proposed step's prompt_text */}
+                  <div className="mt-5 pt-4 border-t border-line-2">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-ai-ink mb-2 flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                      Revise with AI
+                    </div>
+
+                    {coassistTurns.step_prompt.length > 0 && (
+                      <div className="mb-2.5 space-y-1.5">
+                        {coassistTurns.step_prompt.map((t, i) => (
+                          <div
+                            key={i}
+                            className={`text-[12px] px-3 py-1.5 rounded-lg ${
+                              t.role === "coordinator"
+                                ? "bg-card-2 text-ink-2 border border-line"
+                                : "bg-ai-tint text-ink-2 border border-ai-line"
+                            }`}
+                          >
+                            <span className="font-semibold mr-1.5">
+                              {t.role === "coordinator" ? "You:" : "AI:"}
+                            </span>
+                            {t.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {coassistError.step_prompt && (
+                      <div className="mb-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12px] text-crimson">
+                        {coassistError.step_prompt}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="ug-input flex-1 text-[13px]"
+                        placeholder="e.g. Be more specific about which document · Use simpler language"
+                        value={coassistInstruction.step_prompt}
+                        onChange={(e) =>
+                          setCoassistInstruction({
+                            ...coassistInstruction,
+                            step_prompt: e.target.value,
+                          })
+                        }
+                        disabled={coassistBusy === "step_prompt" || busy !== null}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void runCoassist("step_prompt", stepPreview.prompt_text, (text) => {
+                              setStepPreview({ ...stepPreview, prompt_text: text });
+                            });
+                          }
+                        }}
+                      />
+                      <button
+                        className="ug-btn gap-1.5"
+                        style={{
+                          background: "var(--ai-tint)",
+                          color: "var(--ai-ink)",
+                          borderColor: "var(--ai-line)",
+                        }}
+                        onClick={() =>
+                          runCoassist("step_prompt", stepPreview.prompt_text, (text) => {
+                            setStepPreview({ ...stepPreview, prompt_text: text });
+                          })
+                        }
+                        disabled={
+                          coassistBusy === "step_prompt" ||
+                          busy !== null ||
+                          !coassistInstruction.step_prompt.trim()
+                        }
+                      >
+                        {coassistBusy === "step_prompt" ? "Revising…" : "Revise"}
+                      </button>
+                    </div>
+                  </div>
                 </>
               ) : null}
             </div>
@@ -986,6 +1255,141 @@ export default function CoordinatorAppDetail({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────
+           Briefing-coassist drawer — Q&A about the briefing. The briefing
+           record itself is NOT mutated here; this is a chat surface so the
+           coordinator can ask "why did you flag X" or "rephrase this more
+           politely". The conversation lives only in this modal session.
+          ──────────────────────────────────────────────────────────────────── */}
+      {briefingCoassistOpen && data?.briefing && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-6"
+          onClick={() =>
+            coassistBusy === "briefing_reasoning" ? null : setBriefingCoassistOpen(false)
+          }
+        >
+          <div
+            className="ug-card w-full max-w-[640px] max-h-[88vh] overflow-hidden flex flex-col shadow-ug-lift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-line-2 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ai-ink flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                  Ask the AI about this briefing
+                </div>
+                <div className="text-[18px] font-semibold mt-0.5">
+                  Q&amp;A — the audit record stays as-is
+                </div>
+                <div className="text-[12px] text-ink-4 mt-1.5">
+                  Anything you ask here doesn't change the briefing row.
+                  It's a chat surface for understanding.
+                </div>
+              </div>
+              <button
+                className="ug-btn ghost"
+                onClick={() => setBriefingCoassistOpen(false)}
+                disabled={coassistBusy === "briefing_reasoning"}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="px-3 py-2 mb-4 rounded-lg bg-card-2 border border-line text-[12.5px] text-ink-3 leading-relaxed">
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4 mb-1">
+                  Original briefing reasoning
+                </div>
+                {data.briefing.reasoning}
+              </div>
+
+              {coassistTurns.briefing_reasoning.length === 0 && !coassistBusy && (
+                <div className="text-[12.5px] text-ink-4 italic">
+                  Ask anything — e.g. "Why did you flag the income tier?",
+                  "Rephrase the reasoning more politely",
+                  "What SOP rule applies here?"
+                </div>
+              )}
+
+              {coassistTurns.briefing_reasoning.map((t, i) => (
+                <div
+                  key={i}
+                  className={`mb-2 px-3 py-2 rounded-lg text-[13px] leading-relaxed ${
+                    t.role === "coordinator"
+                      ? "bg-card-2 text-ink-2 border border-line"
+                      : "bg-ai-tint text-ink-2 border border-ai-line"
+                  }`}
+                >
+                  <div className="text-[10.5px] uppercase tracking-wider font-semibold mb-0.5 opacity-70">
+                    {t.role === "coordinator" ? "You" : "AI"}
+                  </div>
+                  {t.text}
+                </div>
+              ))}
+
+              {coassistExplanation.briefing_reasoning &&
+                coassistTurns.briefing_reasoning.length === 0 && (
+                  <div className="mb-2 px-3 py-2 rounded-lg bg-ai-tint border border-ai-line text-[13px] text-ink-2 leading-relaxed">
+                    {coassistExplanation.briefing_reasoning}
+                  </div>
+                )}
+
+              {coassistError.briefing_reasoning && (
+                <div className="mb-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12.5px] text-crimson">
+                  {coassistError.briefing_reasoning}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-line-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="ug-input flex-1 text-[13px]"
+                  placeholder="Ask about this briefing…"
+                  value={coassistInstruction.briefing_reasoning}
+                  onChange={(e) =>
+                    setCoassistInstruction({
+                      ...coassistInstruction,
+                      briefing_reasoning: e.target.value,
+                    })
+                  }
+                  disabled={coassistBusy === "briefing_reasoning"}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && data?.briefing) {
+                      e.preventDefault();
+                      void runCoassist(
+                        "briefing_reasoning",
+                        data.briefing.reasoning,
+                        null
+                      );
+                    }
+                  }}
+                />
+                <button
+                  className="ug-btn gap-1.5"
+                  style={{
+                    background: "var(--ai-tint)",
+                    color: "var(--ai-ink)",
+                    borderColor: "var(--ai-line)",
+                  }}
+                  onClick={() =>
+                    data?.briefing &&
+                    runCoassist("briefing_reasoning", data.briefing.reasoning, null)
+                  }
+                  disabled={
+                    coassistBusy === "briefing_reasoning" ||
+                    !coassistInstruction.briefing_reasoning.trim()
+                  }
+                >
+                  {coassistBusy === "briefing_reasoning" ? "Asking…" : "Ask"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
