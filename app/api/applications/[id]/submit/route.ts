@@ -13,6 +13,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { generateBriefing } from "@/lib/glm/generateBriefing";
 import { buildHistory, loadApplicationContext } from "@/lib/applications/engine";
+import { retrieveProcedureSop } from "@/lib/kb/retrieve";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -36,7 +37,10 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   const appCtx = await loadApplicationContext(applicationId);
   if (!appCtx) return apiError("Application context missing", 500);
 
-  const history = await buildHistory(applicationId);
+  const [history, sopChunks] = await Promise.all([
+    buildHistory(applicationId),
+    retrieveProcedureSop(appCtx.procedure.id),
+  ]);
 
   // Generate the briefing. If GLM fails (rate-limit, transient 5xx, key
   // expired), we DON'T abandon the submission — that would leave the student
@@ -51,6 +55,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
         procedureName: appCtx.procedure.name,
         studentProfile: appCtx.studentProfile,
         history,
+        sopChunks,
       },
       { applicationId }
     );

@@ -67,6 +67,7 @@ export async function generateBriefing(
     inputSummary: {
       procedure: validated.procedureName,
       history_length: validated.history.length,
+      sop_chunk_count: validated.sopChunks.length,
       // Provider tag so /admin/glm-traces can A/B latency + quality side by side
       // without widening the TraceEndpoint enum.
       provider: useIlmu ? "ilmu" : "glm",

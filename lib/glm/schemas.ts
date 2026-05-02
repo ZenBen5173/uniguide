@@ -193,6 +193,8 @@ export const GenerateBriefingInputSchema = z.object({
   procedureName: z.string(),
   studentProfile: StudentProfileSchema,
   history: z.array(HistoryStepSchema),
+  /** Procedure SOP excerpts the AI can quote when raising flags. */
+  sopChunks: z.array(z.string()).default([]),
 });
 
 export const BriefingFlagSchema = z.object({
