@@ -2,20 +2,38 @@
  * POST /api/admin/procedures/[id]/sop
  *
  * Replace the SOP for a procedure. Body: { source_url?, source_text }
- * Wipes existing chunks for the procedure, splits source_text by H2 sections
- * into chunks, inserts. (PDF parsing TBD — for MVP, admin pastes text or
- * provides a URL we fetch and clean.)
+ *
+ * Pipeline:
+ *  1. AI structures the raw text into clean markdown with `## H2` sections
+ *     (structureSop). Catches the common case where a PDF/DOCX extraction
+ *     came back as one wall of text without explicit headers — without this
+ *     step, the chunker below would emit ONE giant chunk and citations
+ *     would be useless.
+ *  2. On AI failure (slow/down/rate-limited), fall back to the raw text.
+ *  3. Chunk by `## H2` + 400-word boundary.
+ *  4. Wipe existing chunks for this procedure and insert the new ones.
  */
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/guards";
 import { getServiceSupabase } from "@/lib/supabase/server";
+import { structureSop } from "@/lib/glm/structureSop";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
+
+export const runtime = "nodejs";
+// structureSop is a single GLM call. Z.AI under load: 30-60s. Mirror the
+// student/coordinator routes' ceiling so the structure step doesn't get
+// killed mid-call.
+export const maxDuration = 60;
 
 const Body = z.object({
   source_url: z.string().url().nullable().optional(),
   source_text: z.string().min(50, "SOP text must be at least 50 characters"),
+  /** When false, skip AI structuring and chunk source_text as-is. Default
+   *  true. Useful when the admin has pasted pre-structured markdown and
+   *  wants a deterministic save without burning a GLM call. */
+  ai_structure: z.boolean().default(true),
 });
 
 interface Chunk {
@@ -81,7 +99,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     .single();
   if (!procedure) return apiError("Procedure not found", 404);
 
-  const chunks = chunkSop(parsed.data.source_text);
+  // ── AI structuring ────────────────────────────────────────────────────────
+  // Try to convert the raw text into well-structured markdown with `## H2`
+  // section headers so the chunker can split meaningfully. Failures here are
+  // non-fatal — fall back to the raw text and the chunker treats it as one
+  // long block (still better than failing the save).
+  let structuredText = parsed.data.source_text;
+  let aiStructured = false;
+  if (parsed.data.ai_structure) {
+    try {
+      const result = await structureSop(
+        { rawText: parsed.data.source_text },
+        { procedureId }
+      );
+      structuredText = result.markdown;
+      aiStructured = true;
+    } catch (err) {
+      console.warn(
+        "[sop] AI structuring failed, falling back to raw text:",
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
+  const chunks = chunkSop(structuredText);
   if (chunks.length === 0) return apiError("No content extracted from SOP text", 400);
 
   // Wipe existing + insert fresh.
@@ -110,6 +151,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   return apiSuccess({
     procedure_id: procedureId,
     chunks_inserted: rows.length,
+    ai_structured: aiStructured,
     indexed_at: new Date().toISOString(),
   });
 }

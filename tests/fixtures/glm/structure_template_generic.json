@@ -1,0 +1,3 @@
+{
+  "text": "{\"template_text\":\"Dear {{full_name}},\\n\\nWe are pleased to inform you that your application for the {{procedure_name}} has been APPROVED.\\n\\nBased on our review, you have met all eligibility criteria. The decision was issued on {{date}} by the {{faculty}} Office.\\n\\n{{coordinator_comment}}\\n\\nPlease confirm acceptance within 14 days by signing and returning the attached form.\\n\\nYours sincerely,\\n{{coordinator_name}}\\nUniversiti Malaya\",\"detected_placeholders\":[\"{{full_name}}\",\"{{procedure_name}}\",\"{{date}}\",\"{{faculty}}\",\"{{coordinator_comment}}\",\"{{coordinator_name}}\"]}"
+}

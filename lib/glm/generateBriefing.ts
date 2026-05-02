@@ -35,34 +35,65 @@ export async function generateBriefing(
 
   const useIlmu = process.env.USE_ILMU_FOR_BRIEFING === "true";
 
-  const result = useIlmu
-    ? await callIlmu({
-        model: "ilmu-glm-5.1",
-        systemPrompt,
-        userPrompt,
-        jsonMode: true,
-        // ILMU-GLM-5.1 spends more tokens on internal reasoning than Z.AI GLM;
-        // 2500 leaves comfortable headroom for a 1.5k-token briefing JSON
-        // without risking an empty-content response (observed at max_tokens≤200).
-        maxTokens: 2500,
-        temperature: 0.2,
-        mockFixture: "brief_scholarship_application",
-      })
-    : await callGlm({
-        // Was glm-4.6 — switched to glm-4.5-flash on 2026-05-02 because Z.AI
-        // GLM-4.6 latency has been spiking past Vercel's 60s function ceiling
-        // for the finals demo. Flash is materially faster and the briefing
-        // quality is acceptable for the demo. Revert when Z.AI stabilises.
-        model: "glm-4.5-flash",
-        systemPrompt,
-        userPrompt,
-        jsonMode: true,
-        maxTokens: 1500,
-        temperature: 0.2,
-        mockFixture: "brief_scholarship_application",
-      });
+  // Retry-on-validation-failure loop. Without this, a single GLM response
+  // that's missing a required field (e.g. ai_confidence — observed in
+  // production where ZERO `brief` traces were ever written despite many
+  // submits) makes the whole call throw and the submit route falls back
+  // to its placeholder briefing. The loop gives GLM one corrective attempt
+  // with the validation error inlined into the prompt, mirroring the
+  // pattern already proven in nextStep.ts.
+  let parsed: GenerateBriefingOutput | null = null;
+  let lastError: string | null = null;
+  let retryCount = 0;
+  let result: Awaited<ReturnType<typeof callGlm>>;
 
-  const parsed = GenerateBriefingOutputSchema.parse(JSON.parse(result.text));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const correctivePrompt =
+      attempt === 0
+        ? systemPrompt
+        : `${systemPrompt}\n\nYour previous response failed validation: ${lastError}\nReturn ONLY valid JSON matching the schema, with EVERY required field present. Required fields: extracted_facts, flags, recommendation, ai_confidence, reasoning.`;
+
+    result = useIlmu
+      ? await callIlmu({
+          model: "ilmu-glm-5.1",
+          systemPrompt: correctivePrompt,
+          userPrompt,
+          jsonMode: true,
+          // ILMU-GLM-5.1 spends more tokens on internal reasoning than Z.AI
+          // GLM; 2500 leaves comfortable headroom for a 1.5k-token briefing
+          // JSON without risking an empty-content response (observed at
+          // max_tokens≤200).
+          maxTokens: 2500,
+          temperature: 0.2,
+          mockFixture: "brief_scholarship_application",
+        })
+      : await callGlm({
+          // Was glm-4.6 — switched to glm-4.5-flash on 2026-05-02 because
+          // Z.AI GLM-4.6 latency has been spiking past Vercel's 60s function
+          // ceiling for the finals demo. Flash is materially faster and the
+          // briefing quality is acceptable for the demo. Revert when Z.AI
+          // stabilises.
+          model: "glm-4.5-flash",
+          systemPrompt: correctivePrompt,
+          userPrompt,
+          jsonMode: true,
+          maxTokens: 1500,
+          temperature: 0.2,
+          mockFixture: "brief_scholarship_application",
+        });
+
+    try {
+      parsed = GenerateBriefingOutputSchema.parse(JSON.parse(result.text));
+      break;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      retryCount++;
+    }
+  }
+
+  if (!parsed) {
+    throw new Error(`generateBriefing failed validation after retry: ${lastError}`);
+  }
 
   await writeTrace({
     workflowId: opts.applicationId ?? null,
@@ -72,12 +103,14 @@ export async function generateBriefing(
       procedure: validated.procedureName,
       history_length: validated.history.length,
       sop_chunk_count: validated.sopChunks.length,
-      // Provider tag so /admin/glm-traces can A/B latency + quality side by side
-      // without widening the TraceEndpoint enum.
+      // Provider tag so /admin/glm-traces can A/B latency + quality side by
+      // side without widening the TraceEndpoint enum.
       provider: useIlmu ? "ilmu" : "glm",
     },
     output: { recommendation: parsed.recommendation, flag_count: parsed.flags.length },
-    result,
+    confidence: parsed.ai_confidence,
+    result: result!,
+    retryCount,
   });
 
   return parsed;

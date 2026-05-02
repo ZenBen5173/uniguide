@@ -417,11 +417,11 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                             {pdfBusy ? "Parsing PDF…" : "Click to choose a PDF (max 10 MB)"}
                           </div>
                           <div className="text-[12px] text-ink-4 mt-1">
-                            We extract the text and auto-fill the SOP box. Scanned/image PDFs will need manual paste.
+                            We extract the text, then AI structures it into sections. Scanned/image PDFs will need manual paste.
                           </div>
                           <input
                             type="file"
-                            accept="application/pdf"
+                            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
                             className="hidden"
                             disabled={pdfBusy}
                             onChange={(e) => {

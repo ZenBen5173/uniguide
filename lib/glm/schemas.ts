@@ -365,3 +365,40 @@ export const JudgeLetterOutputSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 export type JudgeLetterOutput = z.infer<typeof JudgeLetterOutputSchema>;
+
+// ============================================================================
+// structureSop — convert raw extracted SOP text → clean markdown with H2
+// headers so the /sop chunker can split correctly.
+// ============================================================================
+export const StructureSopInputSchema = z.object({
+  /** Raw text from the parse-pdf endpoint (PDF or DOCX, both supported). */
+  rawText: z.string().min(50).max(50000),
+});
+export type StructureSopInput = z.infer<typeof StructureSopInputSchema>;
+
+export const StructureSopOutputSchema = z.object({
+  /** Markdown with `# H1` title and `## H2` section headers, ready for the
+   *  /sop chunker which splits by H2 + 400-word boundary. */
+  markdown: z.string().min(50),
+});
+export type StructureSopOutput = z.infer<typeof StructureSopOutputSchema>;
+
+// ============================================================================
+// structureTemplate — convert raw filled letter → reusable template with
+// {{placeholder}} substitutions for variable bits.
+// ============================================================================
+export const StructureTemplateInputSchema = z.object({
+  rawText: z.string().min(20).max(20000),
+  templateType: z.enum(["acceptance", "rejection", "request_info", "custom"]),
+});
+export type StructureTemplateInput = z.infer<typeof StructureTemplateInputSchema>;
+
+export const StructureTemplateOutputSchema = z.object({
+  /** The letter with variable bits substituted as `{{placeholder_name}}`. */
+  template_text: z.string().min(20),
+  /** Every placeholder that appears in template_text (deduped, in `{{name}}`
+   *  form). Persisted to procedure_letter_templates.detected_placeholders so
+   *  fillLetter knows what fields to populate. */
+  detected_placeholders: z.array(z.string()).default([]),
+});
+export type StructureTemplateOutput = z.infer<typeof StructureTemplateOutputSchema>;

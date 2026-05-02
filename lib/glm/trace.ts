@@ -22,7 +22,9 @@ export type TraceEndpoint =
   | "estimate_progress" // v2
   | "coassist"        // coordinator natural-language artifact revision
   | "student_chat"    // always-on student AI helper
-  | "judge_letter";   // second-layer hallucination judge on filled letters
+  | "judge_letter"    // second-layer hallucination judge on filled letters
+  | "structure_sop"   // admin: convert raw uploaded text → markdown with H2 sections
+  | "structure_template"; // admin: convert raw uploaded letter → reusable template
 
 export interface TraceRecord {
   workflowId: string | null;
