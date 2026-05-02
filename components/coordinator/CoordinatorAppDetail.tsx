@@ -54,6 +54,9 @@ interface DetailData {
     decided_at: string | null;
     assigned_to: string | null;
     assignee_name: string | null;
+    escalation_pending?: boolean | null;
+    escalation_opened_at?: string | null;
+    escalation_resolved_at?: string | null;
     procedures?: { name: string; description: string | null };
     student_profiles?: {
       full_name: string;
@@ -65,6 +68,7 @@ interface DetailData {
       matric_no: string | null;
     };
   };
+  escalation_summary?: string | null;
   viewer?: { id: string };
   briefing: {
     id: string;
@@ -152,6 +156,27 @@ export default function CoordinatorAppDetail({
   });
   // Briefing-coassist drawer visibility
   const [briefingCoassistOpen, setBriefingCoassistOpen] = useState(false);
+
+  // Escalation resolution
+  const [resolvingEscalation, setResolvingEscalation] = useState(false);
+  const resolveEscalation = async () => {
+    if (!confirm("Mark this escalation as resolved? The chat thread is preserved.")) return;
+    setResolvingEscalation(true);
+    try {
+      const res = await fetch(
+        `/api/coordinator/applications/${id}/resolve-escalation`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+      );
+      const json = await res.json();
+      if (json.ok) {
+        await refresh();
+      } else {
+        alert(`Could not resolve: ${json.error}`);
+      }
+    } finally {
+      setResolvingEscalation(false);
+    }
+  };
 
   /** Run coassist on the given artifact. onRevised gets the new text so the
    *  caller can update its local state (e.g. setPreviewLetter). For
@@ -496,6 +521,45 @@ export default function CoordinatorAppDetail({
               </div>
             </div>
           </div>
+
+          {/* Escalation context — surfaces when the student has flagged that
+               they need a coordinator's attention. The application's status
+               is unchanged; the escalation is parallel to the formal flow. */}
+          {data.application.escalation_pending && data.escalation_summary && (
+            <div className="ug-card mb-5 overflow-hidden border-[#E8DBB5]" style={{ borderColor: "#E8DBB5" }}>
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E8DBB5] bg-amber-soft">
+                <div className="flex items-center gap-2.5 text-amber font-semibold text-sm">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 9v3.5M12 16h.01M5.07 19h13.86a2 2 0 0 0 1.74-3l-6.93-12a2 2 0 0 0-3.48 0l-6.93 12a2 2 0 0 0 1.74 3z" />
+                  </svg>
+                  Student escalation
+                </div>
+                <button
+                  className="ug-btn ghost text-[12px]"
+                  onClick={resolveEscalation}
+                  disabled={resolvingEscalation}
+                >
+                  {resolvingEscalation ? "Resolving…" : "Mark resolved"}
+                </button>
+              </div>
+              <div className="px-5 py-4">
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4 mb-1.5">
+                  AI summary of the student's situation
+                </div>
+                <p className="text-[14px] text-ink-2 leading-relaxed m-0">
+                  {data.escalation_summary}
+                </p>
+                {data.application.escalation_opened_at && (
+                  <div className="text-[11.5px] text-ink-4 mt-2 mono">
+                    opened {new Date(data.application.escalation_opened_at).toLocaleString("en-MY")}
+                  </div>
+                )}
+                <div className="text-[12px] text-ink-3 mt-3 italic">
+                  Reply in the message thread on the right to respond. The student sees your message in real time.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI Briefing */}
           {data.briefing && (

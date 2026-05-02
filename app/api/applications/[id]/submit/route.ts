@@ -37,9 +37,16 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   const appCtx = await loadApplicationContext(applicationId);
   if (!appCtx) return apiError("Application context missing", 500);
 
-  const [history, sopChunks] = await Promise.all([
+  const [history, sopChunks, escalationRow] = await Promise.all([
     buildHistory(applicationId),
     retrieveProcedureSop(appCtx.procedure.id),
+    sb.from("application_messages")
+      .select("body, created_at")
+      .eq("application_id", applicationId)
+      .eq("kind", "escalation_summary")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   // Generate the briefing. If GLM fails (rate-limit, transient 5xx, key
@@ -74,6 +81,19 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     ai_confidence: 0.0,
   };
   const finalBriefing = briefing ?? fallback;
+
+  // If the student raised an escalation during the application, surface it
+  // as an info-severity flag so the coordinator reviewing this submission
+  // sees the prior question in context. Doesn't block — just adds context.
+  if (escalationRow.data?.body) {
+    finalBriefing.flags = [
+      ...finalBriefing.flags,
+      {
+        severity: "info" as const,
+        message: `Student raised an escalation during this application: ${escalationRow.data.body.slice(0, 400)}${escalationRow.data.body.length > 400 ? "…" : ""}`,
+      },
+    ];
+  }
 
   const { data: insertedBriefing, error: insErr } = await sb
     .from("application_briefings")

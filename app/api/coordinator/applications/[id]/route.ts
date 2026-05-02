@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at, updated_at,
       assigned_to, assigned_at,
+      escalation_pending, escalation_opened_at, escalation_resolved_at,
       procedures(name, description)
     `)
     .eq("id", id)
@@ -45,7 +46,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     assignee_name = assigneeProfile?.full_name ?? "Coordinator";
   }
 
-  const [{ data: briefing }, { data: steps }, { data: decisions }, { data: letters }] = await Promise.all([
+  const [{ data: briefing }, { data: steps }, { data: decisions }, { data: letters }, { data: escalation }] = await Promise.all([
     sb.from("application_briefings")
       .select("id, extracted_facts, flags, recommendation, reasoning, status, created_at")
       .eq("application_id", id)
@@ -64,6 +65,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       .select("id, letter_type, generated_text, delivered_to_student_at, created_at")
       .eq("application_id", id)
       .order("created_at", { ascending: false }),
+    sb.from("application_messages")
+      .select("body, created_at")
+      .eq("application_id", id)
+      .eq("kind", "escalation_summary")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   return apiSuccess({
@@ -72,6 +80,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     steps: steps ?? [],
     decisions: decisions ?? [],
     letters: letters ?? [],
+    escalation_summary: escalation?.body ?? null,
     viewer: { id: user.id },
   });
 }

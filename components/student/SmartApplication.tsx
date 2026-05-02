@@ -8,6 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
 import SopViewer, { type SopViewerHandle } from "./SopViewer";
 import MessageThread from "@/components/shared/MessageThread";
+import AiChatPanel from "@/components/student/AiChatPanel";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -19,6 +20,9 @@ interface ApplicationData {
     progress_current_step: number;
     progress_estimated_total: number | null;
     student_summary: string | null;
+    escalation_pending?: boolean | null;
+    escalation_opened_at?: string | null;
+    escalation_resolved_at?: string | null;
     procedures?: { name: string; description: string | null; deadline_date?: string | null; deadline_label?: string | null };
   };
   steps: Array<{
@@ -605,6 +609,12 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
 
           {/* Source SOP viewer */}
           <SopViewer ref={sopRef} procedureId={data.application.procedure_id} />
+
+          {/* Always-on AI chat — answers SOP/situation questions, can escalate to coordinator */}
+          <AiChatPanel
+            applicationId={id}
+            escalationPending={!!data.application.escalation_pending}
+          />
 
           {/* Message thread with coordinator */}
           <MessageThread applicationId={id} variant="rail" />

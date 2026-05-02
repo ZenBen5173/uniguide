@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { data: app } = await sb
     .from("applications")
-    .select("id, user_id, procedure_id, status, progress_current_step, progress_estimated_total, student_summary, ai_recommendation, ai_confidence, created_at, submitted_at, decided_at, procedures(name, description, deadline_date, deadline_label)")
+    .select("id, user_id, procedure_id, status, progress_current_step, progress_estimated_total, student_summary, ai_recommendation, ai_confidence, escalation_pending, escalation_opened_at, escalation_resolved_at, created_at, submitted_at, decided_at, procedures(name, description, deadline_date, deadline_label)")
     .eq("id", id)
     .single();
   if (!app) return apiError("Application not found", 404);

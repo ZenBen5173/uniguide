@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       id, user_id, procedure_id, status, ai_recommendation, ai_confidence,
       student_summary, submitted_at, decided_at, created_at,
       assigned_to, assigned_at,
+      escalation_pending, escalation_opened_at,
       procedures(name)
     `)
     .order("submitted_at", { ascending: false, nullsFirst: false });
@@ -38,6 +39,11 @@ export async function GET(req: NextRequest) {
   if (statusFilter !== "all") {
     if (statusFilter === "pending") {
       query = query.in("status", ["submitted", "more_info_requested"]);
+    } else if (statusFilter === "triage") {
+      // Triage tab: applications with an open escalation, regardless of status.
+      // Includes pre-submit drafts so coordinators can see student questions
+      // before formal submission. Status filter is intentionally bypassed.
+      query = query.eq("escalation_pending", true);
     } else {
       query = query.eq("status", statusFilter);
     }
@@ -59,14 +65,15 @@ export async function GET(req: NextRequest) {
   // Inbox metrics — counted across ALL applications (not just current filter slice).
   const { data: allForCounts } = await sb
     .from("applications")
-    .select("status");
-  const counts = { pending: 0, approved: 0, rejected: 0, more_info: 0, draft: 0 };
+    .select("status, escalation_pending");
+  const counts = { pending: 0, approved: 0, rejected: 0, more_info: 0, draft: 0, triage: 0 };
   for (const a of allForCounts ?? []) {
     if (a.status === "submitted") counts.pending++;
     else if (a.status === "approved") counts.approved++;
     else if (a.status === "rejected") counts.rejected++;
     else if (a.status === "more_info_requested") counts.more_info++;
     else if (a.status === "draft") counts.draft++;
+    if (a.escalation_pending) counts.triage++;
   }
 
   // Resolve assignee names for the rows that have one.

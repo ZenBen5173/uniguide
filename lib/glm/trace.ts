@@ -20,7 +20,8 @@ export type TraceEndpoint =
   | "next_step"       // v2
   | "fill_letter"     // v2
   | "estimate_progress" // v2
-  | "coassist";       // coordinator natural-language artifact revision
+  | "coassist"        // coordinator natural-language artifact revision
+  | "student_chat";   // always-on student AI helper
 
 export interface TraceRecord {
   workflowId: string | null;

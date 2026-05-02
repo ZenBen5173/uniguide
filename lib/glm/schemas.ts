@@ -273,3 +273,40 @@ export const CoassistOutputSchema = z.object({
   brief_explanation: z.string().min(1).max(400),
 });
 export type CoassistOutput = z.infer<typeof CoassistOutputSchema>;
+
+// ============================================================================
+// studentChat — always-on AI chat for the student during their application.
+// AI is grounded in the SOP, the current step, and the student's history.
+// May proactively suggest escalation when the answer requires human
+// discretion or the student's situation isn't covered by the SOP.
+// ============================================================================
+
+export const ChatTurnSchema = z.object({
+  role: z.enum(["student", "ai", "coordinator"]),
+  text: z.string(),
+});
+
+export const StudentChatInputSchema = z.object({
+  procedureName: z.string(),
+  studentProfile: StudentProfileSchema,
+  sopChunks: z.array(z.string()).default([]),
+  /** The step the student is currently on (or null if they're between steps). */
+  currentStepPrompt: z.string().nullable().default(null),
+  /** Completed steps so far. */
+  history: z.array(HistoryStepSchema).default([]),
+  /** Recent chat turns in this thread (last ~10). */
+  recentChat: z.array(ChatTurnSchema).default([]),
+  /** The student's latest message. */
+  studentMessage: z.string().min(1).max(4000),
+});
+
+export const StudentChatOutputSchema = z.object({
+  /** AI's reply to the student. */
+  ai_response: z.string().min(1).max(2000),
+  /** Whether the AI thinks this should escalate to a human coordinator. */
+  suggest_escalate: z.boolean(),
+  /** When suggest_escalate=true, a one-paragraph summary of the student's
+   *  situation that a coordinator can read in 5 seconds. Null otherwise. */
+  escalation_summary: z.string().max(1500).nullable(),
+});
+export type StudentChatOutput = z.infer<typeof StudentChatOutputSchema>;

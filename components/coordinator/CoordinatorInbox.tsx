@@ -16,6 +16,8 @@ interface InboxApp {
   submitted_at: string | null;
   assigned_to: string | null;
   assignee_name: string | null;
+  escalation_pending?: boolean | null;
+  escalation_opened_at?: string | null;
   procedures?: { name: string };
   student_profiles?: {
     full_name: string;
@@ -28,10 +30,11 @@ interface InboxApp {
   flags: Array<{ severity: "info" | "warn" | "block"; message: string }>;
 }
 
-interface Counts { pending: number; approved: number; rejected: number; more_info: number; draft: number }
+interface Counts { pending: number; approved: number; rejected: number; more_info: number; draft: number; triage?: number }
 
 const FILTER_TABS = [
   { key: "pending", label: "Pending" },
+  { key: "triage", label: "Triage", highlight: true },
   { key: "draft", label: "Drafts" },
   { key: "all", label: "All" },
   { key: "approved", label: "Approved" },
@@ -274,6 +277,8 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium border ${
                   filter === t.key
                     ? "bg-card border-line text-ink"
+                    : t.key === "triage" && (counts.triage ?? 0) > 0
+                    ? "bg-amber-soft border-[#E8DBB5] text-amber hover:opacity-90"
                     : "bg-transparent border-transparent text-ink-3 hover:bg-[rgba(11,37,69,.04)]"
                 }`}
               >
@@ -282,6 +287,11 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                   <span className={`mono text-[11px] px-1.5 rounded ${
                     filter === "pending" ? "bg-ink text-white" : "bg-line-2 text-ink-3"
                   }`}>{counts.pending}</span>
+                )}
+                {t.key === "triage" && (counts.triage ?? 0) > 0 && (
+                  <span className={`mono text-[11px] px-1.5 rounded ${
+                    filter === "triage" ? "bg-amber text-white" : "bg-amber text-white"
+                  }`}>{counts.triage}</span>
                 )}
                 {t.key === "draft" && counts.draft > 0 && (
                   <span className={`mono text-[11px] px-1.5 rounded ${
@@ -499,6 +509,14 @@ export default function CoordinatorInbox({ user }: { user: { name: string; initi
                           <div>
                             <div className="font-semibold text-ink text-[13.5px] flex items-center gap-2">
                               {a.student_profiles?.full_name ?? "Unknown student"}
+                              {a.escalation_pending && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-soft text-amber border border-[#E8DBB5]"
+                                  title="Student raised an escalation — they're asking for human help."
+                                >
+                                  Triage
+                                </span>
+                              )}
                               {a.assigned_to && (
                                 <span
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
