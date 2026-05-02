@@ -1,8 +1,25 @@
 # UniGuide — MVP Status
 
-**Last reviewed:** 2026-04-25 · **Current branch:** `main` · **Live:** [uniguide-git-main-zenben5173s-projects.vercel.app](https://uniguide-git-main-zenben5173s-projects.vercel.app)
+**Last reviewed:** 2026-04-26 · **Current branch:** `main` · **Live:** [uniguide-git-main-zenben5173s-projects.vercel.app](https://uniguide-git-main-zenben5173s-projects.vercel.app)
+**Phase:** 🏆 **FINALIST** · UMHackathon 2026 Final Round (Online sub-phase: 29 Apr – 2 May; Physical sub-phase: 2–3 May at FCSIT UM → KPS Auditorium)
 
-This document records what works end-to-end on UniGuide today, what's stubbed or partially-wired, and what would need to happen before this is genuinely production-grade. It complements (and supersedes when in conflict) the claims in the submitted `PRD.pdf`, `SAD.pdf`, and `QATD.pdf` (plus the slide deck) — those are forward-looking; this is grounded in the code as of the date above.
+This document records what works end-to-end on UniGuide today, what's stubbed or partially-wired, and what would need to happen before this is genuinely production-grade. It complements (and supersedes when in conflict) the claims in the submitted preliminary docs (`PRD.pdf`, `SAD.pdf`, `QATD.pdf`, preliminary pitch deck) — those are forward-looking; this is grounded in the code as of the date above. **For the finals, the project memory file `CLAUDE.md` at the repo root is canonical** — it captures the new deliverables, judging weights, and timeline.
+
+## 🎯 Final round priorities (29 Apr – 3 May)
+
+The finals require a different deliverable set than preliminary, with new judging weights:
+
+| Deliverable (Finalist Handbook) | Status | Owner |
+|---|---|---|
+| Code Repository (build on preliminary) | ✅ live, in repo | Zen Ben |
+| Refined QATD (PDF) | ⏳ refine `docs/QATD.pdf` | TBD |
+| **Deployment Plan (PDF)** *(new — 20% weight)* | ⏳ TBD | TBD |
+| **Business Proposal (PDF)** *(new — 20% weight)* | ⏳ TBD | TBD |
+| Final Round Pitch Deck (PDF) | ⏳ TBD | TBD |
+
+**Mandatory:** every PDF must carry the **Z.AI + YTL AI LABS logos**. Logo files come from the organising committee.
+
+**Code rule:** build on the preliminary repo. No pre-developed code from external projects/competitions.
 
 ---
 

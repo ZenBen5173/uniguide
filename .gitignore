@@ -28,6 +28,9 @@ out/
 Thumbs.db
 desktop.ini
 
+# Microsoft Office lock files (auto-created when a doc is open in Word/Excel)
+~$*
+
 # Testing
 coverage/
 .nyc_output/
