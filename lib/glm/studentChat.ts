@@ -40,7 +40,8 @@ export async function studentChat(
     : "student_chat_answer";
 
   const result = await callGlm({
-    model: "glm-4.6",
+    // glm-4.5-flash for finals stability — see generateBriefing.ts header.
+    model: "glm-4.5-flash",
     systemPrompt,
     userPrompt,
     jsonMode: true,
