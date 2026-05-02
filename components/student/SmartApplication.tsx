@@ -7,7 +7,6 @@ import TopBar from "@/components/shared/TopBar";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { StepBody, type StepShape } from "./StepRenderers";
 import SopViewer, { type SopViewerHandle } from "./SopViewer";
-import MessageThread from "@/components/shared/MessageThread";
 import AiChatPanel from "@/components/student/AiChatPanel";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
@@ -615,9 +614,6 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
             applicationId={id}
             escalationPending={!!data.application.escalation_pending}
           />
-
-          {/* Message thread with coordinator */}
-          <MessageThread applicationId={id} variant="rail" />
 
           {/* Letters delivered */}
           {data.letters.length > 0 && (
