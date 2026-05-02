@@ -7,6 +7,7 @@ import { Check, MessageSquare, X, Paperclip, Undo2, Sparkles } from "lucide-reac
 import TopBar from "@/components/shared/TopBar";
 import InternalNotes from "@/components/coordinator/InternalNotes";
 import MessageThread from "@/components/shared/MessageThread";
+import AiProgressBar from "@/components/shared/AiProgressBar";
 
 const FACT_ACRONYMS = new Set([
   "cgpa", "ug", "epf", "rm", "fyp", "ic", "spm", "stpm",
@@ -991,24 +992,19 @@ export default function CoordinatorAppDetail({
 
             <div className="p-6 overflow-y-auto flex-1">
               {previewBusy ? (
-                <div className="py-10 px-6 flex flex-col items-center gap-4">
-                  {/* Animated dot row + stage copy. Z.AI calls take 30 to 60 s
-                       under load, so we surface what's actually happening
-                       behind the spinner instead of an opaque "Generating preview…". */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "200ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-ai-ink animate-pulse" style={{ animationDelay: "400ms" }} />
-                  </div>
-                  <div className="text-[13px] font-semibold text-ink-2">
-                    {previewStage === "judging"
+                <AiProgressBar
+                  expectedMs={30_000}
+                  stages={[
+                    { at: 0, label: "Drafting the letter from the template + briefing…" },
+                    { at: 12, label: "Running the AI faithfulness check on the draft…" },
+                  ]}
+                  label={
+                    previewStage === "judging"
                       ? "Running the AI faithfulness check on the draft…"
-                      : "Drafting the letter from the template + briefing…"}
-                  </div>
-                  <div className="text-[12px] text-ink-4 text-center max-w-md leading-snug">
-                    Z.AI calls usually take 10 to 30 seconds. If it&apos;s longer than a minute the modal will stop waiting and surface an error you can retry.
-                  </div>
-                </div>
+                      : null
+                  }
+                  caption="Z.AI calls usually take 10 to 30 seconds. If it's longer than a minute the modal will stop waiting and surface an error you can retry."
+                />
               ) : previewError ? (
                 <div className="space-y-3">
                   <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
@@ -1229,6 +1225,19 @@ export default function CoordinatorAppDetail({
                         {coassistBusy === "letter" ? "Revising…" : "Revise"}
                       </button>
                     </div>
+
+                    {coassistBusy === "letter" && (
+                      <div className="mt-2">
+                        <AiProgressBar
+                          expectedMs={25_000}
+                          compact
+                          stages={[
+                            { at: 0, label: "Revising the letter…" },
+                            { at: 12, label: "Re-checking against SOP + briefing…" },
+                          ]}
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1303,9 +1312,14 @@ export default function CoordinatorAppDetail({
 
             <div className="p-6 overflow-y-auto flex-1">
               {stepPreviewBusy ? (
-                <div className="text-center py-8 text-ink-4">
-                  Asking the AI to plan a question based on your comment…
-                </div>
+                <AiProgressBar
+                  expectedMs={20_000}
+                  stages={[
+                    { at: 0, label: "Reading the SOP and your comment…" },
+                    { at: 8, label: "Planning the next question for the student…" },
+                  ]}
+                  caption="The AI is reading the procedure SOP plus the application history to draft a question grounded in your request."
+                />
               ) : stepPreviewError ? (
                 <div className="space-y-3">
                   <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
@@ -1451,6 +1465,16 @@ export default function CoordinatorAppDetail({
                         {coassistBusy === "step_prompt" ? "Revising…" : "Revise"}
                       </button>
                     </div>
+
+                    {coassistBusy === "step_prompt" && (
+                      <div className="mt-2">
+                        <AiProgressBar
+                          expectedMs={20_000}
+                          compact
+                          label="Rewording the question…"
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               ) : null}
@@ -1568,6 +1592,16 @@ export default function CoordinatorAppDetail({
               {coassistError.briefing_reasoning && (
                 <div className="mb-2 px-3 py-2 rounded-lg bg-crimson-soft border border-[#E8C5CB] text-[12.5px] text-crimson">
                   {coassistError.briefing_reasoning}
+                </div>
+              )}
+
+              {coassistBusy === "briefing_reasoning" && (
+                <div className="mb-2">
+                  <AiProgressBar
+                    expectedMs={20_000}
+                    compact
+                    label="Thinking…"
+                  />
                 </div>
               )}
             </div>

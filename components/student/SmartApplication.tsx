@@ -9,6 +9,7 @@ import { StepBody, type StepShape } from "./StepRenderers";
 import SopViewer, { type SopViewerHandle } from "./SopViewer";
 import AiChatPanel from "@/components/student/AiChatPanel";
 import MessageThread from "@/components/shared/MessageThread";
+import AiProgressBar from "@/components/shared/AiProgressBar";
 
 const draftKey = (appId: string, stepId: string) => `uniguide:draft:${appId}:${stepId}`;
 
@@ -530,6 +531,29 @@ export default function SmartApplication({ id, user }: { id: string; user: { nam
                     onChange={setDraftValue}
                     applicationId={id}
                   />
+
+                  {submitting && (
+                    <div className="px-3 py-2 mt-3 rounded-lg bg-ai-tint border border-ai-line">
+                      <AiProgressBar
+                        expectedMs={
+                          current.type === "final_submit" ? 35_000 : 22_000
+                        }
+                        compact
+                        stages={
+                          current.type === "final_submit"
+                            ? [
+                                { at: 0, label: "Building your coordinator briefing…" },
+                                { at: 12, label: "Cross-referencing with the SOP…" },
+                                { at: 22, label: "Finalising and submitting…" },
+                              ]
+                            : [
+                                { at: 0, label: "Saving your answer…" },
+                                { at: 6, label: "Planning the next question…" },
+                              ]
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="ug-step-footer">
                     <div className="ug-step-footer-left">

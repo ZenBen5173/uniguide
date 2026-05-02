@@ -29,7 +29,11 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     .single();
   if (!app) return apiError("Application not found", 404);
   if (app.user_id !== user.id) return apiError("Forbidden", 403);
-  if (app.status !== "draft") {
+  // Allow revise on draft AND more_info_requested. After a coordinator
+  // requests more info the student gets new pending steps; they should
+  // still be able to revise their original answers if they realise they
+  // got something wrong.
+  if (app.status !== "draft" && app.status !== "more_info_requested") {
     return apiError(`Cannot revise — application is ${app.status}`, 409);
   }
 
@@ -64,10 +68,24 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     .eq("id", stepId);
   if (updErr) return apiError(`Failed to reset step: ${updErr.message}`, 500);
 
-  // Touch the application so realtime subscribers refresh.
+  // Recompute the running count of completed steps and refresh the
+  // application's progress counter. Without this the Portal tile still
+  // showed the pre-revise number until the student completed another step.
+  const { count: completedCount } = await sb
+    .from("application_steps")
+    .select("id", { count: "exact", head: true })
+    .eq("application_id", applicationId)
+    .eq("status", "completed");
+
+  // Touch the application so realtime subscribers refresh + sync progress.
   await sb
     .from("applications")
-    .update({ updated_at: new Date().toISOString() })
+    .update({
+      updated_at: new Date().toISOString(),
+      ...(typeof completedCount === "number"
+        ? { progress_current_step: completedCount }
+        : {}),
+    })
     .eq("id", applicationId);
 
   return apiSuccess({

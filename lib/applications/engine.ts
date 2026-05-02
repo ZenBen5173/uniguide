@@ -244,7 +244,44 @@ export async function emitNextStep(args: {
   );
 
   if (result.is_complete || !result.next_step) {
-    return { complete: true, step: null };
+    // GLM signalled "no more questions" — synthesise a terminal final_submit
+    // step so the student has a clear "Review and submit" affordance in the
+    // smart-application UI. Without this insert, the application strands at
+    // "no current step, status=draft" and the student has no recovery path
+    // short of an explicit /submit POST (which the submit route now rejects
+    // for safety reasons).
+    const completionOrdinal = (history.length || 0) + 1;
+    const { data: completion, error: cErr } = await sb
+      .from("application_steps")
+      .insert({
+        application_id: args.applicationId,
+        ordinal: completionOrdinal,
+        type: "final_submit",
+        prompt_text:
+          "All set. Review your answers above, then submit your application to the office for review.",
+        config: {
+          summary_intro:
+            result.running_summary ??
+            "Here's what you've shared. Submit when you're ready — you can still revise individual steps before submitting.",
+        },
+        emitted_by: "ai",
+        status: "pending",
+      })
+      .select("id, ordinal, type, prompt_text, config")
+      .single();
+    if (cErr || !completion) {
+      throw new Error(`Failed to insert final_submit step: ${cErr?.message}`);
+    }
+    return {
+      complete: false,
+      step: {
+        id: completion.id,
+        ordinal: completion.ordinal,
+        type: completion.type as StepType,
+        prompt_text: completion.prompt_text,
+        config: completion.config as Record<string, unknown>,
+      },
+    };
   }
 
   const nextOrdinal = (history.length || 0) + 1;
@@ -317,17 +354,51 @@ export async function recordResponseAndAdvance(args: {
 > {
   const sb = getServiceSupabase();
 
-  // Mark the step completed.
-  const { error: respErr } = await sb
+  // Mark the step completed — but only if it's still pending. This is the
+  // idempotency guard: if the student double-clicks Submit, two concurrent
+  // requests both pass the route's status check and both call this function.
+  // The first one updates pending -> completed; the second's filter no
+  // longer matches and the rowcount is 0. We treat zero rows updated as
+  // "someone else already advanced this step" and short-circuit by reading
+  // back the latest pending step (which the first request will have
+  // emitted by now) so the second client lands on a coherent state.
+  const { count: updatedCount, error: respErr } = await sb
     .from("application_steps")
     .update({
       status: "completed",
       response_data: args.responseData,
       completed_at: new Date().toISOString(),
-    })
+    }, { count: "exact" })
     .eq("id", args.stepId)
-    .eq("application_id", args.applicationId);
+    .eq("application_id", args.applicationId)
+    .eq("status", "pending");
   if (respErr) throw new Error(`Failed to record response: ${respErr.message}`);
+  if (updatedCount === 0) {
+    // Someone else (concurrent request, or a retry after a slow response)
+    // already advanced this step. Return the current pending step so the
+    // caller's UI can render it instead of a confusing error.
+    const { data: existingPending } = await sb
+      .from("application_steps")
+      .select("id, ordinal, type, prompt_text, config")
+      .eq("application_id", args.applicationId)
+      .eq("status", "pending")
+      .order("ordinal", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (existingPending) {
+      return {
+        complete: false,
+        step: {
+          id: existingPending.id,
+          ordinal: existingPending.ordinal,
+          type: existingPending.type as StepType,
+          prompt_text: existingPending.prompt_text,
+          config: existingPending.config as Record<string, unknown>,
+        },
+      };
+    }
+    return { complete: true, step: null };
+  }
 
   // Bump progress counter. With head:true the count lives on the `count`
   // property of the response, not `data` — destructuring `data` here

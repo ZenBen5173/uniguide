@@ -49,7 +49,8 @@ export async function nextStep(
         : `${systemPrompt}\n\nYour previous response failed validation: ${lastError}\nReturn ONLY valid JSON matching the schema.`;
 
     result = await callGlm({
-      model: "glm-4.6",
+      // glm-4.5-flash for finals stability — see generateBriefing.ts header.
+      model: "glm-4.5-flash",
       systemPrompt: correctivePrompt,
       userPrompt,
       jsonMode: true,

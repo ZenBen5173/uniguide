@@ -40,6 +40,23 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     return apiError(`Application is ${app.status} — cannot submit`, 409);
   }
 
+  // Guard: only accept /submit when the AI has actually emitted a
+  // final_submit step and the student has completed every prior step.
+  // Earlier this route allowed direct /submit on an empty history,
+  // which produced briefings with no facts and confused the inbox.
+  const { data: incompleteSteps } = await sb
+    .from("application_steps")
+    .select("id, type, status")
+    .eq("application_id", applicationId)
+    .neq("status", "completed");
+  const hasPendingNonFinal = (incompleteSteps ?? []).some((s) => s.type !== "final_submit");
+  if (hasPendingNonFinal) {
+    return apiError(
+      "Please complete the remaining steps before submitting your application.",
+      409
+    );
+  }
+
   const appCtx = await loadApplicationContext(applicationId);
   if (!appCtx) return apiError("Application context missing", 500);
 
@@ -76,14 +93,20 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     console.error("[submit] briefing generation failed — falling back:", err);
   }
 
+  // The DB CHECK constraint on application_briefings.recommendation only
+  // allows {approve, reject, request_info}. Earlier this fallback used
+  // 'review', which made the insert below throw — turning the "resilient
+  // fallback" into a guaranteed failure. We use 'request_info' instead:
+  // it accurately signals "coordinator action required" and is one of the
+  // three valid values.
   const fallback = {
     extracted_facts: {},
     flags: [{
       severity: "warn" as const,
       message: "AI briefing failed to generate — coordinator should regenerate or review the raw history.",
     }],
-    recommendation: "review" as const,
-    reasoning: "Automatic briefing was unavailable at submission time. Please review the application history directly.",
+    recommendation: "request_info" as const,
+    reasoning: "Automatic briefing was unavailable at submission time. Please review the application history directly and request additional info from the student if needed.",
     ai_confidence: 0.0,
   };
   const finalBriefing = briefing ?? fallback;
@@ -117,7 +140,11 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     return apiError(`Failed to write briefing: ${insErr?.message}`, 500);
   }
 
-  await sb
+  // The briefing row is already written; if the status update fails the
+  // application is in a half-submitted state (briefing exists, status still
+  // 'draft'). Surface the error so the client can retry rather than reporting
+  // success on a half-completed submit.
+  const { error: appUpdErr } = await sb
     .from("applications")
     .update({
       status: "submitted",
@@ -126,6 +153,12 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
       ai_confidence: finalBriefing.ai_confidence,
     })
     .eq("id", applicationId);
+  if (appUpdErr) {
+    return apiError(
+      `Briefing saved but failed to flip application to 'submitted': ${appUpdErr.message}. Please retry.`,
+      500
+    );
+  }
 
   return apiSuccess({
     submitted: true,

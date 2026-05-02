@@ -49,7 +49,11 @@ export async function generateBriefing(
         mockFixture: "brief_scholarship_application",
       })
     : await callGlm({
-        model: "glm-4.6",
+        // Was glm-4.6 — switched to glm-4.5-flash on 2026-05-02 because Z.AI
+        // GLM-4.6 latency has been spiking past Vercel's 60s function ceiling
+        // for the finals demo. Flash is materially faster and the briefing
+        // quality is acceptable for the demo. Revert when Z.AI stabilises.
+        model: "glm-4.5-flash",
         systemPrompt,
         userPrompt,
         jsonMode: true,

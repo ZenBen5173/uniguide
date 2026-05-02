@@ -37,6 +37,64 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Optional letter templates — admin can drop in acceptance + rejection
+  // PDFs (or paste text) and we'll auto-detect {{placeholders}} on the
+  // server. Both fields are optional; the procedure can go live without
+  // them and the admin can add letters later from the procedure detail
+  // page. But shipping all three together makes "set up a procedure" a
+  // single self-contained action.
+  type TemplateDraft = {
+    text: string;
+    name: string;
+    filename: string | null;
+    pages: number | null;
+    placeholders: string[];
+    busy: boolean;
+  } | null;
+  const [acceptanceTemplate, setAcceptanceTemplate] = useState<TemplateDraft>(null);
+  const [rejectionTemplate, setRejectionTemplate] = useState<TemplateDraft>(null);
+
+  const detectPlaceholders = (text: string): string[] =>
+    [...new Set([...text.matchAll(/\{\{[^}]+\}\}/g)].map((m) => m[0]))];
+
+  const handleTemplatePdf = async (
+    file: File,
+    kind: "acceptance" | "rejection"
+  ) => {
+    const setter = kind === "acceptance" ? setAcceptanceTemplate : setRejectionTemplate;
+    setter({
+      text: "",
+      name: `Standard ${kind} letter`,
+      filename: file.name,
+      pages: null,
+      placeholders: [],
+      busy: true,
+    });
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/admin/procedures/parse-pdf", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!j.ok) {
+        setter(null);
+        setError(`Could not parse ${kind} template PDF: ${j.error}`);
+        return;
+      }
+      setter({
+        text: j.data.text,
+        name: `Standard ${kind} letter`,
+        filename: j.data.filename,
+        pages: j.data.pages,
+        placeholders: detectPlaceholders(j.data.text),
+        busy: false,
+      });
+    } catch (err) {
+      setter(null);
+      setError(err instanceof Error ? err.message : `${kind} template parse failed`);
+    }
+  };
+
   const refresh = async () => {
     try {
       const r = await fetch("/api/admin/procedures");
@@ -56,6 +114,8 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
     setProcId(""); setProcName(""); setProcDesc("");
     setSopText(""); setSopUrl("");
     setPdfMeta(null);
+    setAcceptanceTemplate(null);
+    setRejectionTemplate(null);
     setError(null);
   };
 
@@ -115,6 +175,43 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
       });
       const j2 = await r2.json();
       if (!j2.ok) { setError(j2.error); setBusy(false); return; }
+
+      // Step 3: upload letter templates (optional). Each upload extracts
+      // placeholders server-side via the existing letter-templates POST.
+      // Failures here are logged but don't fail the whole "make live" —
+      // the procedure is usable without letters and the admin can retry
+      // template upload from the procedure detail page.
+      const templates = [
+        acceptanceTemplate ? { kind: "acceptance" as const, draft: acceptanceTemplate } : null,
+        rejectionTemplate ? { kind: "rejection" as const, draft: rejectionTemplate } : null,
+      ].filter((x): x is { kind: "acceptance" | "rejection"; draft: NonNullable<TemplateDraft> } => x !== null);
+
+      const templateErrors: string[] = [];
+      for (const { kind, draft } of templates) {
+        if (!draft.text || draft.text.length < 20) continue;
+        try {
+          const tr = await fetch(`/api/admin/procedures/${procId}/letter-templates`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              template_type: kind,
+              name: draft.name,
+              template_text: draft.text,
+            }),
+          });
+          const tj = await tr.json();
+          if (!tj.ok) templateErrors.push(`${kind}: ${tj.error}`);
+        } catch (err) {
+          templateErrors.push(`${kind}: ${err instanceof Error ? err.message : "network"}`);
+        }
+      }
+      if (templateErrors.length > 0) {
+        // Surface but don't block — procedure is live, templates can be
+        // added/edited from the procedure detail page later.
+        setError(
+          `Procedure is live, but some letter templates failed to upload: ${templateErrors.join("; ")}. You can add them from the procedure detail page.`
+        );
+      }
 
       setStep("confirm");
       await refresh();
@@ -348,6 +445,58 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
                       Tip: H2 headings (## Eligibility, ## Documents) become natural chunks GLM retrieves at runtime.
                     </p>
                   </div>
+
+                  {/* Decision letter templates — optional but encouraged.
+                       Drop in the acceptance + rejection PDFs (or paste text);
+                       we extract the text server-side and auto-detect every
+                       {{placeholder}} so the AI knows what to fill in at
+                       decision time. Procedure can go live without these and
+                       the admin can add letters later. */}
+                  <div className="pt-3 border-t border-line-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[12px] uppercase tracking-wider font-semibold text-ink-4">
+                        Decision letter templates
+                      </label>
+                      <span className="text-[11px] text-ink-4 font-medium">Optional</span>
+                    </div>
+                    <p className="text-[12px] text-ink-4 mb-2.5 leading-snug">
+                      Drop the PDFs the office uses today. We&apos;ll extract the text and detect <span className="mono">{"{{placeholders}}"}</span> automatically. If you skip this, decisions will go through without a letter and you can add templates later.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <TemplateUpload
+                        kind="acceptance"
+                        draft={acceptanceTemplate}
+                        onPickPdf={(f) => void handleTemplatePdf(f, "acceptance")}
+                        onClear={() => setAcceptanceTemplate(null)}
+                        onTextChange={(t) =>
+                          setAcceptanceTemplate({
+                            text: t,
+                            name: acceptanceTemplate?.name ?? "Standard acceptance letter",
+                            filename: acceptanceTemplate?.filename ?? null,
+                            pages: acceptanceTemplate?.pages ?? null,
+                            placeholders: detectPlaceholders(t),
+                            busy: false,
+                          })
+                        }
+                      />
+                      <TemplateUpload
+                        kind="rejection"
+                        draft={rejectionTemplate}
+                        onPickPdf={(f) => void handleTemplatePdf(f, "rejection")}
+                        onClear={() => setRejectionTemplate(null)}
+                        onTextChange={(t) =>
+                          setRejectionTemplate({
+                            text: t,
+                            name: rejectionTemplate?.name ?? "Standard rejection letter",
+                            filename: rejectionTemplate?.filename ?? null,
+                            pages: rejectionTemplate?.pages ?? null,
+                            placeholders: detectPlaceholders(t),
+                            busy: false,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -435,5 +584,128 @@ function Kpi({ k, v, ai = false }: { k: string; v: string; ai?: boolean }) {
       <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">{k}</div>
       <div className={`text-xl font-semibold mt-0.5 ${ai ? "text-ai-ink" : "text-ink"}`}>{v}</div>
     </div>
+  );
+}
+
+interface TemplateDraftDisplay {
+  text: string;
+  name: string;
+  filename: string | null;
+  pages: number | null;
+  placeholders: string[];
+  busy: boolean;
+}
+
+interface TemplateUploadProps {
+  kind: "acceptance" | "rejection";
+  draft: TemplateDraftDisplay | null;
+  onPickPdf: (file: File) => void;
+  onClear: () => void;
+  onTextChange: (text: string) => void;
+}
+
+function TemplateUpload({ kind, draft, onPickPdf, onClear, onTextChange }: TemplateUploadProps) {
+  const isAcceptance = kind === "acceptance";
+  const tone = isAcceptance ? "ok" : "rejection";
+  const label = isAcceptance ? "Acceptance letter" : "Rejection letter";
+
+  if (draft?.busy) {
+    return (
+      <div className="rounded-[10px] border border-line bg-card p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11.5px] uppercase tracking-wider font-semibold text-ink-3">
+            {label}
+          </span>
+          <span className="text-[10.5px] text-ai-ink font-medium">Parsing PDF…</span>
+        </div>
+        <div className="h-[3px] rounded-full bg-line-2 overflow-hidden">
+          <div
+            className="h-full bg-ai-ink rounded-full"
+            style={{ width: "60%", animation: "pulse 1.4s ease-in-out infinite" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (draft && draft.text) {
+    return (
+      <div className="rounded-[10px] border border-line bg-card p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span
+            className={`ug-pill ${tone === "ok" ? "ok" : ""}`}
+            style={
+              tone === "rejection"
+                ? { background: "var(--crimson-soft)", color: "var(--crimson)", borderColor: "#E8C5CB" }
+                : undefined
+            }
+          >
+            {label}
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-[11px] text-ink-4 hover:text-crimson font-medium"
+          >
+            Replace
+          </button>
+        </div>
+        {draft.filename && (
+          <div className="text-[12px] font-medium text-ink truncate">{draft.filename}</div>
+        )}
+        <div className="text-[10.5px] text-ink-4 mono mt-0.5">
+          {draft.pages !== null ? `${draft.pages} pages · ` : ""}
+          {draft.text.length} chars · {draft.placeholders.length} placeholder
+          {draft.placeholders.length === 1 ? "" : "s"} detected
+        </div>
+        {draft.placeholders.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {draft.placeholders.slice(0, 6).map((p) => (
+              <span
+                key={p}
+                className="text-[9.5px] mono px-1 py-0.5 rounded bg-ai-tint text-ai-ink border border-ai-line"
+              >
+                {p}
+              </span>
+            ))}
+            {draft.placeholders.length > 6 && (
+              <span className="text-[10px] text-ink-4">+{draft.placeholders.length - 6}</span>
+            )}
+          </div>
+        )}
+        <textarea
+          className="ug-textarea mt-2 min-h-[80px] text-[11.5px] mono"
+          value={draft.text}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder="Letter text — edit if needed"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <label
+      className="cursor-pointer rounded-[10px] border-[1.5px] border-dashed border-line bg-card hover:border-ink-5 px-3 py-4 text-center block transition"
+    >
+      <div className="text-[12.5px] font-semibold text-ink-2 mb-0.5">{label}</div>
+      <div className="text-[11px] text-ink-4 leading-snug">
+        Drop a PDF or click to choose. Or paste text.
+      </div>
+      <input
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickPdf(f);
+        }}
+      />
+      <textarea
+        className="ug-textarea mt-2 min-h-[60px] text-[11px] mono"
+        placeholder="…or paste the letter template text here"
+        onChange={(e) => onTextChange(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </label>
   );
 }

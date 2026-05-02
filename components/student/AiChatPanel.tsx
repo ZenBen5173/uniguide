@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import AiProgressBar from "@/components/shared/AiProgressBar";
 
 interface ChatMessage {
   id: string;
@@ -209,7 +210,13 @@ export default function AiChatPanel({ applicationId, escalationPending }: AiChat
         })}
 
         {busy && (
-          <div className="text-[11.5px] text-ink-4 italic px-1">UniGuide AI is thinking…</div>
+          <div className="px-1 py-1">
+            <AiProgressBar
+              expectedMs={20_000}
+              compact
+              label="UniGuide AI is thinking…"
+            />
+          </div>
         )}
 
         {error && (
