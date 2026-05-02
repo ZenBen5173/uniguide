@@ -12,9 +12,9 @@
  *
  * Then reseeds:
  *  - Canonical letter templates for each Live procedure
- *  - 7 sample applications spread across 5 procedures in distinct states:
+ *  - 8 sample applications spread across 5 procedures in distinct states:
  *      Scholarship: 3 (mid-flow draft, low-conf+flagged submitted, approved+letter)
- *      FYP:         1 (submitted, awaiting briefing)
+ *      FYP:         2 (submitted with high-conf approve briefing; near-complete draft for the upload-and-submit demo)
  *      Deferment:   1 (approved with letter)
  *      Postgrad:    1 (submitted, high-confidence)
  *      Exam Appeal: 1 (more_info_requested)
@@ -385,6 +385,68 @@ export async function POST() {
         decided_at: hoursAgo(6),
       });
       seeded.push({ id: app.id, procedure: "exam_result_appeal", status: "more_info_requested", label: "Reg. 40 appeal, awaiting payment proof" });
+    }
+  }
+
+  // ---------- App 10: FYP — near-complete draft (upload + submit demo) ----------
+  // For the live demo: a student app where the next 2 steps are just "upload
+  // your file" then "submit". Lets the demo walk the full happy-path completion
+  // (upload → AI emits final_submit → student submits → coordinator inbox)
+  // in <1 minute. Steps 1-2 are pre-completed; only the file_upload is
+  // pending — the engine will emit the final_submit step naturally after
+  // the student responds to step 3.
+  {
+    const { data: app } = await sb.from("applications").insert({
+      user_id: studentId, procedure_id: "final_year_project", status: "draft",
+      progress_estimated_total: 4,
+      student_summary: "FYP I — AD category, supervisor confirmed, proposal submitted. Awaiting signed FYP-1 form upload, then final submit.",
+      created_at: hoursAgo(6), updated_at: hoursAgo(0.3),
+    }).select("id").single();
+    if (app) {
+      await sb.from("application_steps").insert([
+        {
+          application_id: app.id, ordinal: 1, type: "select",
+          prompt_text: "Which FYP category fits your project?",
+          config: { options: [
+            { value: "app_dev", label: "Application Development (AD)" },
+            { value: "research", label: "Research" },
+            { value: "industry", label: "Industry-linked" },
+          ] },
+          emitted_by: "ai", status: "completed",
+          response_data: { value: "app_dev" },
+          completed_at: hoursAgo(5.5),
+        },
+        {
+          application_id: app.id, ordinal: 2, type: "form",
+          prompt_text: "Tell us about your supervisor and project.",
+          config: { fields: [
+            { key: "supervisor_name", label: "Supervisor name", field_type: "text", required: true },
+            { key: "project_title",  label: "Project title",   field_type: "text", required: true },
+          ] },
+          emitted_by: "ai", status: "completed",
+          response_data: {
+            supervisor_name: "Dr. Chen Wei Liang",
+            project_title: "Recommendation system for the UM library digital catalogue",
+          },
+          completed_at: hoursAgo(5),
+        },
+        {
+          application_id: app.id, ordinal: 3, type: "file_upload",
+          prompt_text: "Please upload your signed FYP-1 form (supervisor + student signatures).",
+          config: {
+            accepts: ["application/pdf"],
+            max_files: 1,
+            citations: ["Documents Required", "Process Steps"],
+          },
+          emitted_by: "ai", status: "pending", response_data: null,
+        },
+      ]);
+      seeded.push({
+        id: app.id,
+        procedure: "final_year_project",
+        status: "draft",
+        label: "Near-complete: upload signed FYP-1 then submit (2 of 4 done)",
+      });
     }
   }
 

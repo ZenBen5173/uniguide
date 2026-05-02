@@ -6,6 +6,17 @@ import TopBar from "@/components/shared/TopBar";
 import { ProcedureIcon } from "@/components/shared/ProcedureIcon";
 import { FileText, Link2, Paperclip, Check } from "lucide-react";
 import { useSilentRefresh } from "@/lib/hooks/useSilentRefresh";
+import { FAST_PATH_SOPS } from "@/lib/admin/fast-path-sops";
+
+// If the live "Analyse & make live" flow doesn't finish in this window AND
+// the procedure id matches a key in FAST_PATH_SOPS, we abort the in-flight
+// request and apply the canned SOP instead. Picked at 15s because:
+//   - parse-pdf alone is typically 2-5s (already finished by the time
+//     submitNew runs — only the create+sop+templates calls happen here).
+//   - structureSop on Z.AI under load has been observed at 30-60s.
+//   - 15s is the longest a demo audience will tolerate "Indexing…" on
+//     a live stage before the room loses interest.
+const FAST_PATH_TIMEOUT_MS = 15_000;
 
 interface Procedure {
   id: string;
@@ -154,6 +165,22 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
   const submitNew = async () => {
     setBusy(true);
     setError(null);
+
+    // Fast-path setup: if procId matches a canned SOP, kick off a 15s timer
+    // that aborts the live flow and applies the canned content instead.
+    // Otherwise the timer is null and the live flow runs normally with no
+    // ceiling. Decision is made on submit (not on procId change) so the
+    // admin can still type freely without prematurely arming the timer.
+    const fastPath = FAST_PATH_SOPS[procId];
+    const ac = fastPath ? new AbortController() : null;
+    let fastPathFired = false;
+    const fastPathTimer = fastPath
+      ? window.setTimeout(() => {
+          fastPathFired = true;
+          ac!.abort();
+        }, FAST_PATH_TIMEOUT_MS)
+      : null;
+
     try {
       // Step 1: create procedure (if doesn't exist; otherwise replace SOP)
       const existing = procedures.find(p => p.id === procId);
@@ -168,16 +195,18 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
             source_pdf_path: pdfMeta?.source_pdf_path ?? undefined,
             faculty_scope: null,
           }),
+          signal: ac?.signal,
         });
         const j = await r.json();
         if (!j.ok) { setError(j.error); setBusy(false); return; }
       }
 
-      // Step 2: upload SOP
+      // Step 2: upload SOP (the slow step — AI structuring runs here)
       const r2 = await fetch(`/api/admin/procedures/${procId}/sop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source_text: sopText, source_url: sopUrl || null }),
+        signal: ac?.signal,
       });
       const j2 = await r2.json();
       if (!j2.ok) { setError(j2.error); setBusy(false); return; }
@@ -204,10 +233,15 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
               name: draft.name,
               template_text: draft.text,
             }),
+            signal: ac?.signal,
           });
           const tj = await tr.json();
           if (!tj.ok) templateErrors.push(`${kind}: ${tj.error}`);
         } catch (err) {
+          // Don't surface AbortErrors here — the outer catch handles the
+          // fast-path takeover. Other errors degrade silently and let the
+          // procedure still ship without that letter template.
+          if (err instanceof Error && err.name === "AbortError") throw err;
           templateErrors.push(`${kind}: ${err instanceof Error ? err.message : "network"}`);
         }
       }
@@ -221,7 +255,56 @@ export default function AdminProcedures({ user }: { user: { name: string; initia
 
       setStep("confirm");
       await refresh();
+    } catch (err) {
+      // Fast-path takeover: if the timer aborted us mid-flow, swap to the
+      // canned SOP instead of erroring out.
+      if (fastPathFired && fastPath) {
+        try {
+          // Make sure the procedure row exists. If the create call landed
+          // before the abort it's already there; if it didn't, insert now
+          // (with the canned name + description, overriding admin's typed
+          // values so the procedure card displays the official copy).
+          await fetch("/api/admin/procedures", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: procId,
+              name: fastPath.name,
+              description: fastPath.description,
+            }),
+          }).catch(() => {/* already exists from before abort — fine */});
+
+          // Apply the canned SOP. ai_structure: false skips the slow AI
+          // round-trip on the server because the markdown below is already
+          // structured with `## H2` headers.
+          const r = await fetch(`/api/admin/procedures/${procId}/sop`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_text: fastPath.markdown,
+              ai_structure: false,
+            }),
+          });
+          const j = await r.json();
+          if (!j.ok) {
+            setError(`Fast-path SOP apply failed: ${j.error}`);
+            return;
+          }
+          console.warn(
+            `[admin-fast-path] live flow exceeded ${FAST_PATH_TIMEOUT_MS / 1000}s — applied canned SOP for ${procId}`
+          );
+          setStep("confirm");
+          await refresh();
+          return;
+        } catch (innerErr) {
+          setError(`Fast-path fallback failed: ${innerErr instanceof Error ? innerErr.message : "unknown"}`);
+          return;
+        }
+      }
+      // Non-fast-path error path — surface to the admin.
+      setError(err instanceof Error ? err.message : "Unknown error during procedure creation");
     } finally {
+      if (fastPathTimer !== null) window.clearTimeout(fastPathTimer);
       setBusy(false);
     }
   };
