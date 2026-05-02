@@ -12,8 +12,10 @@
 
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { nextStep } from "@/lib/glm/nextStep";
-import type { HistoryStep, StepType } from "@/lib/glm/schemas";
+import type { HistoryStep, NextStepOutput, StepType } from "@/lib/glm/schemas";
 import { retrieveProcedureSop } from "@/lib/kb/retrieve";
+import { withTimeout } from "@/lib/utils/timeout";
+import { getDemoScriptStep, DEMO_SCRIPT_RACE_MS } from "./demo-scripts";
 
 export interface ApplicationContext {
   application: {
@@ -231,17 +233,72 @@ export async function emitNextStep(args: {
   const history = await buildHistory(args.applicationId);
   const sopChunks = await retrieveProcedureSop(ctx.procedure.id);
 
-  const result = await nextStep(
-    {
-      procedureId: ctx.procedure.id as never,
-      procedureName: ctx.procedure.name,
-      studentProfile: ctx.studentProfile,
-      sopChunks,
-      history,
-      coordinatorRequest: args.coordinatorRequest ?? null,
-    },
-    { applicationId: args.applicationId }
-  );
+  // Race the AI against a hardcoded "demo script" when one is defined for
+  // (procedureId, historyLength). Used to keep the FYP demo deterministic
+  // even when Z.AI is slow — the race timer is short (~5s), so if the AI
+  // doesn't return promptly we emit the script step instead. Procedures
+  // without a script entry fall through to the normal AI path with the
+  // route's full maxDuration ceiling.
+  const scriptStep = getDemoScriptStep(ctx.procedure.id, history.length);
+
+  let result: NextStepOutput;
+  let usedScript = false;
+
+  if (scriptStep) {
+    try {
+      result = await withTimeout(
+        nextStep(
+          {
+            procedureId: ctx.procedure.id as never,
+            procedureName: ctx.procedure.name,
+            studentProfile: ctx.studentProfile,
+            sopChunks,
+            history,
+            coordinatorRequest: args.coordinatorRequest ?? null,
+          },
+          { applicationId: args.applicationId }
+        ),
+        DEMO_SCRIPT_RACE_MS,
+        "nextStep (script race)"
+      );
+    } catch {
+      // Either timed out or the AI errored — fall back to the scripted
+      // step. Coordinator-typed requests bypass the script (we always want
+      // the AI to reflect what the coordinator just asked).
+      if (args.coordinatorRequest) {
+        // Re-throw to keep the original behaviour for coordinator-driven
+        // request_info. Scripts are for the autonomous student flow only.
+        throw new Error(
+          `nextStep timed out and coordinatorRequest is set; cannot fall back to script.`
+        );
+      }
+      result = {
+        is_complete: false,
+        next_step: {
+          type: scriptStep.type,
+          prompt_text: scriptStep.prompt_text,
+          config: scriptStep.config,
+        },
+        reasoning: scriptStep.reasoning,
+        running_summary: scriptStep.running_summary,
+        citations: scriptStep.citations ?? [],
+      };
+      usedScript = true;
+    }
+  } else {
+    result = await nextStep(
+      {
+        procedureId: ctx.procedure.id as never,
+        procedureName: ctx.procedure.name,
+        studentProfile: ctx.studentProfile,
+        sopChunks,
+        history,
+        coordinatorRequest: args.coordinatorRequest ?? null,
+      },
+      { applicationId: args.applicationId }
+    );
+  }
+  void usedScript;
 
   if (result.is_complete || !result.next_step) {
     // GLM signalled "no more questions" — synthesise a terminal final_submit
