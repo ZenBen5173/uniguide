@@ -99,20 +99,132 @@ export async function buildHistory(applicationId: string): Promise<HistoryStep[]
   });
 }
 
+/** Shape returned by previewNextStep — what the AI proposes, without inserting. */
+export interface ProposedStep {
+  type: StepType;
+  prompt_text: string;
+  config: Record<string, unknown>;
+  reasoning: string;
+  citations: string[];
+}
+
+/** Optional override that bypasses the GLM call and inserts verbatim. */
+export interface StepOverride {
+  type: StepType;
+  prompt_text: string;
+  config: Record<string, unknown>;
+}
+
+/**
+ * Plan a next step WITHOUT committing it. Used by the coordinator's
+ * preview-step modal: shows the AI's proposed question (and reasoning)
+ * so the coordinator can confirm or edit before it reaches the student.
+ *
+ * Mirrors emitNextStep's preconditions; just skips the DB insert.
+ * Returns null when GLM signals is_complete=true (nothing more to ask).
+ */
+export async function previewNextStep(args: {
+  applicationId: string;
+  coordinatorRequest?: string | null;
+}): Promise<ProposedStep | null> {
+  const ctx = await loadApplicationContext(args.applicationId);
+  if (!ctx) throw new Error(`Application ${args.applicationId} not found`);
+
+  const [history, sopChunks] = await Promise.all([
+    buildHistory(args.applicationId),
+    retrieveProcedureSop(ctx.procedure.id),
+  ]);
+
+  const result = await nextStep(
+    {
+      procedureId: ctx.procedure.id as never,
+      procedureName: ctx.procedure.name,
+      studentProfile: ctx.studentProfile,
+      sopChunks,
+      history,
+      coordinatorRequest: args.coordinatorRequest ?? null,
+    },
+    { applicationId: args.applicationId }
+  );
+
+  if (result.is_complete || !result.next_step) return null;
+
+  const config = {
+    ...result.next_step.config,
+    ...(result.citations && result.citations.length > 0
+      ? { citations: result.citations }
+      : {}),
+  };
+
+  return {
+    type: result.next_step.type,
+    prompt_text: result.next_step.prompt_text,
+    config,
+    reasoning: result.reasoning,
+    citations: result.citations,
+  };
+}
+
 /**
  * Emit the next step for an application.
  * If GLM signals is_complete=true, returns { complete: true, step: null }.
  * Otherwise inserts the new step row and returns it.
  *
  * `coordinatorRequest` is set when a coordinator typed "request more info".
+ * `stepOverride` is set when a coordinator confirmed an AI-proposed step in
+ *   the preview-step modal — skips the GLM call entirely and inserts verbatim.
  */
 export async function emitNextStep(args: {
   applicationId: string;
   coordinatorRequest?: string | null;
+  stepOverride?: StepOverride | null;
 }): Promise<
   | { complete: true; step: null }
   | { complete: false; step: { id: string; ordinal: number; type: StepType; prompt_text: string; config: Record<string, unknown> } }
 > {
+  const sb = getServiceSupabase();
+
+  // Coordinator-confirmed override path — bypasses the AI call entirely.
+  // Used after a Request-More-Info preview where the coordinator already
+  // saw and confirmed (possibly edited) the AI's proposed step.
+  if (args.stepOverride) {
+    const ctx = await loadApplicationContext(args.applicationId);
+    if (!ctx) throw new Error(`Application ${args.applicationId} not found`);
+    const history = await buildHistory(args.applicationId);
+    const nextOrdinal = (history.length || 0) + 1;
+
+    const { data: inserted, error } = await sb
+      .from("application_steps")
+      .insert({
+        application_id: args.applicationId,
+        ordinal: nextOrdinal,
+        type: args.stepOverride.type,
+        prompt_text: args.stepOverride.prompt_text,
+        config: args.stepOverride.config,
+        // If the override originated from a coordinator request, mark accordingly
+        // so the student UI can show "from your coordinator" attribution.
+        emitted_by: "coordinator",
+        status: "pending",
+      })
+      .select("id, ordinal, type, prompt_text, config")
+      .single();
+
+    if (error || !inserted) {
+      throw new Error(`Failed to insert override step: ${error?.message}`);
+    }
+
+    return {
+      complete: false,
+      step: {
+        id: inserted.id,
+        ordinal: inserted.ordinal,
+        type: inserted.type as StepType,
+        prompt_text: inserted.prompt_text,
+        config: inserted.config as Record<string, unknown>,
+      },
+    };
+  }
+
   const ctx = await loadApplicationContext(args.applicationId);
   if (!ctx) throw new Error(`Application ${args.applicationId} not found`);
 
@@ -135,7 +247,6 @@ export async function emitNextStep(args: {
     return { complete: true, step: null };
   }
 
-  const sb = getServiceSupabase();
   const nextOrdinal = (history.length || 0) + 1;
 
   // Embed AI's SOP citations into the step config so the student-facing UI

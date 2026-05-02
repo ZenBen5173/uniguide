@@ -109,6 +109,18 @@ export default function CoordinatorAppDetail({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<{ template_name: string; unfilled: string[]; issues: Array<{ severity: "warn" | "block"; field: string; message: string }> } | null>(null);
 
+  // Step-preview modal state (Request More Info flow — plan-mode confirmation)
+  const [stepPreviewOpen, setStepPreviewOpen] = useState(false);
+  const [stepPreviewBusy, setStepPreviewBusy] = useState(false);
+  const [stepPreviewError, setStepPreviewError] = useState<string | null>(null);
+  const [stepPreview, setStepPreview] = useState<{
+    type: string;
+    prompt_text: string;
+    config: Record<string, unknown>;
+    reasoning: string;
+    citations: string[];
+  } | null>(null);
+
   // Undo countdown (re-renders every second when decision is recent)
   const [, setUndoTick] = useState(0);
   const [undoBusy, setUndoBusy] = useState(false);
@@ -249,7 +261,83 @@ export default function CoordinatorAppDetail({
     }
   };
 
-  const requestInfo = async () => {
+  /**
+   * Plan-mode-style flow: show what the AI proposes to ask the student
+   * BEFORE it commits. Coordinator can edit the prompt_text or cancel.
+   * On AI/network failure, fall back to the legacy direct-fire path so
+   * coordinators are never blocked.
+   */
+  const openStepPreview = async () => {
+    if (!comment.trim()) {
+      alert("Please type what you'd like the student to provide.");
+      return;
+    }
+    setStepPreviewOpen(true);
+    setStepPreviewBusy(true);
+    setStepPreviewError(null);
+    setStepPreview(null);
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/preview-step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment: comment.trim() }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        setStepPreviewError(json.error ?? "Could not generate preview.");
+        return;
+      }
+      setStepPreview({
+        type: json.data.proposed_step.type,
+        prompt_text: json.data.proposed_step.prompt_text,
+        config: json.data.proposed_step.config ?? {},
+        reasoning: json.data.reasoning ?? "",
+        citations: json.data.citations ?? [],
+      });
+    } catch (err) {
+      setStepPreviewError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setStepPreviewBusy(false);
+    }
+  };
+
+  const confirmStepRequest = async () => {
+    if (!stepPreview) return;
+    setBusy("request_info");
+    try {
+      const res = await fetch(`/api/coordinator/applications/${id}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision: "request_info",
+          comment: comment.trim(),
+          step_override: {
+            type: stepPreview.type,
+            prompt_text: stepPreview.prompt_text,
+            config: stepPreview.config,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        await refresh();
+        setComment("");
+        setStepPreviewOpen(false);
+        setStepPreview(null);
+      } else {
+        alert(`Could not send: ${json.error}`);
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Legacy direct-fire path — kept as a fallback when the AI preview
+   * is unavailable (provider down or schema error). Same behaviour as
+   * before this PR: AI plans the step inline during the decide call.
+   */
+  const requestInfoFallback = async () => {
     if (!comment.trim()) {
       alert("Please type what you'd like the student to provide.");
       return;
@@ -265,6 +353,7 @@ export default function CoordinatorAppDetail({
       if (json.ok) {
         await refresh();
         setComment("");
+        setStepPreviewOpen(false);
       }
     } finally {
       setBusy(null);
@@ -584,11 +673,15 @@ export default function CoordinatorAppDetail({
               </button>
               <button
                 className="ug-btn w-full justify-center gap-2"
-                onClick={requestInfo}
-                disabled={busy !== null}
+                onClick={openStepPreview}
+                disabled={busy !== null || stepPreviewBusy}
                 style={{ background: "var(--amber-soft)", color: "var(--amber)", borderColor: "#E8DBB5" }}
               >
-                {busy === "request_info" ? "Requesting…" : (<><MessageSquare className="h-4 w-4" strokeWidth={1.85} />Request more info</>)}
+                {busy === "request_info"
+                  ? "Requesting…"
+                  : stepPreviewBusy
+                  ? "Planning…"
+                  : (<><MessageSquare className="h-4 w-4" strokeWidth={1.85} />Preview info request</>)}
               </button>
               <button
                 className="ug-btn crimson w-full justify-center gap-2"
@@ -738,6 +831,156 @@ export default function CoordinatorAppDetail({
                       {previewKind === "approve"
                         ? <><Check className="h-4 w-4" strokeWidth={2.25} />Confirm & send acceptance</>
                         : <><X className="h-4 w-4" strokeWidth={2.25} />Confirm & send rejection</>}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────
+           Preview-step modal — plan-mode-style confirmation for Request More
+           Info. The AI proposes the question; the coordinator edits / confirms
+           before it reaches the student.
+          ──────────────────────────────────────────────────────────────────── */}
+      {stepPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-6"
+          onClick={() => (stepPreviewBusy || busy ? null : setStepPreviewOpen(false))}
+        >
+          <div
+            className="ug-card w-full max-w-[760px] max-h-[88vh] overflow-hidden flex flex-col shadow-ug-lift"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-line-2 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">
+                  Preview · Info request
+                </div>
+                <div className="text-[18px] font-semibold mt-0.5">
+                  Confirm what the AI will ask the student
+                </div>
+                {stepPreview && (
+                  <div className="text-[12px] text-ink-4 mt-1.5 mono">
+                    step type: {stepPreview.type}
+                    {stepPreview.citations.length > 0 && (
+                      <span className="ml-2 text-ai-ink">
+                        · {stepPreview.citations.length} citation
+                        {stepPreview.citations.length === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                className="ug-btn ghost"
+                onClick={() => setStepPreviewOpen(false)}
+                disabled={stepPreviewBusy || busy !== null}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {stepPreviewBusy ? (
+                <div className="text-center py-8 text-ink-4">
+                  Asking the AI to plan a question based on your comment…
+                </div>
+              ) : stepPreviewError ? (
+                <div className="space-y-3">
+                  <div className="px-4 py-3 rounded-[10px] bg-crimson-soft border border-[#E8C5CB] text-[13px] text-crimson">
+                    {stepPreviewError}
+                  </div>
+                  <div className="text-[12px] text-ink-4">
+                    You can still send the request without preview — the AI will plan the question
+                    inline when you confirm.
+                  </div>
+                  <button
+                    className="ug-btn"
+                    onClick={requestInfoFallback}
+                    disabled={busy !== null}
+                  >
+                    {busy === "request_info" ? "Sending…" : "Send without preview"}
+                  </button>
+                </div>
+              ) : stepPreview ? (
+                <>
+                  <label className="block">
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-4">
+                      Question shown to the student — edit before confirming
+                    </span>
+                    <textarea
+                      className="ug-textarea mt-1.5 min-h-[120px] text-[13.5px] leading-relaxed"
+                      value={stepPreview.prompt_text}
+                      onChange={(e) =>
+                        setStepPreview({ ...stepPreview, prompt_text: e.target.value })
+                      }
+                      disabled={busy !== null}
+                    />
+                  </label>
+
+                  {stepPreview.config && Object.keys(stepPreview.config).length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-[11px] uppercase tracking-wider font-semibold text-ink-4 mb-1.5">
+                        Step configuration (read-only)
+                      </div>
+                      <div className="px-3 py-2 rounded-lg bg-card-2 border border-line text-[12px] text-ink-3 mono whitespace-pre-wrap">
+                        {JSON.stringify(stepPreview.config, null, 2)}
+                      </div>
+                    </div>
+                  )}
+
+                  {stepPreview.reasoning && (
+                    <div className="mt-4 px-4 py-3 rounded-[10px] bg-ai-tint border border-ai-line">
+                      <div className="text-[11px] uppercase tracking-wider font-semibold text-ai-ink mb-1 flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3" strokeWidth={2.25} />
+                        Why the AI is asking this
+                      </div>
+                      <div className="text-[12.5px] text-ink-2 leading-snug">
+                        {stepPreview.reasoning}
+                      </div>
+                    </div>
+                  )}
+
+                  {stepPreview.citations.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {stepPreview.citations.map((c, i) => (
+                        <span
+                          key={i}
+                          className="text-[11px] px-2 py-0.5 rounded-full bg-ai-tint border border-ai-line text-ai-ink"
+                        >
+                          §{c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            {!stepPreviewBusy && !stepPreviewError && stepPreview && (
+              <div className="px-6 py-4 border-t border-line-2 flex items-center justify-between gap-3">
+                <div className="text-[12px] text-ink-4">
+                  This becomes a new step in the student's flow. They can answer right away.
+                </div>
+                <button
+                  className="ug-btn gap-2"
+                  style={{
+                    background: "var(--amber-soft)",
+                    color: "var(--amber)",
+                    borderColor: "#E8DBB5",
+                  }}
+                  onClick={confirmStepRequest}
+                  disabled={busy !== null || !stepPreview.prompt_text.trim()}
+                >
+                  {busy === "request_info" ? (
+                    "Sending…"
+                  ) : (
+                    <>
+                      <MessageSquare className="h-4 w-4" strokeWidth={1.85} />
+                      Confirm & send to student
                     </>
                   )}
                 </button>

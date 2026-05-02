@@ -18,12 +18,31 @@ import { fillLetter } from "@/lib/glm/fillLetter";
 import { emitNextStep, loadApplicationContext, buildHistory } from "@/lib/applications/engine";
 import { apiError, apiSuccess } from "@/lib/utils/responses";
 
+const StepOverrideSchema = z.object({
+  type: z.enum([
+    "form",
+    "file_upload",
+    "text",
+    "select",
+    "multiselect",
+    "info",
+    "final_submit",
+    "coordinator_message",
+  ]),
+  prompt_text: z.string().min(1).max(2000),
+  config: z.record(z.string(), z.unknown()).default({}),
+});
+
 const Body = z.object({
   decision: z.enum(["approve", "reject", "request_info"]),
   comment: z.string().max(2000).optional(),
   /** If set, this exact text is used as the letter (skip GLM regen). Set when
    *  the coordinator previewed and edited the letter before sending. */
   letter_text_override: z.string().max(20000).optional(),
+  /** If set on a request_info decision, skip the AI nextStep call and
+   *  insert this exact step instead. Set when the coordinator previewed
+   *  and confirmed (or edited) the AI's proposed step in the modal. */
+  step_override: StepOverrideSchema.optional(),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -83,9 +102,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       parsed.data.comment ??
       "The reviewer has requested additional information. Please respond.";
 
+    // If the coordinator confirmed an AI-proposed step in the preview-step
+    // modal, insert it verbatim (skipping a second nextStep GLM call). When
+    // there's no override, fall back to the original behaviour: AI plans the
+    // step inline. Backwards-compatible for any non-UI caller hitting /decide
+    // without preview.
     const result = await emitNextStep({
       applicationId,
       coordinatorRequest: requestText,
+      stepOverride: parsed.data.step_override
+        ? {
+            type: parsed.data.step_override.type as never,
+            prompt_text: parsed.data.step_override.prompt_text,
+            config: parsed.data.step_override.config,
+          }
+        : null,
     });
 
     await sb
@@ -97,6 +128,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       decided: true,
       kind: "request_info",
       next_step: result.complete ? null : result.step,
+      step_override_used: !!parsed.data.step_override,
     });
   }
 
