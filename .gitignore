@@ -18,6 +18,7 @@ out/
 *.pdf
 !docs/**/*.pdf
 !docs/**/*.docx
+!tests/fixtures/sample-documents/*.pdf
 
 # IDE
 .vscode/
